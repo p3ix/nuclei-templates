@@ -44,23 +44,15 @@ http:
         condition: or
         words:
           - "Laravel Telescope"
-          - "telescope"
-          - "Telescope"
-          - "\"entries\""
           - "\"batchId\""
           - "\"familyHash\""
-          - "\"content\""
-          - "\"request\""
-          - "\"response\""
-          - "\"uri\""
-          - "\"method\""
-          - "\"headers\""
-          - "\"payload\""
-          - "\"exception\""
+          - "telescope/api/"
           - "Illuminate\\"
 
       - type: dsl
         dsl:
+          - "(!contains(tolower(header), 'content-type: text/html') && (contains(body, '\"batchId\"') || contains(body, '\"familyHash\"') || contains(body, 'telescope/api/'))) || contains(tolower(body), 'laravel telescope') || contains(body, 'Illuminate\\\\')"
+          - "!contains(body, '__NEXT_DATA__') && !contains(body, 'react-root') && !contains(body, 'window.__')"
           - "len(body) < 52428800"
 
     extractors:

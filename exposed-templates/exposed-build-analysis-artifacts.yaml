@@ -88,18 +88,10 @@ http:
           - "webpack-bundle-analyzer"
           - "BundleAnalyzerPlugin"
           - "\"assetsByChunkName\""
-          - "\"assets\""
-          - "\"chunks\""
-          - "\"modules\""
           - "\"entrypoints\""
           - "\"publicPath\""
           - "\"builtAt\""
-          - "\"hash\""
-          - "\"version\""
-          - "\"sources\""
-          - "\"mappings\""
           - "\"sourcesContent\""
-          - ".wasm"
           - "webpack://"
           - "wasm://"
           - "rustc/"
@@ -107,6 +99,8 @@ http:
 
       - type: dsl
         dsl:
+          - "contains(tolower(body), 'webpack') || contains(tolower(body), 'wasm') || contains(body, 'rustc/') || contains(body, 'cargo/')"
+          - "!contains(body, '__NEXT_DATA__') && !contains(body, 'react-root') && !contains(body, 'window.__')"
           - "len(body) < 104857600"
 
     extractors:

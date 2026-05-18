@@ -103,6 +103,7 @@ http:
         dsl:
           - "len(body) > 16"
           - "len(body) < 209715200"
+          - "!contains(tolower(body), '<!doctype') && !contains(tolower(body), '<html') || contains(tolower(header), 'application/octet-stream') || contains(tolower(header), 'application/vnd.android.package-archive')"
 
     extractors:
       - type: regex

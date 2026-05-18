@@ -1,0 +1,56 @@
+id: exposed-env-vars-in-spa
+
+info:
+  name: Environment Variables Exposed In SPA Bundle
+  author: p3i
+  severity: medium
+  description: Detects SPAs that embed environment variables (React, Vue, Next.js, or raw window.__ENV patterns) directly in the initial HTML or JS bundle, exposing API keys, tokens, and secrets to unauthenticated clients.
+  tags: exposure,env,spa,react,nextjs,vue,secrets,config
+  metadata:
+    max-request: 6
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+      - "{{BaseURL}}/"
+      - "{{BaseURL}}/index.html"
+      - "{{BaseURL}}/app"
+      - "{{BaseURL}}/app/"
+      - "{{BaseURL}}/static/js/main.chunk.js"
+
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - "(?i)(var\\s+\\$_ENV|window\\.__ENV|__ENV__|window\\.env)\\s*=\\s*\\{"
+          - "\"REACT_APP_[A-Z0-9_]*(KEY|SECRET|TOKEN|PASSWORD|PASSKEY|API_KEY)\""
+          - "\"VUE_APP_[A-Z0-9_]*(KEY|SECRET|TOKEN|PASSWORD)\""
+          - "\"NEXT_PUBLIC_[A-Z0-9_]*(KEY|SECRET|TOKEN)\""
+
+      - type: dsl
+        dsl:
+          - "len(body) > 50"
+          - "len(body) < 10485760"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "\"REACT_APP_[^\"]*(?:KEY|SECRET|TOKEN|PASSKEY|PASSWORD)\"\\s*:\\s*\"([^\"]{8,})\""
+          - "\"VUE_APP_[^\"]*(?:KEY|SECRET|TOKEN)\"\\s*:\\s*\"([^\"]{8,})\""
+          - "\"NEXT_PUBLIC_[^\"]*(?:KEY|SECRET|TOKEN)\"\\s*:\\s*\"([^\"]{8,})\""
+          - "(?i)(var\\s+\\$_ENV|window\\.__ENV)\\s*=\\s*(\\{[^}]{0,2000}\\})"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

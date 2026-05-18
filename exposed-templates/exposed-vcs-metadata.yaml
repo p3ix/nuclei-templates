@@ -75,6 +75,9 @@ http:
 
       - type: dsl
         dsl:
+          - "!contains(tolower(body), '<html')"
+          - "!contains(tolower(header), 'content-type: text/html')"
+          - "!contains(tolower(body), '<!doctype')"
           - "len(body) < 2097152"
 
     extractors:

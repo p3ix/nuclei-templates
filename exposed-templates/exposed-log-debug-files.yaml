@@ -96,13 +96,10 @@ http:
           - "PDOException"
           - "Illuminate\\"
           - "Symfony\\Component\\"
-          - "Django"
           - "Express error"
           - "[error]"
-          - "ERROR"
-          - "WARN"
-          - "GET /"
-          - "POST /"
+          - "GET / HTTP/"
+          - "POST / HTTP/"
           - "phpinfo()"
           - "PHP Version"
           - "_SERVER["
@@ -111,7 +108,8 @@ http:
       - type: dsl
         dsl:
           - "len(body) < 10485760"
-          - "!contains(tolower(body), '<!doctype html') || contains(body, 'phpinfo()') || contains(body, 'PHP Version')"
+          - "(!contains(tolower(body), '<!doctype') && !contains(tolower(body), '<html') && !contains(tolower(header), 'content-type: text/html')) || contains(body, 'phpinfo()') || contains(body, 'PHP Version')"
+          - "!contains(body, '__NEXT_DATA__') && !contains(body, 'react-root')"
 
     extractors:
       - type: regex
