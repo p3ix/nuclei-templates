@@ -47,17 +47,10 @@ http:
           - 401
           - 403
 
-      - type: word
-        part: header
-        words:
-          - "SameSite=None"
-          - "samesite=none"
-        condition: or
-        case-insensitive: true
-
       - type: dsl
         dsl:
-          - "!contains(tolower(header), 'samesite=none; secure') && !contains(tolower(header), 'samesite=none;secure') && !contains(tolower(header), 'secure; samesite=none') && !contains(tolower(header), 'secure;samesite=none')"
+          - "regex('(?i)set-cookie:[^\\r\\n]*samesite=none', header)"
+          - "!regex('(?i)set-cookie:[^\\r\\n]*(samesite=none[^\\r\\n]*\\bsecure\\b|\\bsecure\\b[^\\r\\n]*samesite=none)', header)"
 
     extractors:
       - type: regex

@@ -50,7 +50,7 @@ http:
           - "contains(tolower(header), 'content-type: text/html')"
           - "!contains(tolower(header), 'x-frame-options:')"
           - "!contains(tolower(header), 'frame-ancestors')"
-          - "contains(tolower(body), '<form') || contains(tolower(body), 'password') || contains(tolower(body), 'input type') || contains(tolower(body), '<button')"
+          - "contains(tolower(body), 'password') || (contains(tolower(body), '<form') && (contains(tolower(body), 'csrf') || contains(tolower(body), 'token') || contains(tolower(body), 'login') || contains(tolower(body), 'sign') || contains(tolower(body), 'billing') || contains(tolower(body), 'payment') || contains(tolower(body), 'account')))"
           - "!contains(tolower(body), 'access denied')"
           - "!contains(tolower(body), 'permission to access')"
 

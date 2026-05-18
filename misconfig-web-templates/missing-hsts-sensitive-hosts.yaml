@@ -38,14 +38,12 @@ http:
       - type: status
         status:
           - 200
-          - 301
-          - 302
-          - 401
-          - 403
 
       - type: dsl
         dsl:
           - "!contains(tolower(header), 'strict-transport-security:')"
+          - "contains(tolower(header), 'content-type: text/html')"
+          - "!contains(tolower(header), 'cf-ray:')"
 
     extractors:
       - type: regex

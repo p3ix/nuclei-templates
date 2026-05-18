@@ -56,7 +56,7 @@ http:
 
       - type: dsl
         dsl:
-          - "!contains(tolower(header), 'secure') || !contains(tolower(header), 'httponly') || !contains(tolower(header), 'samesite')"
+          - "!regex('(?i)set-cookie:[^\\r\\n]*(session|sid|sess|auth|token|jwt|remember|csrf|xsrf)[^\\r\\n;]*=[^\\r\\n]*\\bsecure\\b', header) || !regex('(?i)set-cookie:[^\\r\\n]*(session|sid|sess|auth|token|jwt|remember|csrf|xsrf)[^\\r\\n;]*=[^\\r\\n]*\\bhttponly\\b', header) || !regex('(?i)set-cookie:[^\\r\\n]*(session|sid|sess|auth|token|jwt|remember|csrf|xsrf)[^\\r\\n;]*=[^\\r\\n]*samesite', header)"
 
     extractors:
       - type: regex

@@ -4,7 +4,7 @@ info:
   name: Web Cache Poisoning Header Reflection Candidate
   author: p3i
   severity: medium
-  description: Detects cacheable responses that reflect attacker-controlled proxy headers, a common precondition for web cache poisoning.
+  description: Detects cacheable responses that reflect attacker-controlled proxy headers, a common precondition for web cache poisoning. Uses a unique random probe value to confirm actual reflection rather than static string matching.
   tags: misconfig,cache,poisoning,headers,cdn,web
   metadata:
     max-request: 7
@@ -14,10 +14,10 @@ http:
       - |
         GET {{cache_path}} HTTP/1.1
         Host: {{Hostname}}
-        X-Forwarded-Host: poison-webcache.example
-        X-Host: poison-webcache.example
-        X-Original-URL: /poison-webcache.css
-        X-Rewrite-URL: /poison-webcache.css
+        X-Forwarded-Host: probe-{{randstr}}.bb
+        X-Host: probe-{{randstr}}.bb
+        X-Original-URL: /probe-{{randstr}}.css
+        X-Rewrite-URL: /probe-{{randstr}}.css
         X-Forwarded-Scheme: https
         X-Forwarded-Proto: https
         Connection: close
@@ -25,12 +25,12 @@ http:
     payloads:
       cache_path:
         - "/"
-        - "/?cachebuster=poison-webcache"
-        - "/login?cachebuster=poison-webcache"
-        - "/app?cachebuster=poison-webcache"
-        - "/dashboard?cachebuster=poison-webcache"
-        - "/static/../?cachebuster=poison-webcache"
-        - "/assets/../?cachebuster=poison-webcache"
+        - "/?cachebuster=cachepoisontest"
+        - "/login?cachebuster=cachepoisontest"
+        - "/app?cachebuster=cachepoisontest"
+        - "/dashboard?cachebuster=cachepoisontest"
+        - "/static/../?cachebuster=cachepoisontest"
+        - "/assets/../?cachebuster=cachepoisontest"
 
     attack: batteringram
     redirects: false
@@ -48,15 +48,15 @@ http:
 
       - type: dsl
         dsl:
-          - "(contains(tolower(header), 'location:') && contains(tolower(header), 'poison-webcache.example')) || (contains(tolower(body), 'poison-webcache.example') && (contains(tolower(body), 'href=') || contains(tolower(body), 'src=') || contains(tolower(body), 'action=') || contains(tolower(body), 'canonical') || contains(tolower(body), 'base href')))"
+          - "(contains(tolower(header), 'location:') && contains(header, 'probe-' + randstr + '.bb')) || (contains(body, 'probe-' + randstr + '.bb') && (contains(tolower(body), 'href=') || contains(tolower(body), 'src=') || contains(tolower(body), 'action=') || contains(tolower(body), 'canonical') || contains(tolower(body), 'base href')))"
           - "!contains(tolower(header), 'x-cache: error') && !contains(tolower(header), 'x-cache: miss') && !contains(tolower(header), 'cache-control: private') && !contains(tolower(header), 'cf-cache-status: dynamic')"
           - "!contains(tolower(body), 'visit_scheme=')"
-          - "contains(tolower(header), 'x-cache: hit') || contains(tolower(header), 'cf-cache-status: hit') || contains(tolower(header), 'cf-cache-status: stale') || contains(tolower(header), 's-maxage') || contains(tolower(header), 'surrogate-control') || (contains(tolower(header), 'age:') && !contains(tolower(header), 'age: 0'))"
+          - "contains(tolower(header), 'x-cache: hit') || contains(tolower(header), 'cf-cache-status: hit') || contains(tolower(header), 'cf-cache-status: stale') || contains(tolower(header), 's-maxage') || contains(tolower(header), 'surrogate-control') || (contains(tolower(header), 'age:') && !contains(tolower(header), 'age: 0')) || regex('(?i)max-age=[1-9]', header)"
 
     extractors:
       - type: regex
         part: all
         regex:
           - "(?i)(x-cache|cf-cache-status|age|via|cache-control|surrogate-control):[^\\r\\n]+"
-          - "(?i)(location:|href=|src=|canonical|base href|url\\()[^\\r\\n<>]{0,160}(poison-webcache\\.example|/poison-webcache\\.css)[^\\r\\n<>]{0,160}"
+          - "(?i)(location:|href=|src=|canonical|base href|url\\()[^\\r\\n<>]{0,160}(probe-[a-z0-9]+-[a-z0-9]+\\.bb|/probe-[a-z0-9]+-[a-z0-9]+\\.css)[^\\r\\n<>]{0,160}"
 
