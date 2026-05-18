@@ -1,0 +1,66 @@
+id: insecure-cookie-flags-sensitive
+
+info:
+  name: Session Cookie Missing Security Flags On Sensitive Pages
+  author: p3i
+  severity: medium
+  description: Detects sensitive pages setting cookies that appear related to sessions or authentication without Secure, HttpOnly, or SameSite attributes.
+  tags: misconfig,cookies,session,headers,web
+  metadata:
+    max-request: 18
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{cookie_path}}"
+
+    payloads:
+      cookie_path:
+        - ""
+        - "login"
+        - "signin"
+        - "auth"
+        - "sso"
+        - "account"
+        - "profile"
+        - "settings"
+        - "dashboard"
+        - "admin"
+        - "portal"
+        - "console"
+        - "billing"
+        - "checkout"
+        - "cart"
+        - "password-reset"
+        - "reset-password"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 302
+          - 401
+          - 403
+
+      - type: regex
+        part: header
+        condition: or
+        regex:
+          - "(?i)set-cookie:\\s*(session|sid|sess|auth|token|jwt|remember|csrf|xsrf)[^\\r\\n;]*=[^\\r\\n]*(\\r?\\n|$)"
+          - "(?i)set-cookie:\\s*[^\\r\\n]*(session|sid|sess|auth|token|jwt|remember)[^\\r\\n]*(\\r?\\n|$)"
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(header), 'secure') || !contains(tolower(header), 'httponly') || !contains(tolower(header), 'samesite')"
+
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "(?i)set-cookie:[^\\r\\n]+"
+

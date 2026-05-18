@@ -1,0 +1,54 @@
+id: missing-hsts-sensitive-hosts
+
+info:
+  name: HSTS Missing On Sensitive HTTPS Host
+  author: p3i
+  severity: low
+  description: Detects HTTPS pages on sensitive hostnames or sensitive paths that do not return Strict-Transport-Security.
+  tags: misconfig,hsts,headers,tls,web
+  metadata:
+    max-request: 12
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{hsts_path}}"
+
+    payloads:
+      hsts_path:
+        - ""
+        - "login"
+        - "signin"
+        - "auth"
+        - "sso"
+        - "account"
+        - "admin"
+        - "portal"
+        - "billing"
+        - "payment"
+        - "checkout"
+        - "settings"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 301
+          - 302
+          - 401
+          - 403
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(header), 'strict-transport-security:')"
+
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "(?im)^(server|location|content-type|cache-control):[^\\r\\n]+"

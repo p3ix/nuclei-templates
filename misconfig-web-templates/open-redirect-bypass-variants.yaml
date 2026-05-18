@@ -1,0 +1,75 @@
+id: open-redirect-bypass-variants
+
+info:
+  name: Open Redirect Bypass Variants
+  author: p3i
+  severity: medium
+  description: Detects open redirects using protocol-relative, encoded, nested URL, backslash, and userinfo-style payload variants across common redirect parameters.
+  tags: misconfig,redirect,open-redirect,bypass,web
+  metadata:
+    max-request: 64
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{redirect_variant}}"
+
+    payloads:
+      redirect_variant:
+        - "?next=//open-redirect-bypass.example"
+        - "?url=//open-redirect-bypass.example"
+        - "?redirect=//open-redirect-bypass.example"
+        - "?returnUrl=//open-redirect-bypass.example"
+        - "?continue=//open-redirect-bypass.example"
+        - "?next=%2f%2fopen-redirect-bypass.example"
+        - "?url=%2f%2fopen-redirect-bypass.example"
+        - "?redirect=%2f%2fopen-redirect-bypass.example"
+        - "?returnUrl=%2f%2fopen-redirect-bypass.example"
+        - "?next=https:%2f%2fopen-redirect-bypass.example"
+        - "?url=https:%2f%2fopen-redirect-bypass.example"
+        - "?redirect=https:%2f%2fopen-redirect-bypass.example"
+        - "?next=https://trusted.example@open-redirect-bypass.example"
+        - "?url=https://trusted.example@open-redirect-bypass.example"
+        - "?redirect=https://trusted.example@open-redirect-bypass.example"
+        - "?next=https://open-redirect-bypass.example%2f%2etrusted.example"
+        - "?url=https://open-redirect-bypass.example%2f%2etrusted.example"
+        - "?redirect=https://open-redirect-bypass.example%2f%2etrusted.example"
+        - "login?next=//open-redirect-bypass.example"
+        - "login?returnUrl=%2f%2fopen-redirect-bypass.example"
+        - "signin?next=https:%2f%2fopen-redirect-bypass.example"
+        - "logout?next=//open-redirect-bypass.example"
+        - "auth?continue=%2f%2fopen-redirect-bypass.example"
+        - "redirect?url=//open-redirect-bypass.example"
+        - "redirect?to=%2f%2fopen-redirect-bypass.example"
+        - "callback?next=//open-redirect-bypass.example"
+        - "invite?continue=https:%2f%2fopen-redirect-bypass.example"
+        - "checkout?return_url=//open-redirect-bypass.example"
+        - "sso?redirect_uri=//open-redirect-bypass.example"
+        - "oauth/authorize?redirect_uri=//open-redirect-bypass.example"
+        - "connect/authorize?redirect_uri=%2f%2fopen-redirect-bypass.example"
+
+    attack: batteringram
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 301
+          - 302
+          - 303
+          - 307
+          - 308
+
+      - type: regex
+        part: header
+        regex:
+          - "(?i)location:\\s*(https?:)?//([^\\r\\n/@]+@)?open-redirect-bypass\\.example[^\\r\\n]*"
+          - "(?i)location:\\s*https?:%2f%2fopen-redirect-bypass\\.example[^\\r\\n]*"
+
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "(?i)location:[^\\r\\n]*open-redirect-bypass\\.example[^\\r\\n]*"
+

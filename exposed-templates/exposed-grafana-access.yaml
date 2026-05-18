@@ -31,7 +31,7 @@ http:
       - "{{BaseURL}}/grafana/public-dashboards/"
       - "{{BaseURL}}/grafana/dashboard/snapshot/"
 
-    redirects: true
+    redirects: false
     max-redirects: 3
     stop-at-first-match: true
     matchers-condition: and

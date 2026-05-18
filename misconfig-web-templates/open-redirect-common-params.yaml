@@ -1,0 +1,72 @@
+id: open-redirect-common-params
+
+info:
+  name: Open Redirect Via Common Parameters
+  author: p3i
+  severity: medium
+  description: Detects open redirects through common navigation, callback, and return parameters by checking whether the response redirects to an external controlled hostname.
+  tags: misconfig,redirect,open-redirect,web
+  metadata:
+    max-request: 60
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{redirect_path}}"
+
+    payloads:
+      redirect_path:
+        - "?next=https://open-redirect-bugbounty.example"
+        - "?url=https://open-redirect-bugbounty.example"
+        - "?redirect=https://open-redirect-bugbounty.example"
+        - "?redirect_url=https://open-redirect-bugbounty.example"
+        - "?return=https://open-redirect-bugbounty.example"
+        - "?returnUrl=https://open-redirect-bugbounty.example"
+        - "?return_url=https://open-redirect-bugbounty.example"
+        - "?continue=https://open-redirect-bugbounty.example"
+        - "?destination=https://open-redirect-bugbounty.example"
+        - "?target=https://open-redirect-bugbounty.example"
+        - "?to=https://open-redirect-bugbounty.example"
+        - "?goto=https://open-redirect-bugbounty.example"
+        - "?callback=https://open-redirect-bugbounty.example"
+        - "?checkout_url=https://open-redirect-bugbounty.example"
+        - "login?next=https://open-redirect-bugbounty.example"
+        - "login?return=https://open-redirect-bugbounty.example"
+        - "login?returnUrl=https://open-redirect-bugbounty.example"
+        - "signin?next=https://open-redirect-bugbounty.example"
+        - "auth?next=https://open-redirect-bugbounty.example"
+        - "logout?next=https://open-redirect-bugbounty.example"
+        - "redirect?url=https://open-redirect-bugbounty.example"
+        - "redirect?to=https://open-redirect-bugbounty.example"
+        - "redirect?target=https://open-redirect-bugbounty.example"
+        - "continue?url=https://open-redirect-bugbounty.example"
+        - "sso?redirect_uri=https://open-redirect-bugbounty.example"
+        - "oauth/authorize?redirect_uri=https://open-redirect-bugbounty.example"
+        - "connect/authorize?redirect_uri=https://open-redirect-bugbounty.example"
+        - "callback?next=https://open-redirect-bugbounty.example"
+        - "invite?continue=https://open-redirect-bugbounty.example"
+        - "checkout?return_url=https://open-redirect-bugbounty.example"
+
+    attack: batteringram
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 301
+          - 302
+          - 303
+          - 307
+          - 308
+
+      - type: dsl
+        dsl:
+          - "contains(tolower(header), 'location: https://open-redirect-bugbounty.example') || contains(tolower(header), 'location: //open-redirect-bugbounty.example')"
+
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "(?i)location:\\s*(https?:)?//open-redirect-bugbounty\\.example[^\\r\\n]*"
+

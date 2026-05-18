@@ -1,0 +1,60 @@
+id: permissive-referrer-policy
+
+info:
+  name: Permissive Referrer Policy On Sensitive Pages
+  author: p3i
+  severity: low
+  description: Detects sensitive pages using a permissive Referrer-Policy that may leak full URLs, tokens, or path data to third-party origins.
+  tags: misconfig,referrer-policy,headers,privacy,web
+  metadata:
+    max-request: 14
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{referrer_path}}"
+
+    payloads:
+      referrer_path:
+        - ""
+        - "login"
+        - "signin"
+        - "auth"
+        - "account"
+        - "profile"
+        - "settings"
+        - "dashboard"
+        - "billing"
+        - "checkout"
+        - "admin"
+        - "portal"
+        - "invite"
+        - "callback"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 302
+          - 401
+          - 403
+
+      - type: regex
+        part: header
+        condition: or
+        regex:
+          - "(?im)^referrer-policy:\\s*unsafe-url\\s*$"
+          - "(?im)^referrer-policy:\\s*no-referrer-when-downgrade\\s*$"
+          - "(?im)^referrer-policy:\\s*origin-when-cross-origin\\s*$"
+
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "(?im)^referrer-policy:[^\\r\\n]+"
+

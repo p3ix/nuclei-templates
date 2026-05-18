@@ -1,0 +1,57 @@
+id: cors-private-network-access
+
+info:
+  name: CORS Private Network Access Allowed
+  author: p3i
+  severity: medium
+  description: Detects endpoints that allow Private Network Access preflight requests from an arbitrary public Origin.
+  tags: misconfig,cors,pna,private-network,headers,web
+  metadata:
+    max-request: 10
+
+http:
+  - method: OPTIONS
+    path:
+      - "{{BaseURL}}/{{pna_path}}"
+
+    headers:
+      Origin: "https://pna-bugbounty.example"
+      Access-Control-Request-Method: "GET"
+      Access-Control-Request-Private-Network: "true"
+
+    payloads:
+      pna_path:
+        - ""
+        - "api"
+        - "api/"
+        - "status"
+        - "health"
+        - "admin"
+        - "dashboard"
+        - "internal"
+        - "config"
+        - "metrics"
+
+    attack: batteringram
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 204
+          - 401
+          - 403
+
+      - type: dsl
+        dsl:
+          - "contains(tolower(header), 'access-control-allow-private-network: true')"
+          - "contains(tolower(header), 'access-control-allow-origin: https://pna-bugbounty.example') || contains(tolower(header), 'access-control-allow-origin: *')"
+
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "(?i)access-control-allow-(origin|credentials|methods|headers|private-network):[^\\r\\n]+"
+

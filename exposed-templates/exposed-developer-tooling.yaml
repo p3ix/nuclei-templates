@@ -81,7 +81,7 @@ http:
         - "bin/release"
 
     attack: batteringram
-    redirects: true
+    redirects: false
     max-redirects: 2
     stop-at-first-match: true
     matchers-condition: and
@@ -94,37 +94,28 @@ http:
         part: body
         condition: or
         words:
-          - "npm "
-          - "yarn "
-          - "pnpm "
-          - "composer "
-          - "bundle "
-          - "pytest"
-          - "phpunit"
-          - "playwright"
-          - "cypress"
-          - "docker "
-          - "kubectl"
-          - "helm "
-          - "terraform"
-          - "ansible"
-          - "ssh "
-          - "rsync"
-          - "scp "
           - "_authToken"
-          - "machine "
-          - "login "
-          - "password "
-          - "registry="
           - "sonar.projectKey"
           - "github-token"
           - "GITHUB_TOKEN"
           - "NPM_TOKEN"
+          - "registry="
+          - "machine "
           - "DEPLOY"
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - "(?m)^\\t@?(npm|yarn|pnpm|composer|bundle|pytest|phpunit|playwright|cypress|docker|kubectl|helm|terraform|ansible|ssh|rsync|scp)\\b"
+          - "(?m)^\\s{2,}-\\s+(npm|yarn|pnpm|composer|bundle|pytest|phpunit|playwright|cypress|docker|kubectl|helm|terraform|ansible|ssh|rsync|scp)\\b"
+          - "(?m)^[A-Za-z0-9_.%/-]+:\\s*(##.*)?$"
+          - "(?im)^(module\\.exports|export\\s+default|import\\s+.*from\\s+|\\{\\s*\"scripts\"\\s*:|\\[tool\\.pytest|\\[flake8\\]|sonar\\.projectKey|registry\\s*=)"
 
       - type: dsl
         dsl:
           - "!contains(tolower(body), '<html')"
+          - "!contains(tolower(header), 'content-type: text/html')"
           - "!contains(tolower(body), '<!doctype')"
           - "len(body) < 5242880"
 
@@ -133,4 +124,3 @@ http:
         part: body
         regex:
           - "(?im)(token|password|secret|_authToken|registry|deploy|ssh|rsync|kubectl|helm|terraform|ansible).{0,160}"
-

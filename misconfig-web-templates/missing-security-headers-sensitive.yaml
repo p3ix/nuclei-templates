@@ -1,0 +1,61 @@
+id: missing-security-headers-sensitive
+
+info:
+  name: Multiple Security Headers Missing On Sensitive Pages
+  author: p3i
+  severity: low
+  description: Detects sensitive-looking pages that are missing several baseline browser security headers, useful for hardening review and chained impact.
+  tags: misconfig,security-headers,headers,web
+  metadata:
+    max-request: 16
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{sensitive_path}}"
+
+    payloads:
+      sensitive_path:
+        - "login"
+        - "signin"
+        - "auth"
+        - "account"
+        - "settings"
+        - "dashboard"
+        - "admin"
+        - "portal"
+        - "console"
+        - "billing"
+        - "payment"
+        - "checkout"
+        - "profile"
+        - "password-reset"
+        - "reset-password"
+        - "register"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 401
+          - 403
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(header), 'content-security-policy:')"
+          - "!contains(tolower(header), 'x-frame-options:')"
+          - "!contains(tolower(header), 'x-content-type-options: nosniff')"
+          - "!contains(tolower(header), 'referrer-policy:')"
+          - "contains(tolower(body), 'login') || contains(tolower(body), 'sign in') || contains(tolower(body), 'password') || contains(tolower(body), 'account') || contains(tolower(body), 'dashboard') || contains(tolower(body), 'billing') || contains(tolower(body), 'checkout') || contains(tolower(body), 'admin')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)<title>[^<]{0,180}</title>"
+

@@ -1,0 +1,56 @@
+id: insecure-login-form-http
+
+info:
+  name: Login Form Served Over Plain HTTP
+  author: p3i
+  severity: medium
+  description: Detects login or password forms served over plain HTTP. Run this template only against http:// targets to avoid noisy HTTPS findings.
+  tags: misconfig,http,login,cleartext,web
+  metadata:
+    max-request: 10
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{login_path}}"
+
+    payloads:
+      login_path:
+        - ""
+        - "login"
+        - "signin"
+        - "auth"
+        - "account/login"
+        - "user/login"
+        - "users/sign_in"
+        - "admin"
+        - "admin/login"
+        - "portal/login"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 1
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: and
+        words:
+          - "<form"
+          - "type=\"password\""
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(header), 'strict-transport-security:')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?is)<form[^>]{0,400}(login|signin|password|user|email)[^>]{0,400}>"
+

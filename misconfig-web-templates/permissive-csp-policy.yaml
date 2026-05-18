@@ -1,0 +1,58 @@
+id: permissive-csp-policy
+
+info:
+  name: Permissive Or Bypassable Content Security Policy
+  author: p3i
+  severity: low
+  description: Detects Content Security Policy headers that allow unsafe script execution patterns or overly broad sources, reducing XSS impact mitigation.
+  tags: misconfig,csp,headers,xss,web
+  metadata:
+    max-request: 10
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{csp_path}}"
+
+    payloads:
+      csp_path:
+        - ""
+        - "login"
+        - "signin"
+        - "account"
+        - "dashboard"
+        - "admin"
+        - "checkout"
+        - "billing"
+        - "portal"
+        - "console"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 401
+          - 403
+
+      - type: regex
+        part: header
+        condition: or
+        regex:
+          - "(?i)content-security-policy:[^\\r\\n]*(script-src|default-src)[^\\r\\n;]*\\*"
+          - "(?i)content-security-policy:[^\\r\\n]*(script-src|default-src)[^\\r\\n;]*'unsafe-inline'"
+          - "(?i)content-security-policy:[^\\r\\n]*(script-src|default-src)[^\\r\\n;]*'unsafe-eval'"
+          - "(?i)content-security-policy:[^\\r\\n]*(script-src|default-src)[^\\r\\n;]*data:"
+          - "(?i)content-security-policy:[^\\r\\n]*object-src\\s+\\*"
+          - "(?i)content-security-policy:[^\\r\\n]*frame-ancestors\\s+\\*"
+
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "(?i)content-security-policy:[^\\r\\n]+"
+

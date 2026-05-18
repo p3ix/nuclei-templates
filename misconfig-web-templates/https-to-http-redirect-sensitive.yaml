@@ -1,0 +1,55 @@
+id: https-to-http-redirect-sensitive
+
+info:
+  name: Sensitive HTTPS Page Redirects To HTTP
+  author: p3i
+  severity: medium
+  description: Detects sensitive routes that redirect to plain HTTP, which may downgrade transport security for authentication or account flows.
+  tags: misconfig,https,http,downgrade,redirect,web
+  metadata:
+    max-request: 12
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{downgrade_path}}"
+
+    payloads:
+      downgrade_path:
+        - ""
+        - "login"
+        - "signin"
+        - "auth"
+        - "sso"
+        - "account"
+        - "dashboard"
+        - "admin"
+        - "portal"
+        - "billing"
+        - "payment"
+        - "checkout"
+
+    attack: batteringram
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 301
+          - 302
+          - 303
+          - 307
+          - 308
+
+      - type: regex
+        part: header
+        regex:
+          - "(?i)location:\\s*http://[^\\r\\n]+"
+
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "(?i)location:\\s*http://[^\\r\\n]+"
+

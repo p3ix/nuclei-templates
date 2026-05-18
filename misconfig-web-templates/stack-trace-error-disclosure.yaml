@@ -1,0 +1,79 @@
+id: stack-trace-error-disclosure
+
+info:
+  name: Stack Trace Error Disclosure
+  author: p3i
+  severity: medium
+  description: Detects verbose framework or language stack traces from malformed or uncommon paths, which may disclose source paths, dependencies, internal hosts, or runtime details.
+  tags: misconfig,error,stacktrace,debug,info-disclosure,web
+  metadata:
+    max-request: 12
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{error_path}}"
+
+    payloads:
+      error_path:
+        - "%2e%2e%2f%2e%2e%2f"
+        - "%00"
+        - "{{randstr}}%27"
+        - "{{randstr}}%22"
+        - "{{randstr}}%5c"
+        - "{{randstr}}%7b%7b"
+        - "api/{{randstr}}%27"
+        - "admin/{{randstr}}%27"
+        - "login/{{randstr}}%27"
+        - "search?q={{randstr}}%27"
+        - "redirect?url=%25"
+        - "download?file=%2e%2e%2f"
+
+    attack: batteringram
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 400
+          - 500
+          - 501
+          - 502
+          - 503
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "Traceback (most recent call last)"
+          - "Stack trace:"
+          - "at java."
+          - "at org."
+          - "NullPointerException"
+          - "RuntimeException"
+          - "Symfony\\Component\\Debug"
+          - "Illuminate\\"
+          - "Django"
+          - "Flask"
+          - "Express error"
+          - "TypeError:"
+          - "ReferenceError:"
+          - "Warning: require("
+          - "Fatal error:"
+          - "System.Web.HttpException"
+          - "Microsoft .NET Framework"
+          - "goroutine "
+          - "panic:"
+
+      - type: dsl
+        dsl:
+          - "len(body) < 10485760"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)(Traceback \\(most recent call last\\)|Stack trace:|NullPointerException|RuntimeException|TypeError:|ReferenceError:|Fatal error:|System\\.Web\\.HttpException|goroutine |panic:).{0,180}"
+          - "(?im)(/[A-Za-z0-9_./-]+\\.(php|py|rb|js|ts|java|go|cs):[0-9]+|[A-Z]:\\\\[^\\r\\n<>]+:[0-9]+)"
+

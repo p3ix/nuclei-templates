@@ -1,0 +1,57 @@
+id: trace-method-enabled
+
+info:
+  name: HTTP TRACE Method Enabled
+  author: p3i
+  severity: medium
+  description: Detects HTTP TRACE support by checking whether a marker request header is reflected in the TRACE response body.
+  tags: misconfig,trace,xst,http-methods,web
+  metadata:
+    max-request: 4
+
+http:
+  - raw:
+      - |
+        TRACE / HTTP/1.1
+        Host: {{Hostname}}
+        X-Trace-Bugbounty: trace-method-enabled
+        Connection: close
+
+      - |
+        TRACE /login HTTP/1.1
+        Host: {{Hostname}}
+        X-Trace-Bugbounty: trace-method-enabled
+        Connection: close
+
+      - |
+        TRACE /api HTTP/1.1
+        Host: {{Hostname}}
+        X-Trace-Bugbounty: trace-method-enabled
+        Connection: close
+
+      - |
+        TRACE /admin HTTP/1.1
+        Host: {{Hostname}}
+        X-Trace-Bugbounty: trace-method-enabled
+        Connection: close
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        words:
+          - "X-Trace-Bugbounty: trace-method-enabled"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)TRACE\\s+/[^\\r\\n]*"
+          - "(?i)X-Trace-Bugbounty:\\s*trace-method-enabled"
+

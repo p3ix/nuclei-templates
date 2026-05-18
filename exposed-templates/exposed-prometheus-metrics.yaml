@@ -33,7 +33,7 @@ http:
       - "{{BaseURL}}/nginx_status"
       - "{{BaseURL}}/stub_status"
 
-    redirects: true
+    redirects: false
     max-redirects: 2
     stop-at-first-match: true
     matchers-condition: and
@@ -65,6 +65,7 @@ http:
       - type: dsl
         dsl:
           - "!contains(tolower(body), '<html')"
+          - "!contains(tolower(header), 'content-type: text/html')"
           - "len(body) < 52428800"
 
     extractors:

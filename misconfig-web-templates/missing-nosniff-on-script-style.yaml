@@ -1,0 +1,59 @@
+id: missing-nosniff-on-script-style
+
+info:
+  name: Missing X-Content-Type-Options On Script Or Style Assets
+  author: p3i
+  severity: low
+  description: Detects JavaScript or CSS assets served without X-Content-Type-Options nosniff, useful when combined with upload, cache, or content-type confusion issues.
+  tags: misconfig,nosniff,mime,headers,javascript,css,web
+  metadata:
+    max-request: 18
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{asset_path}}"
+
+    payloads:
+      asset_path:
+        - "app.js"
+        - "main.js"
+        - "bundle.js"
+        - "runtime.js"
+        - "vendor.js"
+        - "static/app.js"
+        - "static/main.js"
+        - "assets/app.js"
+        - "assets/main.js"
+        - "js/app.js"
+        - "js/main.js"
+        - "style.css"
+        - "main.css"
+        - "app.css"
+        - "static/style.css"
+        - "assets/style.css"
+        - "css/style.css"
+        - "css/main.css"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(header), 'x-content-type-options: nosniff')"
+          - "contains(tolower(header), 'content-type: application/javascript') || contains(tolower(header), 'content-type: text/javascript') || contains(tolower(header), 'content-type: text/css')"
+          - "len(body) < 5242880"
+
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "(?i)^(content-type|cache-control|x-content-type-options):[^\\r\\n]+"
+

@@ -1,0 +1,61 @@
+id: cache-poisoning-header-reflection
+
+info:
+  name: Web Cache Poisoning Header Reflection Candidate
+  author: p3i
+  severity: medium
+  description: Detects cacheable responses that reflect attacker-controlled proxy headers, a common precondition for web cache poisoning.
+  tags: misconfig,cache,poisoning,headers,cdn,web
+  metadata:
+    max-request: 8
+
+http:
+  - raw:
+      - |
+        GET {{cache_path}} HTTP/1.1
+        Host: {{Hostname}}
+        X-Forwarded-Host: poison-webcache.example
+        X-Host: poison-webcache.example
+        X-Original-URL: /poison-webcache.css
+        X-Rewrite-URL: /poison-webcache.css
+        X-Forwarded-Scheme: https
+        X-Forwarded-Proto: https
+        Connection: close
+
+    payloads:
+      cache_path:
+        - "/"
+        - "/?cachebuster=poison-webcache"
+        - "/login?cachebuster=poison-webcache"
+        - "/app?cachebuster=poison-webcache"
+        - "/dashboard?cachebuster=poison-webcache"
+        - "/static/../?cachebuster=poison-webcache"
+        - "/assets/../?cachebuster=poison-webcache"
+        - "/cdn-cgi/trace"
+
+    attack: batteringram
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 301
+          - 302
+          - 303
+          - 307
+          - 308
+
+      - type: dsl
+        dsl:
+          - "contains(tolower(header), 'poison-webcache.example') || contains(tolower(body), 'poison-webcache.example') || contains(tolower(body), '/poison-webcache.css')"
+          - "contains(tolower(header), 'x-cache') || contains(tolower(header), 'cf-cache-status') || contains(tolower(header), 'age:') || contains(tolower(header), 'via:') || contains(tolower(header), 'cache-control: public') || contains(tolower(header), 's-maxage') || contains(tolower(header), 'surrogate-control')"
+
+    extractors:
+      - type: regex
+        part: all
+        regex:
+          - "(?i)(x-cache|cf-cache-status|age|via|cache-control|surrogate-control):[^\\r\\n]+"
+          - "(?i)(location:|href=|src=|canonical|base href|url\\()[^\\r\\n<>]{0,160}(poison-webcache\\.example|/poison-webcache\\.css)[^\\r\\n<>]{0,160}"
+

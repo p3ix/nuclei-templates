@@ -1,0 +1,55 @@
+id: permissive-permissions-policy
+
+info:
+  name: Permissive Permissions Policy
+  author: p3i
+  severity: low
+  description: Detects Permissions-Policy or legacy Feature-Policy headers that allow sensitive browser features broadly.
+  tags: misconfig,permissions-policy,feature-policy,headers,web
+  metadata:
+    max-request: 10
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{policy_path}}"
+
+    payloads:
+      policy_path:
+        - ""
+        - "login"
+        - "account"
+        - "dashboard"
+        - "admin"
+        - "portal"
+        - "checkout"
+        - "video"
+        - "profile"
+        - "settings"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 401
+          - 403
+
+      - type: regex
+        part: header
+        condition: or
+        regex:
+          - "(?im)^(permissions-policy|feature-policy):[^\\r\\n]*(camera|microphone|geolocation|payment|usb|serial|bluetooth|clipboard-read)\\s*=\\s*\\*"
+          - "(?im)^(permissions-policy|feature-policy):[^\\r\\n]*(camera|microphone|geolocation|payment|usb|serial|bluetooth|clipboard-read)\\s*=\\s*\\([^\\)]*\\*[^\\)]*\\)"
+          - "(?im)^feature-policy:[^\\r\\n]*(camera|microphone|geolocation|payment|usb|serial|bluetooth|clipboard-read)\\s+\\*"
+
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "(?im)^(permissions-policy|feature-policy):[^\\r\\n]+"
+

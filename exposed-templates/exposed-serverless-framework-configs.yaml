@@ -58,7 +58,7 @@ http:
         - ".serverless/serverless-state.yaml"
 
     attack: batteringram
-    redirects: true
+    redirects: false
     max-redirects: 2
     stop-at-first-match: true
     matchers-condition: and
@@ -77,11 +77,8 @@ http:
           - "\"provider\""
           - "functions:"
           - "\"functions\""
-          - "serverless"
           - "runtime:"
           - "handler:"
-          - "stage:"
-          - "region:"
           - "environment:"
           - "iamRoleStatements"
           - "events:"
@@ -95,9 +92,23 @@ http:
           - "custom:"
           - "plugins:"
 
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - "(?im)^service\\s*:\\s*[A-Za-z0-9_.-]+"
+          - "(?im)^provider\\s*:\\s*$"
+          - "(?im)^\\s+name\\s*:\\s*aws\\b"
+          - "(?im)^functions\\s*:\\s*$"
+          - "(?im)^\\s+[A-Za-z0-9_-]+:\\s*$"
+          - "(?im)^\\s+handler\\s*:\\s*[^\\r\\n]+"
+          - "(?im)AWS::(Lambda|ApiGateway|IAM|Serverless)::[A-Za-z0-9]+"
+          - "(?im)\"(service|provider|functions)\"\\s*:"
+
       - type: dsl
         dsl:
           - "!contains(tolower(body), '<html')"
+          - "!contains(tolower(header), 'content-type: text/html')"
           - "!contains(tolower(body), '<!doctype')"
           - "len(body) < 52428800"
 
@@ -107,4 +118,3 @@ http:
         regex:
           - "(?im)(arn:aws:[a-z0-9-]+:[a-z0-9-]*:[0-9]{12}:[^\\s\"'<>]+)"
           - "(?im)(AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|SECRET|TOKEN|PASSWORD|DATABASE_URL|API_KEY|provider|runtime|handler|stage|region)[\"'\\s:=]+[^\\r\\n,;<>]+"
-

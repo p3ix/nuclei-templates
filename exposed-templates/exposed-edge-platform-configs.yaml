@@ -75,7 +75,7 @@ http:
         - "infra/wrangler.toml"
 
     attack: batteringram
-    redirects: true
+    redirects: false
     max-redirects: 2
     stop-at-first-match: true
     matchers-condition: and
@@ -94,15 +94,9 @@ http:
           - "[[redirects]]"
           - "NETLIFY"
           - "\"version\": 2"
-          - "\"routes\""
           - "\"builds\""
-          - "\"rewrites\""
-          - "\"env\""
           - "render.com"
-          - "services:"
           - "envVars:"
-          - "fly.toml"
-          - "app ="
           - "primary_region"
           - "RAILWAY_"
           - "wrangler"
@@ -117,9 +111,25 @@ http:
           - "amplify"
           - "apphosting"
 
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - "(?im)^\\[build\\]"
+          - "(?im)^\\[context\\.(production|deploy-preview|branch-deploy)\\]"
+          - "(?im)^\\[\\[redirects\\]\\]"
+          - "(?im)\"(version|routes|builds|rewrites|env)\"\\s*:"
+          - "(?im)^services:\\s*$"
+          - "(?im)^\\s+-\\s+type:\\s+web\\b"
+          - "(?im)^app\\s*=\\s*\"[^\"]+\""
+          - "(?im)^primary_region\\s*=\\s*\"[a-z0-9-]+\""
+          - "(?im)^compatibility_date\\s*=\\s*\"[0-9]{4}-[0-9]{2}-[0-9]{2}\""
+          - "(?im)^name\\s*=\\s*\"[^\"]+\"\\s*$"
+
       - type: dsl
         dsl:
           - "!contains(tolower(body), '<html')"
+          - "!contains(tolower(header), 'content-type: text/html')"
           - "!contains(tolower(body), '<!doctype')"
           - "len(body) < 20971520"
 
@@ -127,6 +137,5 @@ http:
       - type: regex
         part: body
         regex:
-          - "(?im)(account_id|zone_id|projectId|orgId|teamId|site_id|app|primary_region|compatibility_date|kv_namespaces|d1_databases|r2_buckets|envVars|CLOUDFLARE_API_TOKEN|RAILWAY_[A-Z_]+)[\"'\\s:=]+[^\\r\\n,;<>]+"
+          - "(?im)(account_id|zone_id|projectId|orgId|teamId|site_id|primary_region|compatibility_date|kv_namespaces|d1_databases|r2_buckets|envVars|CLOUDFLARE_API_TOKEN|RAILWAY_[A-Z_]+)[\"'\\s:=]+[^\\r\\n,;<>]+"
           - "(?im)(SECRET|TOKEN|PASSWORD|DATABASE_URL|API_KEY|AUTH|DSN)[\"'\\s:=]+[^\\r\\n,;<>]+"
-

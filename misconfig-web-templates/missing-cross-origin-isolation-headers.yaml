@@ -1,0 +1,58 @@
+id: missing-cross-origin-isolation-headers
+
+info:
+  name: Cross-Origin Isolation Headers Missing On Sensitive Pages
+  author: p3i
+  severity: low
+  description: Detects sensitive pages missing COOP, COEP, and CORP headers. This is primarily a hardening signal for apps handling sensitive data or using powerful browser APIs.
+  tags: misconfig,coop,coep,corp,headers,web
+  metadata:
+    max-request: 14
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{isolation_path}}"
+
+    payloads:
+      isolation_path:
+        - ""
+        - "login"
+        - "signin"
+        - "account"
+        - "profile"
+        - "settings"
+        - "dashboard"
+        - "admin"
+        - "portal"
+        - "billing"
+        - "checkout"
+        - "payment"
+        - "app"
+        - "console"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 401
+          - 403
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(header), 'cross-origin-opener-policy:')"
+          - "!contains(tolower(header), 'cross-origin-embedder-policy:')"
+          - "!contains(tolower(header), 'cross-origin-resource-policy:')"
+          - "contains(tolower(body), 'login') || contains(tolower(body), 'sign in') || contains(tolower(body), 'account') || contains(tolower(body), 'dashboard') || contains(tolower(body), 'billing') || contains(tolower(body), 'checkout') || contains(tolower(body), 'admin')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)<title>[^<]{0,180}</title>"
+

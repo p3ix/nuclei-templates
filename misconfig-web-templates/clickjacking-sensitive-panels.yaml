@@ -1,0 +1,61 @@
+id: clickjacking-sensitive-panels
+
+info:
+  name: Clickjacking Protection Missing On Sensitive Pages
+  author: p3i
+  severity: medium
+  description: Detects sensitive-looking pages that do not set X-Frame-Options or CSP frame-ancestors, making them candidates for clickjacking impact review.
+  tags: misconfig,clickjacking,headers,csp,web
+  metadata:
+    max-request: 18
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{panel_path}}"
+
+    payloads:
+      panel_path:
+        - "login"
+        - "signin"
+        - "auth"
+        - "account"
+        - "profile"
+        - "settings"
+        - "dashboard"
+        - "admin"
+        - "administrator"
+        - "portal"
+        - "console"
+        - "manage"
+        - "billing"
+        - "payment"
+        - "checkout"
+        - "cart"
+        - "reset-password"
+        - "password-reset"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 401
+          - 403
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(header), 'x-frame-options:')"
+          - "!contains(tolower(header), 'frame-ancestors')"
+          - "contains(tolower(body), 'login') || contains(tolower(body), 'sign in') || contains(tolower(body), 'password') || contains(tolower(body), 'account') || contains(tolower(body), 'dashboard') || contains(tolower(body), 'settings') || contains(tolower(body), 'billing') || contains(tolower(body), 'checkout') || contains(tolower(body), 'admin')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)<title>[^<]{0,160}(login|sign in|account|dashboard|settings|billing|checkout|admin)[^<]{0,160}</title>"
+

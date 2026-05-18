@@ -1,0 +1,55 @@
+id: dangerous-http-methods-enabled
+
+info:
+  name: Dangerous HTTP Methods Advertised
+  author: p3i
+  severity: medium
+  description: Detects endpoints that advertise dangerous HTTP methods such as PUT, DELETE, TRACE, CONNECT, or WebDAV methods through Allow or Access-Control-Allow-Methods headers.
+  tags: misconfig,http-methods,webdav,headers,web
+  metadata:
+    max-request: 10
+
+http:
+  - method: OPTIONS
+    path:
+      - "{{BaseURL}}/{{methods_path}}"
+
+    payloads:
+      methods_path:
+        - ""
+        - "api"
+        - "api/"
+        - "admin"
+        - "upload"
+        - "uploads"
+        - "files"
+        - "static"
+        - "assets"
+        - "webdav"
+
+    attack: batteringram
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 204
+          - 401
+          - 403
+
+      - type: regex
+        part: header
+        condition: or
+        regex:
+          - "(?im)^allow:\\s*[^\\r\\n]*(PUT|DELETE|TRACE|CONNECT|PROPFIND|PROPPATCH|COPY|MOVE|MKCOL|LOCK|UNLOCK)"
+          - "(?im)^access-control-allow-methods:\\s*[^\\r\\n]*(PUT|DELETE|TRACE|CONNECT|PROPFIND|PROPPATCH|COPY|MOVE|MKCOL|LOCK|UNLOCK)"
+          - "(?im)^dav:\\s*[^\\r\\n]+"
+
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "(?im)^(allow|access-control-allow-methods|dav):[^\\r\\n]+"
+

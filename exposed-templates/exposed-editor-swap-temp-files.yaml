@@ -154,7 +154,7 @@ http:
         - "%23.htpasswd%23"
 
     attack: batteringram
-    redirects: true
+    redirects: false
     max-redirects: 2
     stop-at-first-match: true
     matchers-condition: and
@@ -180,9 +180,6 @@ http:
           - "define( 'DB_PASSWORD'"
           - "$database"
           - "$databases"
-          - "password:"
-          - "\"password\""
-          - "'password'"
           - "AuthType Basic"
           - "AuthUserFile"
           - "<connectionStrings>"
@@ -194,9 +191,21 @@ http:
           - "DEBUG ="
           - "ALLOWED_HOSTS"
 
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - "(?m)^b0VIM"
+          - "(?im)^(APP_KEY|DB_PASSWORD|DATABASE_URL|SECRET_KEY|AWS_SECRET_ACCESS_KEY|PRIVATE_KEY|ALLOWED_HOSTS)\\s*="
+          - "(?im)^\\s*(password|secret|api[_-]?key|token)\\s*[:=]\\s*[^\\r\\n]+"
+          - "(?im)define\\(\\s*['\"]DB_PASSWORD['\"]"
+          - "(?im)^\\s*(module\\.exports|exports\\.|import\\s+.*from\\s+|from\\s+[A-Za-z0-9_.]+\\s+import\\s+)"
+          - "(?im)<connectionStrings>|<system\\.webServer>|AuthUserFile"
+
       - type: dsl
         dsl:
           - "!contains(tolower(body), '<html')"
+          - "!contains(tolower(header), 'content-type: text/html')"
           - "!contains(tolower(body), '<!doctype')"
           - "len(body) > 16"
           - "len(body) < 10485760"
@@ -206,4 +215,3 @@ http:
         part: body
         regex:
           - "(?im)(APP_KEY|DB_PASSWORD|DATABASE_URL|SECRET_KEY|AWS_SECRET_ACCESS_KEY|password|token|secret|api[_-]?key|AuthUserFile|connectionStrings)[\"'\\s:=(),]+[^\\r\\n,;<>]+"
-

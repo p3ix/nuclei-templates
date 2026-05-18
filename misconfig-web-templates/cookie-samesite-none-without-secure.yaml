@@ -1,0 +1,60 @@
+id: cookie-samesite-none-without-secure
+
+info:
+  name: SameSite None Cookie Without Secure
+  author: p3i
+  severity: medium
+  description: Detects cookies using SameSite=None without the Secure attribute, which indicates weak cross-site cookie configuration and can break or weaken expected browser protections.
+  tags: misconfig,cookies,samesite,secure,headers,web
+  metadata:
+    max-request: 16
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{cookie_path}}"
+
+    payloads:
+      cookie_path:
+        - ""
+        - "login"
+        - "signin"
+        - "auth"
+        - "sso"
+        - "account"
+        - "dashboard"
+        - "admin"
+        - "portal"
+        - "billing"
+        - "checkout"
+        - "callback"
+        - "oauth"
+        - "api"
+        - "graphql"
+        - "profile"
+        - "settings"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 302
+          - 401
+          - 403
+
+      - type: regex
+        part: header
+        regex:
+          - "(?im)^set-cookie:(?![^\\r\\n]*;\\s*secure\\b)[^\\r\\n]*;\\s*samesite=none\\b[^\\r\\n]*"
+
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "(?im)^set-cookie:(?![^\\r\\n]*;\\s*secure\\b)[^\\r\\n]*;\\s*samesite=none\\b[^\\r\\n]*"
+

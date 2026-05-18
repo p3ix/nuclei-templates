@@ -1,0 +1,61 @@
+id: cors-preflight-arbitrary-methods
+
+info:
+  name: Permissive CORS Preflight Allows Dangerous Methods
+  author: p3i
+  severity: medium
+  description: Detects CORS preflight responses that trust an arbitrary Origin and allow dangerous methods or authorization headers.
+  tags: misconfig,cors,preflight,methods,headers,web
+  metadata:
+    max-request: 12
+
+http:
+  - method: OPTIONS
+    path:
+      - "{{BaseURL}}/{{preflight_path}}"
+
+    headers:
+      Origin: "https://cors-preflight-bugbounty.example"
+      Access-Control-Request-Method: "DELETE"
+      Access-Control-Request-Headers: "authorization,x-bugbounty-header"
+
+    payloads:
+      preflight_path:
+        - ""
+        - "api"
+        - "api/"
+        - "api/v1"
+        - "v1"
+        - "graphql"
+        - "me"
+        - "user"
+        - "account"
+        - "admin"
+        - "upload"
+        - "files"
+
+    attack: batteringram
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 204
+          - 401
+          - 403
+
+      - type: dsl
+        dsl:
+          - "contains(tolower(header), 'access-control-allow-origin: https://cors-preflight-bugbounty.example')"
+          - "contains(tolower(header), 'access-control-allow-methods:')"
+          - "contains(tolower(header), 'delete') || contains(tolower(header), 'put') || contains(tolower(header), 'patch')"
+          - "contains(tolower(header), 'authorization') || contains(tolower(header), 'access-control-allow-headers: *')"
+
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "(?i)access-control-allow-(origin|credentials|methods|headers):[^\\r\\n]+"
+

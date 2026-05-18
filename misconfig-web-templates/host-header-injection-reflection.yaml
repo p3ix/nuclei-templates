@@ -1,0 +1,63 @@
+id: host-header-injection-reflection
+
+info:
+  name: Host Header Injection Reflection
+  author: p3i
+  severity: medium
+  description: Detects applications that use proxy host headers to generate response content or absolute redirects, which may lead to password reset poisoning, cache poisoning, or routing issues.
+  tags: misconfig,host-header,injection,proxy,headers,web
+  metadata:
+    max-request: 8
+
+http:
+  - raw:
+      - |
+        GET {{host_path}} HTTP/1.1
+        Host: {{Hostname}}
+        X-Forwarded-Host: host-header-bugbounty.example
+        X-Host: host-header-bugbounty.example
+        X-Original-Host: host-header-bugbounty.example
+        X-Forwarded-Server: host-header-bugbounty.example
+        X-HTTP-Host-Override: host-header-bugbounty.example
+        Forwarded: host=host-header-bugbounty.example;proto=https
+        Connection: close
+
+    payloads:
+      host_path:
+        - "/"
+        - "/login"
+        - "/admin"
+        - "/account"
+        - "/dashboard"
+        - "/password-reset"
+        - "/reset-password"
+        - "/forgot-password"
+
+    attack: batteringram
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 201
+          - 301
+          - 302
+          - 303
+          - 307
+          - 308
+          - 401
+          - 403
+
+      - type: dsl
+        dsl:
+          - "contains(tolower(header), 'host-header-bugbounty.example') || contains(tolower(body), 'host-header-bugbounty.example')"
+          - "!contains(tolower(body), 'host-header-bugbounty.example</title>')"
+
+    extractors:
+      - type: regex
+        part: all
+        regex:
+          - "(?i)(location:|href=|src=|canonical|base href|url\\()[^\\r\\n<>]{0,160}host-header-bugbounty\\.example[^\\r\\n<>]{0,160}"
+

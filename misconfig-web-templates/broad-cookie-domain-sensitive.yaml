@@ -1,0 +1,61 @@
+id: broad-cookie-domain-sensitive
+
+info:
+  name: Broad Cookie Domain On Sensitive Pages
+  author: p3i
+  severity: low
+  description: Detects sensitive-looking pages that set cookies scoped to a parent domain, which can increase risk when sibling subdomains are compromised or user-controlled.
+  tags: misconfig,cookies,domain,session,headers,web
+  metadata:
+    max-request: 16
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{cookie_domain_path}}"
+
+    payloads:
+      cookie_domain_path:
+        - ""
+        - "login"
+        - "signin"
+        - "auth"
+        - "sso"
+        - "account"
+        - "profile"
+        - "settings"
+        - "dashboard"
+        - "admin"
+        - "portal"
+        - "billing"
+        - "checkout"
+        - "callback"
+        - "oauth"
+        - "register"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 302
+          - 401
+          - 403
+
+      - type: regex
+        part: header
+        condition: or
+        regex:
+          - "(?im)^set-cookie:\\s*(session|sid|sess|auth|token|jwt|remember|csrf|xsrf)[^\\r\\n]*;\\s*domain=\\.[a-z0-9.-]+"
+          - "(?im)^set-cookie:[^\\r\\n]*(session|sid|sess|auth|token|jwt|remember)[^\\r\\n]*;\\s*domain=\\.[a-z0-9.-]+"
+
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "(?im)^set-cookie:[^\\r\\n]*;\\s*domain=\\.[^;\\r\\n]+[^\\r\\n]*"
+

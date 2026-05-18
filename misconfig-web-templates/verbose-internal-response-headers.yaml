@@ -1,0 +1,58 @@
+id: verbose-internal-response-headers
+
+info:
+  name: Verbose Internal Response Headers
+  author: p3i
+  severity: low
+  description: Detects verbose response headers that disclose internal hosts, framework versions, upstream services, cache nodes, or infrastructure details.
+  tags: misconfig,headers,info-disclosure,internal,web
+  metadata:
+    max-request: 10
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{header_path}}"
+
+    payloads:
+      header_path:
+        - ""
+        - "login"
+        - "api"
+        - "admin"
+        - "status"
+        - "health"
+        - "dashboard"
+        - "assets"
+        - "static"
+        - "robots.txt"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 301
+          - 302
+          - 401
+          - 403
+
+      - type: regex
+        part: header
+        condition: or
+        regex:
+          - "(?im)^(x-powered-by|x-aspnet-version|x-aspnetmvc-version|x-generator|x-runtime|x-version|x-app-version|x-build|x-revision|x-commit|x-release):\\s*[^\\r\\n]+"
+          - "(?im)^(x-backend-server|x-upstream|x-origin-server|x-server|x-served-by|x-cache-server|x-varnish|x-drupal-cache|x-envoy-upstream-service-time):\\s*[^\\r\\n]+"
+          - "(?im)^(server):\\s*[^\\r\\n]*(Apache/[0-9]|nginx/[0-9]|OpenResty/[0-9]|Microsoft-IIS/[0-9]|Jetty\\(|Tomcat|gunicorn|Werkzeug|Express)"
+          - "(?im)^(via):\\s*[^\\r\\n]*(\\.internal|\\.local|ip-|ip_|10\\.|172\\.(1[6-9]|2[0-9]|3[0-1])\\.|192\\.168\\.)"
+
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "(?im)^(server|x-powered-by|x-aspnet-version|x-generator|x-runtime|x-version|x-app-version|x-build|x-revision|x-commit|x-backend-server|x-upstream|x-origin-server|x-server|x-served-by|x-cache-server|x-varnish|via|x-envoy-upstream-service-time):[^\\r\\n]+"
+

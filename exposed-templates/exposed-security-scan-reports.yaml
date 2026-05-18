@@ -91,7 +91,7 @@ http:
         - "security/gitleaks-report.json"
 
     attack: batteringram
-    redirects: true
+    redirects: false
     max-redirects: 2
     stop-at-first-match: true
     matchers-condition: and
