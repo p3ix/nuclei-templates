@@ -7,7 +7,7 @@ info:
   description: Detects exposed Spring Boot Actuator endpoints that can leak environment variables, heap dumps, mappings, beans, metrics, config properties, and runtime internals.
   tags: exposure,spring,actuator,java,debug,runtime
   metadata:
-    max-request: 34
+    max-request: 50
 
 http:
   - method: GET
@@ -24,18 +24,35 @@ http:
       - "{{BaseURL}}/actuator/prometheus"
       - "{{BaseURL}}/actuator/loggers"
       - "{{BaseURL}}/actuator/httptrace"
+      - "{{BaseURL}}/actuator/httpexchanges"
       - "{{BaseURL}}/actuator/scheduledtasks"
       - "{{BaseURL}}/actuator/conditions"
+      - "{{BaseURL}}/actuator/sessions"
+      - "{{BaseURL}}/actuator/logfile"
+      - "{{BaseURL}}/actuator/info"
+      - "{{BaseURL}}/actuator/auditevents"
+      - "{{BaseURL}}/actuator/startup"
+      - "{{BaseURL}}/actuator/caches"
+      - "{{BaseURL}}/actuator/flyway"
+      - "{{BaseURL}}/actuator/liquibase"
+      - "{{BaseURL}}/actuator/quartz"
       - "{{BaseURL}}/manage/actuator"
       - "{{BaseURL}}/manage/actuator/env"
       - "{{BaseURL}}/manage/actuator/heapdump"
       - "{{BaseURL}}/manage/actuator/mappings"
       - "{{BaseURL}}/manage/actuator/beans"
+      - "{{BaseURL}}/manage/actuator/sessions"
       - "{{BaseURL}}/management"
       - "{{BaseURL}}/management/env"
       - "{{BaseURL}}/management/heapdump"
       - "{{BaseURL}}/management/mappings"
       - "{{BaseURL}}/management/beans"
+      - "{{BaseURL}}/management/sessions"
+      - "{{BaseURL}}/api/actuator"
+      - "{{BaseURL}}/api/actuator/env"
+      - "{{BaseURL}}/api/actuator/heapdump"
+      - "{{BaseURL}}/app/actuator"
+      - "{{BaseURL}}/app/actuator/env"
 
     redirects: false
     max-redirects: 2
@@ -71,6 +88,13 @@ http:
           - "# HELP"
           - "JAVA PROFILE"
           - "org.springframework"
+          - "\"sessions\""
+          - "\"sessionId\""
+          - "\"httpExchanges\""
+          - "\"auditEvents\""
+          - "\"startupSteps\""
+          - "flyway"
+          - "liquibase"
 
       - type: dsl
         dsl:

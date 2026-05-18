@@ -7,7 +7,7 @@ info:
   description: Detects exposed Swagger, OpenAPI, GraphQL, Postman, and API documentation artifacts that can reveal hidden endpoints, auth flows, object schemas, and internal API names.
   tags: exposure,api,swagger,openapi,graphql,postman,docs
   metadata:
-    max-request: 72
+    max-request: 86
 
 http:
   - method: GET
@@ -58,6 +58,21 @@ http:
         - "voyager/"
         - "schema.graphql"
         - "graphql/schema.graphql"
+        - "api/graphql"
+        - "api/graphiql"
+        - "v1/graphql"
+        - "v2/graphql"
+        - "query"
+        - "query/"
+        - "backend/swagger.json"
+        - "backend/api-docs"
+        - "service/api-docs"
+        - "api/v3/openapi.json"
+        - "api/v3/openapi.yaml"
+        - "v3/api-docs"
+        - "v3/api-docs.yaml"
+        - "internal/api-docs"
+        - "internal/swagger.json"
         - "postman_collection.json"
         - "postman.json"
         - "api.postman_collection.json"
@@ -93,8 +108,10 @@ http:
           - "GraphiQL"
           - "GraphQL Playground"
           - "__schema"
+          - "__typename"
           - "type Query"
           - "type Mutation"
+          - "type Subscription"
           - "\"info\""
           - "\"paths\""
           - "\"item\""

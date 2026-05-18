@@ -87,7 +87,7 @@ http:
           - "contains(tolower(header), 'application/octet-stream') && contains(tolower(header), '.apk')"
           - "contains(tolower(header), 'application/octet-stream') && contains(tolower(header), '.ipa')"
           - "contains(body, 'PK') && contains(tolower(header), 'application/octet-stream')"
-          - "contains(body, 'package=\"') && contains(body, '<manifest')"
+          - "contains(body, 'package=') && contains(body, '<manifest')"
           - "contains(body, 'CFBundleIdentifier')"
           - "contains(body, 'TEAMID')"
           - "contains(body, 'applinks:')"

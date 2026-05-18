@@ -7,7 +7,7 @@ info:
   description: Detects exposed framework debug endpoints and diagnostic pages that can leak environment variables, stack traces, routes, beans, metrics, internal paths, or credentials.
   tags: exposure,debug,framework,actuator,laravel,django,rails,symfony
   metadata:
-    max-request: 86
+    max-request: 96
 
 http:
   - method: GET
@@ -50,6 +50,10 @@ http:
         - "actuator/mappings"
         - "actuator/metrics"
         - "actuator/prometheus"
+        - "actuator/sessions"
+        - "actuator/logfile"
+        - "actuator/info"
+        - "actuator/auditevents"
         - "manage/actuator"
         - "manage/actuator/env"
         - "management/env"
@@ -74,6 +78,12 @@ http:
         - "trace/"
         - "routes"
         - "routes.json"
+        - "@vite/client"
+        - "@fs/"
+        - "__vite_ping"
+        - "__webpack_hmr"
+        - "sockjs-node/info"
+        - "_next/webpack-hmr"
 
     attack: batteringram
     redirects: false
@@ -111,11 +121,18 @@ http:
           - "Server Version:"
           - "phpinfo()"
           - "PHP Version"
+          - "\"sessions\""
+          - "\"auditEvents\""
+          - "vite/client"
+          - "HotModuleReplacement"
+          - "webpack-hmr"
+          - "sockjs-node"
+          - "__HMR_PORT__"
+          - "import.meta.hot"
 
       - type: dsl
         dsl:
-          - "!contains(tolower(header), 'content-type: text/html') || contains(body, 'Laravel Debugbar') || contains(body, 'Laravel Telescope') || contains(body, 'Symfony Profiler') || contains(body, 'Django Debug Toolbar') || contains(body, 'phpinfo()') || contains(body, 'Apache Server Status')"
-          - "!contains(tolower(body), 'token\":null')"
+          - "!contains(tolower(header), 'content-type: text/html') || contains(body, 'Laravel Debugbar') || contains(body, 'Laravel Telescope') || contains(body, 'Symfony Profiler') || contains(body, 'Django Debug Toolbar') || contains(body, 'phpinfo()') || contains(body, 'Apache Server Status') || contains(body, 'vite/client') || contains(body, 'webpack-hmr') || contains(body, 'sockjs-node')"
           - "!contains(tolower(body), 'slidesToShow')"
           - "!contains(tolower(body), 'breakpoint:')"
           - "len(body) < 52428800"

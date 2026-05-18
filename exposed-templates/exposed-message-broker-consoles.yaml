@@ -114,7 +114,7 @@ http:
           - "!contains(tolower(body), 'the requested resource')"
           - "!contains(tolower(body), '404')"
           - "!contains(tolower(body), 'page does not exist')"
-          - "!contains(tolower(body), 'you don't have permission')"
+          - "!contains(tolower(body), 'permission to access')"
 
     extractors:
       - type: regex

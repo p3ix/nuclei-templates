@@ -7,7 +7,7 @@ info:
   description: Detects open redirects through common navigation, callback, and return parameters by checking whether the response redirects to an external controlled hostname.
   tags: misconfig,redirect,open-redirect,web
   metadata:
-    max-request: 60
+    max-request: 76
 
 http:
   - method: GET
@@ -20,9 +20,11 @@ http:
         - "?url=https://open-redirect-bugbounty.example"
         - "?redirect=https://open-redirect-bugbounty.example"
         - "?redirect_url=https://open-redirect-bugbounty.example"
+        - "?redirect_to=https://open-redirect-bugbounty.example"
         - "?return=https://open-redirect-bugbounty.example"
         - "?returnUrl=https://open-redirect-bugbounty.example"
         - "?return_url=https://open-redirect-bugbounty.example"
+        - "?return_to=https://open-redirect-bugbounty.example"
         - "?continue=https://open-redirect-bugbounty.example"
         - "?destination=https://open-redirect-bugbounty.example"
         - "?target=https://open-redirect-bugbounty.example"
@@ -30,12 +32,25 @@ http:
         - "?goto=https://open-redirect-bugbounty.example"
         - "?callback=https://open-redirect-bugbounty.example"
         - "?checkout_url=https://open-redirect-bugbounty.example"
+        - "?successUrl=https://open-redirect-bugbounty.example"
+        - "?success_url=https://open-redirect-bugbounty.example"
+        - "?failureUrl=https://open-redirect-bugbounty.example"
+        - "?forward=https://open-redirect-bugbounty.example"
+        - "?forward_url=https://open-redirect-bugbounty.example"
+        - "?after_login=https://open-redirect-bugbounty.example"
+        - "?after_sign_in_url=https://open-redirect-bugbounty.example"
+        - "?post_login_redirect_url=https://open-redirect-bugbounty.example"
+        - "?next_url=https://open-redirect-bugbounty.example"
+        - "?link=https://open-redirect-bugbounty.example"
+        - "?page=https://open-redirect-bugbounty.example"
         - "login?next=https://open-redirect-bugbounty.example"
         - "login?return=https://open-redirect-bugbounty.example"
         - "login?returnUrl=https://open-redirect-bugbounty.example"
+        - "login?redirect_to=https://open-redirect-bugbounty.example"
         - "signin?next=https://open-redirect-bugbounty.example"
         - "auth?next=https://open-redirect-bugbounty.example"
         - "logout?next=https://open-redirect-bugbounty.example"
+        - "logout?redirect=https://open-redirect-bugbounty.example"
         - "redirect?url=https://open-redirect-bugbounty.example"
         - "redirect?to=https://open-redirect-bugbounty.example"
         - "redirect?target=https://open-redirect-bugbounty.example"
@@ -46,6 +61,7 @@ http:
         - "callback?next=https://open-redirect-bugbounty.example"
         - "invite?continue=https://open-redirect-bugbounty.example"
         - "checkout?return_url=https://open-redirect-bugbounty.example"
+        - "saml/sso?next=https://open-redirect-bugbounty.example"
 
     attack: batteringram
     redirects: false

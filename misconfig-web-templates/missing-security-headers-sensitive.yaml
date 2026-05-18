@@ -50,9 +50,9 @@ http:
           - "!contains(tolower(header), 'x-frame-options:')"
           - "!contains(tolower(header), 'x-content-type-options: nosniff')"
           - "!contains(tolower(header), 'referrer-policy:')"
-          - "contains(tolower(body), '<form') || contains(tolower(body), 'type=\"password\"') || contains(tolower(body), \"type='password'\") || contains(tolower(body), 'input type') || contains(tolower(body), '<button')"
+          - "contains(tolower(body), '<form') || contains(tolower(body), 'password') || contains(tolower(body), 'input type') || contains(tolower(body), '<button')"
           - "!contains(tolower(body), 'access denied')"
-          - "!contains(tolower(body), 'you don't have permission')"
+          - "!contains(tolower(body), 'permission to access')"
 
     extractors:
       - type: regex

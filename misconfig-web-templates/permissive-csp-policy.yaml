@@ -36,8 +36,6 @@ http:
       - type: status
         status:
           - 200
-          - 401
-          - 403
 
       - type: regex
         part: header

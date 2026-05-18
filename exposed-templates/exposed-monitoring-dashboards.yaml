@@ -128,7 +128,7 @@ http:
           - "!contains(tolower(body), 'the requested resource')"
           - "!contains(tolower(body), '404')"
           - "!contains(tolower(body), 'page does not exist')"
-          - "!contains(tolower(body), 'you don't have permission')"
+          - "!contains(tolower(body), 'permission to access')"
           - "!contains(tolower(body), 'no encontrado')"
           - "!contains(tolower(body), 'no se ha encontrado')"
 

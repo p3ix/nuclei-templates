@@ -47,9 +47,9 @@ http:
           - "!contains(tolower(header), 'cross-origin-opener-policy:')"
           - "!contains(tolower(header), 'cross-origin-embedder-policy:')"
           - "!contains(tolower(header), 'cross-origin-resource-policy:')"
-          - "contains(tolower(body), '<form') || contains(tolower(body), 'type=\"password\"') || contains(tolower(body), \"type='password'\") || contains(tolower(body), 'sharedarraybuffer') || contains(tolower(body), 'crossoriginisolated') || contains(tolower(body), 'input type') || contains(tolower(body), 'authentication') || contains(tolower(body), 'sign in') || contains(tolower(body), 'dashboard')"
+          - "contains(tolower(body), '<form') || contains(tolower(body), 'password') || contains(tolower(body), 'input type') || contains(tolower(body), 'sharedarraybuffer') || contains(tolower(body), 'crossoriginisolated') || contains(tolower(body), 'authentication') || contains(tolower(body), 'sign in') || contains(tolower(body), 'dashboard')"
           - "!contains(tolower(body), 'access denied')"
-          - "!contains(tolower(body), 'you don't have permission')"
+          - "!contains(tolower(body), 'permission to access')"
 
     extractors:
       - type: regex
