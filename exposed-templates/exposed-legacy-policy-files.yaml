@@ -1,0 +1,59 @@
+id: exposed-legacy-policy-files
+
+info:
+  name: Exposed Legacy Cross-Domain Policy Files
+  author: p3i
+  severity: low
+  description: Detects exposed Flash and Silverlight cross-domain policy files that can reveal permissive legacy trust relationships.
+  tags: exposure,legacy,flash,silverlight,crossdomain,clientaccesspolicy
+  metadata:
+    max-request: 20
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/crossdomain.xml"
+      - "{{BaseURL}}/clientaccesspolicy.xml"
+      - "{{BaseURL}}/.well-known/crossdomain.xml"
+      - "{{BaseURL}}/.well-known/clientaccesspolicy.xml"
+      - "{{BaseURL}}/policy/crossdomain.xml"
+      - "{{BaseURL}}/policy/clientaccesspolicy.xml"
+      - "{{BaseURL}}/static/crossdomain.xml"
+      - "{{BaseURL}}/static/clientaccesspolicy.xml"
+      - "{{BaseURL}}/assets/crossdomain.xml"
+      - "{{BaseURL}}/assets/clientaccesspolicy.xml"
+
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "<cross-domain-policy"
+          - "<allow-access-from"
+          - "<site-control"
+          - "<access-policy"
+          - "<cross-domain-access"
+          - "<policy>"
+          - "domain=\"*\""
+          - "headers=\"*\""
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), '<html')"
+          - "len(body) < 1048576"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)<allow-access-from[^>]+>"
+          - "(?i)<domain[^>]+uri=\"[^\"]+\"[^>]*>"
+

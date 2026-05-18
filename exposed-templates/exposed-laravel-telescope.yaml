@@ -1,0 +1,71 @@
+id: exposed-laravel-telescope
+
+info:
+  name: Exposed Laravel Telescope
+  author: p3i
+  severity: high
+  description: Detects exposed Laravel Telescope UI and API endpoints that can leak requests, exceptions, queries, jobs, cache events, logs, mail, notifications, and sensitive payloads.
+  tags: exposure,laravel,telescope,php,debug
+  metadata:
+    max-request: 34
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/telescope"
+      - "{{BaseURL}}/telescope/"
+      - "{{BaseURL}}/telescope/requests"
+      - "{{BaseURL}}/telescope/exceptions"
+      - "{{BaseURL}}/telescope/logs"
+      - "{{BaseURL}}/telescope/queries"
+      - "{{BaseURL}}/telescope/jobs"
+      - "{{BaseURL}}/telescope/cache"
+      - "{{BaseURL}}/telescope/mail"
+      - "{{BaseURL}}/telescope/notifications"
+      - "{{BaseURL}}/telescope/api/requests"
+      - "{{BaseURL}}/telescope/api/exceptions"
+      - "{{BaseURL}}/telescope/api/logs"
+      - "{{BaseURL}}/telescope/api/queries"
+      - "{{BaseURL}}/telescope/api/jobs"
+      - "{{BaseURL}}/telescope/api/cache"
+      - "{{BaseURL}}/telescope/api/mail"
+
+    redirects: true
+    max-redirects: 3
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "Laravel Telescope"
+          - "telescope"
+          - "Telescope"
+          - "\"entries\""
+          - "\"batchId\""
+          - "\"familyHash\""
+          - "\"content\""
+          - "\"request\""
+          - "\"response\""
+          - "\"uri\""
+          - "\"method\""
+          - "\"headers\""
+          - "\"payload\""
+          - "\"exception\""
+          - "Illuminate\\"
+
+      - type: dsl
+        dsl:
+          - "len(body) < 52428800"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)(authorization|bearer|cookie|password|token|api[_-]?key|exception|Illuminate\\\\|/telescope/api/[a-z0-9_-]+).{0,180}"
+

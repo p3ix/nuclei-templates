@@ -1,0 +1,209 @@
+id: exposed-editor-swap-temp-files
+
+info:
+  name: Exposed Editor Swap Backup And Temporary Files
+  author: p3i
+  severity: high
+  description: Detects exposed editor swap files, temporary copies, backup suffixes, original files, and Emacs-style autosaves that can leak source code or secrets.
+  tags: exposure,editor,swap,temp,backup,source,secrets
+  metadata:
+    max-request: 150
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{temp_file}}"
+
+    payloads:
+      temp_file:
+        - ".env.swp"
+        - ".env.swo"
+        - ".env.tmp"
+        - ".env.temp"
+        - ".env.orig"
+        - ".env~"
+        - "%23.env%23"
+        - ".config.php.swp"
+        - ".config.php.swo"
+        - "config.php.swp"
+        - "config.php.swo"
+        - "config.php.tmp"
+        - "config.php.temp"
+        - "config.php.orig"
+        - "config.php.bak"
+        - "config.php~"
+        - "%23config.php%23"
+        - ".wp-config.php.swp"
+        - ".wp-config.php.swo"
+        - "wp-config.php.swp"
+        - "wp-config.php.swo"
+        - "wp-config.php.tmp"
+        - "wp-config.php.temp"
+        - "wp-config.php.orig"
+        - "wp-config.php.bak"
+        - "wp-config.php~"
+        - "%23wp-config.php%23"
+        - ".index.php.swp"
+        - ".index.php.swo"
+        - "index.php.swp"
+        - "index.php.swo"
+        - "index.php.tmp"
+        - "index.php.temp"
+        - "index.php.orig"
+        - "index.php.bak"
+        - "index.php~"
+        - "%23index.php%23"
+        - ".index.html.swp"
+        - ".index.html.swo"
+        - "index.html.swp"
+        - "index.html.swo"
+        - "index.html.tmp"
+        - "index.html.temp"
+        - "index.html.orig"
+        - "index.html.bak"
+        - "index.html~"
+        - "%23index.html%23"
+        - ".settings.php.swp"
+        - ".settings.php.swo"
+        - "settings.php.swp"
+        - "settings.php.swo"
+        - "settings.php.tmp"
+        - "settings.php.temp"
+        - "settings.php.orig"
+        - "settings.php.bak"
+        - "settings.php~"
+        - "%23settings.php%23"
+        - ".database.php.swp"
+        - "database.php.swp"
+        - "database.php.swo"
+        - "database.php.tmp"
+        - "database.php.temp"
+        - "database.php.orig"
+        - "database.php.bak"
+        - "database.php~"
+        - "%23database.php%23"
+        - ".app.js.swp"
+        - "app.js.swp"
+        - "app.js.swo"
+        - "app.js.tmp"
+        - "app.js.temp"
+        - "app.js.orig"
+        - "app.js.bak"
+        - "app.js~"
+        - "%23app.js%23"
+        - ".server.js.swp"
+        - "server.js.swp"
+        - "server.js.swo"
+        - "server.js.tmp"
+        - "server.js.temp"
+        - "server.js.orig"
+        - "server.js.bak"
+        - "server.js~"
+        - "%23server.js%23"
+        - ".settings.py.swp"
+        - "settings.py.swp"
+        - "settings.py.swo"
+        - "settings.py.tmp"
+        - "settings.py.temp"
+        - "settings.py.orig"
+        - "settings.py.bak"
+        - "settings.py~"
+        - "%23settings.py%23"
+        - ".local_settings.py.swp"
+        - "local_settings.py.swp"
+        - "local_settings.py.swo"
+        - "local_settings.py.tmp"
+        - "local_settings.py.temp"
+        - "local_settings.py.orig"
+        - "local_settings.py.bak"
+        - "local_settings.py~"
+        - "%23local_settings.py%23"
+        - ".application.yml.swp"
+        - "application.yml.swp"
+        - "application.yml.swo"
+        - "application.yml.tmp"
+        - "application.yml.temp"
+        - "application.yml.orig"
+        - "application.yml.bak"
+        - "application.yml~"
+        - "%23application.yml%23"
+        - ".web.config.swp"
+        - "web.config.swp"
+        - "web.config.swo"
+        - "web.config.tmp"
+        - "web.config.temp"
+        - "web.config.orig"
+        - "web.config.bak"
+        - "web.config~"
+        - "%23web.config%23"
+        - ".htaccess.swp"
+        - ".htaccess.swo"
+        - ".htaccess.tmp"
+        - ".htaccess.temp"
+        - ".htaccess.orig"
+        - ".htaccess.bak"
+        - ".htaccess~"
+        - "%23.htaccess%23"
+        - ".htpasswd.swp"
+        - ".htpasswd.swo"
+        - ".htpasswd.tmp"
+        - ".htpasswd.temp"
+        - ".htpasswd.orig"
+        - ".htpasswd.bak"
+        - ".htpasswd~"
+        - "%23.htpasswd%23"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "b0VIM"
+          - "VimCrypt"
+          - "APP_KEY="
+          - "DB_PASSWORD"
+          - "DATABASE_URL"
+          - "SECRET_KEY"
+          - "AWS_SECRET_ACCESS_KEY"
+          - "BEGIN RSA PRIVATE KEY"
+          - "BEGIN OPENSSH PRIVATE KEY"
+          - "define('DB_PASSWORD'"
+          - "define( 'DB_PASSWORD'"
+          - "$database"
+          - "$databases"
+          - "password:"
+          - "\"password\""
+          - "'password'"
+          - "AuthType Basic"
+          - "AuthUserFile"
+          - "<connectionStrings>"
+          - "<system.webServer>"
+          - "module.exports"
+          - "exports."
+          - "import "
+          - "from "
+          - "DEBUG ="
+          - "ALLOWED_HOSTS"
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), '<html')"
+          - "!contains(tolower(body), '<!doctype')"
+          - "len(body) > 16"
+          - "len(body) < 10485760"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)(APP_KEY|DB_PASSWORD|DATABASE_URL|SECRET_KEY|AWS_SECRET_ACCESS_KEY|password|token|secret|api[_-]?key|AuthUserFile|connectionStrings)[\"'\\s:=(),]+[^\\r\\n,;<>]+"
+

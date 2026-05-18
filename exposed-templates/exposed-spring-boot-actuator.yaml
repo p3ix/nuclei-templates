@@ -1,0 +1,85 @@
+id: exposed-spring-boot-actuator
+
+info:
+  name: Exposed Spring Boot Actuator Endpoints
+  author: p3i
+  severity: high
+  description: Detects exposed Spring Boot Actuator endpoints that can leak environment variables, heap dumps, mappings, beans, metrics, config properties, and runtime internals.
+  tags: exposure,spring,actuator,java,debug,runtime
+  metadata:
+    max-request: 34
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/actuator"
+      - "{{BaseURL}}/actuator/"
+      - "{{BaseURL}}/actuator/env"
+      - "{{BaseURL}}/actuator/heapdump"
+      - "{{BaseURL}}/actuator/mappings"
+      - "{{BaseURL}}/actuator/beans"
+      - "{{BaseURL}}/actuator/configprops"
+      - "{{BaseURL}}/actuator/threaddump"
+      - "{{BaseURL}}/actuator/metrics"
+      - "{{BaseURL}}/actuator/prometheus"
+      - "{{BaseURL}}/actuator/loggers"
+      - "{{BaseURL}}/actuator/httptrace"
+      - "{{BaseURL}}/actuator/scheduledtasks"
+      - "{{BaseURL}}/actuator/conditions"
+      - "{{BaseURL}}/manage/actuator"
+      - "{{BaseURL}}/manage/actuator/env"
+      - "{{BaseURL}}/manage/actuator/heapdump"
+      - "{{BaseURL}}/manage/actuator/mappings"
+      - "{{BaseURL}}/manage/actuator/beans"
+      - "{{BaseURL}}/management"
+      - "{{BaseURL}}/management/env"
+      - "{{BaseURL}}/management/heapdump"
+      - "{{BaseURL}}/management/mappings"
+      - "{{BaseURL}}/management/beans"
+
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"_links\""
+          - "\"self\""
+          - "\"env\""
+          - "\"propertySources\""
+          - "\"activeProfiles\""
+          - "\"systemProperties\""
+          - "\"configprops\""
+          - "\"contexts\""
+          - "\"beans\""
+          - "\"mappings\""
+          - "\"dispatcherServlets\""
+          - "\"handler\""
+          - "\"predicate\""
+          - "JAVA_HOME"
+          - "spring.datasource"
+          - "spring.security"
+          - "jvm.memory"
+          - "process.cpu"
+          - "# HELP"
+          - "JAVA PROFILE"
+          - "org.springframework"
+
+      - type: dsl
+        dsl:
+          - "len(body) < 104857600"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)(password|secret|token|api[_-]?key|spring\\.datasource|jdbc:|mongodb://|redis://).{0,180}"
+          - "(?i)(/actuator/[a-z0-9._-]+|/manage/actuator/[a-z0-9._-]+|/management/[a-z0-9._-]+)"
+

@@ -1,0 +1,112 @@
+id: exposed-mobile-artifacts
+
+info:
+  name: Exposed Mobile Application Artifacts
+  author: p3i
+  severity: medium
+  description: Detects exposed mobile application packages, manifests, deep link files, mobile configuration files, and crash/debug artifacts.
+  tags: exposure,mobile,android,ios,apk,ipa,config
+  metadata:
+    max-request: 82
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{mobile_file}}"
+
+    payloads:
+      mobile_file:
+        - "app.apk"
+        - "application.apk"
+        - "mobile.apk"
+        - "android.apk"
+        - "release.apk"
+        - "debug.apk"
+        - "app-debug.apk"
+        - "app-release.apk"
+        - "base.apk"
+        - "prod.apk"
+        - "production.apk"
+        - "staging.apk"
+        - "dev.apk"
+        - "test.apk"
+        - "app.ipa"
+        - "application.ipa"
+        - "mobile.ipa"
+        - "ios.ipa"
+        - "release.ipa"
+        - "debug.ipa"
+        - "prod.ipa"
+        - "production.ipa"
+        - "staging.ipa"
+        - "dev.ipa"
+        - "test.ipa"
+        - "manifest.json"
+        - "manifest.webmanifest"
+        - "assetlinks.json"
+        - ".well-known/assetlinks.json"
+        - "apple-app-site-association"
+        - ".well-known/apple-app-site-association"
+        - "AndroidManifest.xml"
+        - "Info.plist"
+        - "GoogleService-Info.plist"
+        - "google-services.json"
+        - "firebase.json"
+        - "amplifyconfiguration.json"
+        - "awsconfiguration.json"
+        - "appcenter-config.json"
+        - "capacitor.config.json"
+        - "ionic.config.json"
+        - "config.xml"
+        - "cordova.js"
+        - "www/manifest.json"
+        - "www/asset-manifest.json"
+        - "mobile/manifest.json"
+        - "mobile/google-services.json"
+        - "android/app/google-services.json"
+        - "ios/Runner/GoogleService-Info.plist"
+        - "crashlytics-build.properties"
+        - "mapping.txt"
+        - "proguard/mapping.txt"
+        - "app/build/outputs/mapping/release/mapping.txt"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 3
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: dsl
+        condition: or
+        dsl:
+          - "contains(tolower(header), 'application/vnd.android.package-archive')"
+          - "contains(tolower(header), 'application/octet-stream') && contains(tolower(header), '.apk')"
+          - "contains(tolower(header), 'application/octet-stream') && contains(tolower(header), '.ipa')"
+          - "contains(body, 'PK') && contains(tolower(header), 'application/octet-stream')"
+          - "contains(body, 'package=\"') && contains(body, '<manifest')"
+          - "contains(body, 'CFBundleIdentifier')"
+          - "contains(body, 'TEAMID')"
+          - "contains(body, 'applinks:')"
+          - "contains(body, 'delegate_permission/common.handle_all_urls')"
+          - "contains(body, 'mobilesdk_app_id')"
+          - "contains(body, 'GOOGLE_APP_ID')"
+          - "contains(body, 'firebase_url')"
+          - "contains(body, 'google_api_key')"
+          - "contains(body, 'aws_cognito_region')"
+          - "contains(body, 'com.android.tools.r8.mapping')"
+
+      - type: dsl
+        dsl:
+          - "len(body) > 16"
+          - "len(body) < 209715200"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)(package|CFBundleIdentifier|GOOGLE_APP_ID|google_api_key|mobilesdk_app_id|firebase_url|aws_cognito_region)[\"'\\s:=<>/-]+[^\\r\\n,<>]+"
+

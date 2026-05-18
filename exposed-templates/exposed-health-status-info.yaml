@@ -1,0 +1,95 @@
+id: exposed-health-status-info
+
+info:
+  name: Exposed Health Ready Live And Status Information
+  author: p3i
+  severity: medium
+  description: Detects health, readiness, liveness, and status endpoints that expose excessive runtime information such as versions, dependencies, databases, queues, build metadata, or internal service health.
+  tags: exposure,health,status,readyz,livez,runtime
+  metadata:
+    max-request: 72
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/health"
+      - "{{BaseURL}}/health/"
+      - "{{BaseURL}}/healthz"
+      - "{{BaseURL}}/healthz/"
+      - "{{BaseURL}}/ready"
+      - "{{BaseURL}}/ready/"
+      - "{{BaseURL}}/readyz"
+      - "{{BaseURL}}/readyz/"
+      - "{{BaseURL}}/live"
+      - "{{BaseURL}}/live/"
+      - "{{BaseURL}}/livez"
+      - "{{BaseURL}}/livez/"
+      - "{{BaseURL}}/status"
+      - "{{BaseURL}}/status/"
+      - "{{BaseURL}}/status.json"
+      - "{{BaseURL}}/api/health"
+      - "{{BaseURL}}/api/status"
+      - "{{BaseURL}}/internal/health"
+      - "{{BaseURL}}/internal/status"
+      - "{{BaseURL}}/admin/health"
+      - "{{BaseURL}}/admin/status"
+      - "{{BaseURL}}/monitoring/health"
+      - "{{BaseURL}}/monitoring/status"
+      - "{{BaseURL}}/actuator/health"
+      - "{{BaseURL}}/actuator/info"
+      - "{{BaseURL}}/manage/actuator/health"
+      - "{{BaseURL}}/management/health"
+      - "{{BaseURL}}/-/healthy"
+      - "{{BaseURL}}/-/ready"
+
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"status\""
+          - "\"UP\""
+          - "\"DOWN\""
+          - "\"healthy\""
+          - "\"ready\""
+          - "\"live\""
+          - "\"version\""
+          - "\"build\""
+          - "\"commit\""
+          - "\"dependencies\""
+          - "\"services\""
+          - "\"database\""
+          - "\"redis\""
+          - "\"mongodb\""
+          - "\"postgres\""
+          - "\"mysql\""
+          - "\"rabbitmq\""
+          - "\"kafka\""
+          - "\"uptime\""
+          - "\"memory\""
+          - "\"hostname\""
+          - "\"environment\""
+          - "spring"
+          - "checks"
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), '<html')"
+          - "!contains(tolower(body), '<!doctype')"
+          - "len(body) < 10485760"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)\"(status|version|build|commit|environment|hostname|database|redis|mongodb|postgres|mysql|rabbitmq|kafka|uptime|memory)\"\\s*:\\s*[^,}\\r\\n]+"
+          - "(?i)(jdbc:|mongodb://|redis://|amqp://|kafka|postgres|mysql|internal|staging|prod)[^\\r\\n]{0,160}"
+

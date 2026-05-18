@@ -1,0 +1,136 @@
+id: exposed-developer-tooling
+
+info:
+  name: Exposed Developer Tooling Files
+  author: p3i
+  severity: medium
+  description: Detects exposed developer tooling configuration, linters, task runners, local scripts, test configs, and automation files that can reveal stack details, commands, internal hosts, or secrets.
+  tags: exposure,developer,tooling,config,automation
+  metadata:
+    max-request: 100
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{tooling_file}}"
+
+    payloads:
+      tooling_file:
+        - "Makefile"
+        - "makefile"
+        - "GNUmakefile"
+        - "justfile"
+        - "Justfile"
+        - "Taskfile.yml"
+        - "Taskfile.yaml"
+        - "Rakefile"
+        - "Guardfile"
+        - "Procfile"
+        - "Procfile.dev"
+        - ".envrc"
+        - ".tool-versions"
+        - ".nvmrc"
+        - ".node-version"
+        - ".ruby-version"
+        - ".python-version"
+        - ".java-version"
+        - ".sdkmanrc"
+        - ".npmrc"
+        - ".yarnrc"
+        - ".yarnrc.yml"
+        - ".pypirc"
+        - ".gemrc"
+        - ".netrc"
+        - ".curlrc"
+        - ".wgetrc"
+        - ".pre-commit-config.yaml"
+        - ".prettierrc"
+        - ".prettierrc.json"
+        - ".eslintrc"
+        - ".eslintrc.json"
+        - ".eslintignore"
+        - ".stylelintrc"
+        - ".rubocop.yml"
+        - ".flake8"
+        - "tox.ini"
+        - "pytest.ini"
+        - "phpunit.xml"
+        - "phpunit.xml.dist"
+        - "jest.config.js"
+        - "vitest.config.js"
+        - "playwright.config.js"
+        - "cypress.config.js"
+        - "cypress.json"
+        - "karma.conf.js"
+        - "sonar-project.properties"
+        - "renovate.json"
+        - "dependabot.yml"
+        - ".github/dependabot.yml"
+        - ".releaserc"
+        - ".releaserc.json"
+        - "semantic-release.json"
+        - "lefthook.yml"
+        - "lefthook.yaml"
+        - "husky.config.js"
+        - ".husky/pre-commit"
+        - ".husky/pre-push"
+        - "scripts/deploy.sh"
+        - "scripts/release.sh"
+        - "scripts/backup.sh"
+        - "bin/deploy"
+        - "bin/release"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "npm "
+          - "yarn "
+          - "pnpm "
+          - "composer "
+          - "bundle "
+          - "pytest"
+          - "phpunit"
+          - "playwright"
+          - "cypress"
+          - "docker "
+          - "kubectl"
+          - "helm "
+          - "terraform"
+          - "ansible"
+          - "ssh "
+          - "rsync"
+          - "scp "
+          - "_authToken"
+          - "machine "
+          - "login "
+          - "password "
+          - "registry="
+          - "sonar.projectKey"
+          - "github-token"
+          - "GITHUB_TOKEN"
+          - "NPM_TOKEN"
+          - "DEPLOY"
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), '<html')"
+          - "!contains(tolower(body), '<!doctype')"
+          - "len(body) < 5242880"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)(token|password|secret|_authToken|registry|deploy|ssh|rsync|kubectl|helm|terraform|ansible).{0,160}"
+

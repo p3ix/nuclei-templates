@@ -1,0 +1,118 @@
+id: exposed-build-analysis-artifacts
+
+info:
+  name: Exposed Build Analysis Reports And Wasm Source Maps
+  author: p3i
+  severity: medium
+  description: Detects exposed Webpack Bundle Analyzer reports, build stats files, bundle metadata, and WebAssembly source maps that can reveal internal modules, source paths, routes, dependencies, and bundled secrets.
+  tags: exposure,build,webpack,bundle,wasm,sourcemap,frontend
+  metadata:
+    max-request: 86
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{build_analysis_file}}"
+
+    payloads:
+      build_analysis_file:
+        - "report.html"
+        - "bundle-report.html"
+        - "webpack-report.html"
+        - "webpack-bundle-report.html"
+        - "bundle-analyzer.html"
+        - "webpack-bundle-analyzer.html"
+        - "analyzer.html"
+        - "stats.html"
+        - "stats.json"
+        - "webpack-stats.json"
+        - "webpack.stats.json"
+        - "bundle-stats.json"
+        - "bundle-stats.html"
+        - "stats/stats.json"
+        - "stats/report.html"
+        - "reports/stats.json"
+        - "reports/report.html"
+        - "build/stats.json"
+        - "build/report.html"
+        - "build/bundle-report.html"
+        - "build/webpack-stats.json"
+        - "dist/stats.json"
+        - "dist/report.html"
+        - "dist/bundle-report.html"
+        - "dist/webpack-stats.json"
+        - "public/stats.json"
+        - "public/report.html"
+        - "public/bundle-report.html"
+        - "public/build/stats.json"
+        - "public/build/report.html"
+        - "coverage/webpack-report.html"
+        - "app.wasm.map"
+        - "main.wasm.map"
+        - "module.wasm.map"
+        - "bundle.wasm.map"
+        - "index.wasm.map"
+        - "pkg/app_bg.wasm.map"
+        - "pkg/main_bg.wasm.map"
+        - "pkg/index_bg.wasm.map"
+        - "wasm/app.wasm.map"
+        - "wasm/main.wasm.map"
+        - "static/wasm/app.wasm.map"
+        - "static/wasm/main.wasm.map"
+        - "assets/wasm/app.wasm.map"
+        - "assets/wasm/main.wasm.map"
+        - "dist/app.wasm.map"
+        - "dist/main.wasm.map"
+        - "build/app.wasm.map"
+        - "build/main.wasm.map"
+        - "public/app.wasm.map"
+        - "public/main.wasm.map"
+        - "public/wasm/app.wasm.map"
+        - "public/wasm/main.wasm.map"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "Webpack Bundle Analyzer"
+          - "webpack-bundle-analyzer"
+          - "BundleAnalyzerPlugin"
+          - "\"assetsByChunkName\""
+          - "\"assets\""
+          - "\"chunks\""
+          - "\"modules\""
+          - "\"entrypoints\""
+          - "\"publicPath\""
+          - "\"builtAt\""
+          - "\"hash\""
+          - "\"version\""
+          - "\"sources\""
+          - "\"mappings\""
+          - "\"sourcesContent\""
+          - ".wasm"
+          - "webpack://"
+          - "wasm://"
+          - "rustc/"
+          - "cargo/"
+
+      - type: dsl
+        dsl:
+          - "len(body) < 104857600"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)(webpack://[^\\s\"'<>]+|wasm://[^\\s\"'<>]+|[A-Za-z0-9_./-]+\\.wasm(?:\\.map)?)"
+          - "(?i)(api[_-]?key|secret|token|password|internal|admin|graphql|staging|dev).{0,160}"
+

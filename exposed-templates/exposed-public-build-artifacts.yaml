@@ -1,0 +1,122 @@
+id: exposed-public-build-artifacts
+
+info:
+  name: Exposed Public Build Artifacts
+  author: p3i
+  severity: low
+  description: Detects exposed frontend and backend build artifacts that can disclose routes, chunks, asset names, internal paths, build metadata, and deployment structure.
+  tags: exposure,build,frontend,webpack,vite,nextjs,artifacts
+  metadata:
+    max-request: 94
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{build_file}}"
+
+    payloads:
+      build_file:
+        - "asset-manifest.json"
+        - "assets-manifest.json"
+        - "manifest.json"
+        - "mix-manifest.json"
+        - "rev-manifest.json"
+        - "entrypoints.json"
+        - "webpack-stats.json"
+        - "stats.json"
+        - "stats.html"
+        - "bundle-stats.json"
+        - "webpack.config.js"
+        - "vite.config.js"
+        - "vite.config.ts"
+        - "rollup.config.js"
+        - "rollup.config.ts"
+        - "next.config.js"
+        - "nuxt.config.js"
+        - "nuxt.config.ts"
+        - "angular.json"
+        - "vue.config.js"
+        - "svelte.config.js"
+        - "astro.config.mjs"
+        - "remix.config.js"
+        - "public/asset-manifest.json"
+        - "public/mix-manifest.json"
+        - "public/build/manifest.json"
+        - "public/build/entrypoints.json"
+        - "build/asset-manifest.json"
+        - "build/manifest.json"
+        - "build/static/js/"
+        - "dist/asset-manifest.json"
+        - "dist/manifest.json"
+        - "dist/stats.json"
+        - "dist/webpack-stats.json"
+        - "static/asset-manifest.json"
+        - "static/manifest.json"
+        - "static/js/"
+        - "_next/BUILD_ID"
+        - "_next/build-manifest.json"
+        - "_next/prerender-manifest.json"
+        - "_next/routes-manifest.json"
+        - "_next/server/middleware-manifest.json"
+        - "_next/server/pages-manifest.json"
+        - "_next/static/"
+        - "_nuxt/builds/latest.json"
+        - "_nuxt/manifest.json"
+        - "_nuxt/"
+        - "server/manifest.json"
+        - "server/entrypoints.json"
+        - "client/manifest.json"
+        - "client/entrypoints.json"
+        - "hot"
+        - "__webpack_hmr"
+        - "sockjs-node/info"
+        - "vite.svg"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 3
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"files\""
+          - "\"entrypoints\""
+          - "\"assets\""
+          - "\"chunks\""
+          - "\"pages\""
+          - "\"polyfillFiles\""
+          - "\"devFiles\""
+          - "\"ampDevFiles\""
+          - "\"sortedPages\""
+          - "\"dynamicRoutes\""
+          - "\"notFoundRoutes\""
+          - "\"preview\""
+          - "\"publicPath\""
+          - "\"webpack\""
+          - "__webpack"
+          - "webpackJsonp"
+          - "@vite/client"
+          - "vite"
+          - "Nuxt"
+          - "Next.js"
+          - "Index of /"
+          - "Directory listing"
+
+      - type: dsl
+        dsl:
+          - "len(body) < 20971520"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)(/[A-Za-z0-9_./-]+\\.(js|css|map|json)|/_next/[A-Za-z0-9_./-]+|/_nuxt/[A-Za-z0-9_./-]+)"
+          - "(?i)(api|admin|internal|secret|token|graphql|staging|dev).{0,120}"
+

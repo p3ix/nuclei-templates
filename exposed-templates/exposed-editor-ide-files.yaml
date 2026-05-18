@@ -1,0 +1,117 @@
+id: exposed-editor-ide-files
+
+info:
+  name: Exposed Editor IDE And Workspace Files
+  author: p3i
+  severity: medium
+  description: Detects exposed editor, IDE, workspace, deployment, and local tooling files that may disclose internal paths, remote hosts, credentials, project names, or source structure.
+  tags: exposure,ide,editor,workspace,metadata
+  metadata:
+    max-request: 74
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{ide_file}}"
+
+    payloads:
+      ide_file:
+        - ".vscode/settings.json"
+        - ".vscode/launch.json"
+        - ".vscode/tasks.json"
+        - ".vscode/sftp.json"
+        - ".vscode/extensions.json"
+        - ".idea/workspace.xml"
+        - ".idea/misc.xml"
+        - ".idea/modules.xml"
+        - ".idea/vcs.xml"
+        - ".idea/deployment.xml"
+        - ".idea/dataSources.xml"
+        - ".idea/dataSources.local.xml"
+        - ".idea/webServers.xml"
+        - ".idea/.name"
+        - ".project"
+        - ".classpath"
+        - ".settings/org.eclipse.core.resources.prefs"
+        - ".settings/org.eclipse.wst.common.component"
+        - ".ftpconfig"
+        - ".remote-sync.json"
+        - ".deployment-config.json"
+        - "sftp-config.json"
+        - ".sublime-project"
+        - ".sublime-workspace"
+        - "project.sublime-project"
+        - "project.sublime-workspace"
+        - ".atom/config.cson"
+        - ".history"
+        - ".viminfo"
+        - ".swp"
+        - ".DS_Store"
+        - "Thumbs.db"
+        - "desktop.ini"
+        - ".editorconfig"
+        - ".eslintrc"
+        - ".eslintrc.json"
+        - ".prettierrc"
+        - ".prettierrc.json"
+        - ".stylelintrc"
+        - ".npmrc"
+        - ".yarnrc"
+        - ".bowerrc"
+        - ".gemrc"
+        - ".pypirc"
+        - ".netrc"
+        - ".curlrc"
+        - ".wgetrc"
+        - ".sqliterc"
+        - ".irbrc"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"editor."
+          - "\"terminal."
+          - "\"configurations\""
+          - "\"tasks\""
+          - "\"host\""
+          - "\"username\""
+          - "\"password\""
+          - "<project"
+          - "<component"
+          - "RemoteSync"
+          - "sftp"
+          - "ftp"
+          - "deployment"
+          - "data-source"
+          - "org.eclipse"
+          - "rootProject"
+          - "_authToken"
+          - "machine "
+          - "login "
+          - "password "
+          - "SQLite format 3"
+          - "Bud1"
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), '<html') || contains(body, '<project') || contains(body, '<component')"
+          - "len(body) < 10485760"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)(host|username|password|token|_authToken|machine|login)[\"'\\s:=]+[^\\r\\n,;<>]+"
+          - "(?i)(/home/[A-Za-z0-9._/-]+|/Users/[A-Za-z0-9._/-]+|[A-Z]:\\\\[A-Za-z0-9._\\\\ -]+)"
+

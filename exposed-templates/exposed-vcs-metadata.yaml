@@ -1,0 +1,86 @@
+id: exposed-vcs-metadata
+
+info:
+  name: Exposed VCS Metadata
+  author: p3i
+  severity: medium
+  description: Detects exposed Git, SVN, Mercurial, and Bazaar metadata that can leak source code, commits, branches, or repository structure.
+  tags: exposure,vcs,git,svn,hg,bzr,source
+  metadata:
+    max-request: 34
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{vcs_file}}"
+
+    payloads:
+      vcs_file:
+        - ".git/HEAD"
+        - ".git/config"
+        - ".git/index"
+        - ".git/logs/HEAD"
+        - ".git/COMMIT_EDITMSG"
+        - ".git/FETCH_HEAD"
+        - ".git/ORIG_HEAD"
+        - ".git/packed-refs"
+        - ".git/refs/heads/master"
+        - ".git/refs/heads/main"
+        - ".git/info/refs"
+        - ".git/objects/info/packs"
+        - ".svn/entries"
+        - ".svn/wc.db"
+        - ".svn/all-wcprops"
+        - ".svn/text-base/index.php.svn-base"
+        - ".hg/requires"
+        - ".hg/store/00manifest.i"
+        - ".hg/dirstate"
+        - ".hg/hgrc"
+        - ".bzr/branch/format"
+        - ".bzr/branch/last-revision"
+        - ".bzr/repository/format"
+        - "api/.git/HEAD"
+        - "app/.git/HEAD"
+        - "backend/.git/HEAD"
+        - "public/.git/HEAD"
+        - "src/.git/HEAD"
+        - "web/.git/HEAD"
+        - "www/.git/HEAD"
+
+    attack: batteringram
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "ref: refs/heads/"
+          - "[core]"
+          - "repositoryformatversion"
+          - "log\t"
+          - "pack-"
+          - "gitdir:"
+          - "svn:entry"
+          - "SQLite format 3"
+          - "requires:"
+          - "revlogv1"
+          - "Bazaar"
+          - "Bazaar-NG"
+
+      - type: dsl
+        dsl:
+          - "len(body) < 2097152"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "ref: refs/heads/[A-Za-z0-9._/-]+"
+          - "url = [^\\r\\n]+"
+

@@ -1,0 +1,200 @@
+id: exposed-private-keys-certificates
+
+info:
+  name: Exposed Private Keys Certificates And Keystores
+  author: p3i
+  severity: critical
+  description: Detects exposed SSH, GPG, TLS private keys, PEM files, certificate signing requests, PKCS12/PFX files, Java keystores, and truststores.
+  tags: exposure,secrets,keys,certificates,ssh,gpg,tls,keystore
+  metadata:
+    max-request: 118
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{key_file}}"
+
+    payloads:
+      key_file:
+        - "id_rsa"
+        - "id_dsa"
+        - "id_ecdsa"
+        - "id_ed25519"
+        - ".ssh/id_rsa"
+        - ".ssh/id_dsa"
+        - ".ssh/id_ecdsa"
+        - ".ssh/id_ed25519"
+        - "ssh/id_rsa"
+        - "ssh/id_ed25519"
+        - "private_key"
+        - "private.key"
+        - "private.pem"
+        - "server.key"
+        - "server.pem"
+        - "client.key"
+        - "client.pem"
+        - "ssl.key"
+        - "ssl.pem"
+        - "tls.key"
+        - "tls.pem"
+        - "cert.key"
+        - "cert.pem"
+        - "certificate.key"
+        - "certificate.pem"
+        - "fullchain.pem"
+        - "privkey.pem"
+        - "key.pem"
+        - "keys.pem"
+        - "jwt.key"
+        - "jwt.pem"
+        - "signing.key"
+        - "signing.pem"
+        - "auth.key"
+        - "auth.pem"
+        - "oauth.key"
+        - "oauth.pem"
+        - "saml.key"
+        - "saml.pem"
+        - "sp.key"
+        - "sp.pem"
+        - "idp.key"
+        - "idp.pem"
+        - "gpg.key"
+        - "gpg-private.key"
+        - "private.gpg"
+        - "secring.gpg"
+        - ".gnupg/secring.gpg"
+        - "pgp.key"
+        - "pgp-private.key"
+        - "rsa.key"
+        - "rsa.pem"
+        - "ecdsa.key"
+        - "ecdsa.pem"
+        - "ed25519.key"
+        - "ed25519.pem"
+        - "localhost.key"
+        - "localhost.pem"
+        - "dev.key"
+        - "dev.pem"
+        - "prod.key"
+        - "prod.pem"
+        - "production.key"
+        - "production.pem"
+        - "staging.key"
+        - "staging.pem"
+        - "test.key"
+        - "test.pem"
+        - "config/private.key"
+        - "config/private.pem"
+        - "config/server.key"
+        - "config/server.pem"
+        - "config/ssl.key"
+        - "config/ssl.pem"
+        - "config/jwt.key"
+        - "config/jwt.pem"
+        - "certs/private.key"
+        - "certs/private.pem"
+        - "certs/server.key"
+        - "certs/server.pem"
+        - "certs/privkey.pem"
+        - "ssl/private.key"
+        - "ssl/private.pem"
+        - "ssl/server.key"
+        - "ssl/server.pem"
+        - "ssl/privkey.pem"
+        - "tls/private.key"
+        - "tls/private.pem"
+        - "keys/private.key"
+        - "keys/private.pem"
+        - "secrets/private.key"
+        - "secrets/private.pem"
+        - "server.csr"
+        - "client.csr"
+        - "cert.csr"
+        - "certificate.csr"
+        - "ssl.csr"
+        - "tls.csr"
+        - "request.csr"
+        - "config/server.csr"
+        - "certs/server.csr"
+        - "ssl/server.csr"
+        - "keystore.jks"
+        - "truststore.jks"
+        - "server.jks"
+        - "client.jks"
+        - "cacerts"
+        - "keystore.p12"
+        - "truststore.p12"
+        - "server.p12"
+        - "client.p12"
+        - "certificate.p12"
+        - "keystore.pfx"
+        - "truststore.pfx"
+        - "server.pfx"
+        - "client.pfx"
+        - "certificate.pfx"
+        - "config/keystore.jks"
+        - "config/truststore.jks"
+        - "config/keystore.p12"
+        - "config/keystore.pfx"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "BEGIN RSA PRIVATE KEY"
+          - "BEGIN DSA PRIVATE KEY"
+          - "BEGIN EC PRIVATE KEY"
+          - "BEGIN OPENSSH PRIVATE KEY"
+          - "BEGIN PRIVATE KEY"
+          - "BEGIN ENCRYPTED PRIVATE KEY"
+          - "BEGIN PGP PRIVATE KEY BLOCK"
+          - "BEGIN CERTIFICATE REQUEST"
+          - "BEGIN NEW CERTIFICATE REQUEST"
+          - "Bag Attributes"
+          - "friendlyName:"
+          - "localKeyID:"
+          - "PKCS12"
+          - "JKS"
+          - "-----BEGIN"
+
+      - type: dsl
+        condition: or
+        dsl:
+          - "contains(tolower(header), 'application/x-pkcs12')"
+          - "contains(tolower(header), 'application/pkcs12')"
+          - "contains(tolower(header), 'application/x-pkcs7-certificates')"
+          - "contains(tolower(header), 'application/octet-stream') && len(body) > 128"
+          - "contains(tolower(header), 'application/x-java-keystore')"
+          - "contains(tolower(header), 'application/x-pem-file')"
+          - "contains(body, 'BEGIN RSA PRIVATE KEY')"
+          - "contains(body, 'BEGIN OPENSSH PRIVATE KEY')"
+          - "contains(body, 'BEGIN PRIVATE KEY')"
+          - "contains(body, 'BEGIN ENCRYPTED PRIVATE KEY')"
+          - "contains(body, 'BEGIN PGP PRIVATE KEY BLOCK')"
+          - "contains(body, 'BEGIN CERTIFICATE REQUEST')"
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), '<html')"
+          - "len(body) > 32"
+          - "len(body) < 52428800"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "-----BEGIN (RSA |DSA |EC |OPENSSH |ENCRYPTED )?PRIVATE KEY-----"
+          - "-----BEGIN PGP PRIVATE KEY BLOCK-----"
+          - "-----BEGIN (NEW )?CERTIFICATE REQUEST-----"
+

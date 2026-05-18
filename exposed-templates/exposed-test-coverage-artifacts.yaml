@@ -1,0 +1,116 @@
+id: exposed-test-coverage-artifacts
+
+info:
+  name: Exposed Test Coverage Artifacts
+  author: p3i
+  severity: medium
+  description: Detects exposed code coverage reports such as coverage directories, lcov.info, coverage.xml, Cobertura, Clover, JaCoCo, Istanbul, and HTML coverage reports.
+  tags: exposure,coverage,tests,lcov,jacoco,cobertura,istanbul
+  metadata:
+    max-request: 86
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{coverage_file}}"
+
+    payloads:
+      coverage_file:
+        - "coverage/"
+        - "coverage/index.html"
+        - "coverage/lcov.info"
+        - "coverage/lcov-report/index.html"
+        - "coverage/clover.xml"
+        - "coverage/cobertura-coverage.xml"
+        - "coverage/coverage.xml"
+        - "coverage/coverage-final.json"
+        - "coverage/coverage-summary.json"
+        - "coverage.json"
+        - "coverage.xml"
+        - "lcov.info"
+        - "lcov-report/index.html"
+        - "htmlcov/"
+        - "htmlcov/index.html"
+        - "coverage.py"
+        - ".coverage"
+        - ".coverage.xml"
+        - "reports/coverage/"
+        - "reports/coverage/index.html"
+        - "reports/coverage/lcov.info"
+        - "reports/coverage.xml"
+        - "test-results/coverage/"
+        - "test-results/coverage/index.html"
+        - "test-results/coverage.xml"
+        - "build/reports/jacoco/test/html/index.html"
+        - "build/reports/jacoco/test/jacocoTestReport.xml"
+        - "build/reports/jacoco/test/jacocoTestReport.csv"
+        - "build/jacoco/test.exec"
+        - "target/site/jacoco/index.html"
+        - "target/site/jacoco/jacoco.xml"
+        - "target/site/cobertura/index.html"
+        - "target/site/cobertura/coverage.xml"
+        - "target/coverage-reports/jacoco-unit.exec"
+        - "target/coverage-reports/jacoco.xml"
+        - "jacoco.xml"
+        - "jacoco.exec"
+        - "cobertura.xml"
+        - "clover.xml"
+        - "phpunit.coverage.xml"
+        - "coverage-html/index.html"
+        - "coverage-report/index.html"
+        - "coverage-report/coverage.xml"
+        - "nyc_output/processinfo/index.json"
+        - ".nyc_output/processinfo/index.json"
+        - ".nyc_output/out.json"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "LCOV"
+          - "TN:"
+          - "SF:"
+          - "DA:"
+          - "end_of_record"
+          - "Coverage report"
+          - "Code coverage"
+          - "Istanbul"
+          - "nyc"
+          - "coverage-summary"
+          - "\"total\""
+          - "\"covered\""
+          - "\"skipped\""
+          - "<coverage"
+          - "<class "
+          - "<package "
+          - "<counter type="
+          - "JaCoCo"
+          - "Cobertura"
+          - "Clover"
+          - "htmlcov"
+          - "pytest"
+          - "lines-covered"
+          - "branches-covered"
+
+      - type: dsl
+        dsl:
+          - "len(body) < 104857600"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)^(SF|FN|DA|BRDA):[^\\r\\n]+"
+          - "(?i)(/home/[A-Za-z0-9._/-]+|/Users/[A-Za-z0-9._/-]+|[A-Z]:\\\\[A-Za-z0-9._\\\\ -]+)"
+          - "(?i)(src/[A-Za-z0-9_./-]+|app/[A-Za-z0-9_./-]+|internal/[A-Za-z0-9_./-]+)"
+

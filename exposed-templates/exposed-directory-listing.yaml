@@ -1,0 +1,111 @@
+id: exposed-directory-listing
+
+info:
+  name: Exposed Directory Listing
+  author: p3i
+  severity: medium
+  description: Detects enabled directory indexing on common sensitive paths.
+  tags: exposure,directory-listing,indexing,files
+  metadata:
+    max-request: 64
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{dir_path}}/"
+
+    payloads:
+      dir_path:
+        - ".git"
+        - ".svn"
+        - ".hg"
+        - "backup"
+        - "backups"
+        - "db"
+        - "database"
+        - "dump"
+        - "dumps"
+        - "config"
+        - "configs"
+        - "logs"
+        - "log"
+        - "debug"
+        - "tmp"
+        - "temp"
+        - "private"
+        - "files"
+        - "uploads"
+        - "upload"
+        - "media"
+        - "assets"
+        - "storage"
+        - "data"
+        - "admin"
+        - "api"
+        - "old"
+        - "new"
+        - "test"
+        - "dev"
+        - "development"
+        - "stage"
+        - "staging"
+        - "prod"
+        - "production"
+        - "release"
+        - "releases"
+        - "dist"
+        - "build"
+        - "src"
+        - "source"
+        - "vendor"
+        - "node_modules"
+        - "bower_components"
+        - "wp-content/uploads"
+        - "wp-content/backups"
+        - "wp-content/debug"
+        - "server-status"
+        - "server-info"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "Index of /"
+          - "Directory Listing For"
+          - "Directory listing for"
+          - "Parent Directory"
+          - "<title>Index of"
+          - "[To Parent Directory]"
+          - "Last modified"
+          - "Name</th>"
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "href="
+          - "../"
+          - "?C=N;O=D"
+          - "?C=M;O=A"
+
+      - type: dsl
+        dsl:
+          - "len(body) < 2097152"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)<title>Index of [^<]+"
+          - "(?i)href=\"[^\"]+\""
+

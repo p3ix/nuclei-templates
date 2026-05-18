@@ -1,0 +1,79 @@
+id: exposed-php-info-files
+
+info:
+  name: Exposed PHP Info And Test Files
+  author: p3i
+  severity: high
+  description: Detects exposed PHP diagnostic and test files such as phpinfo.php, info.php, test.php, and php_info.php that can leak server paths, loaded modules, environment variables, and configuration.
+  tags: exposure,php,phpinfo,debug,test
+  metadata:
+    max-request: 46
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/phpinfo.php"
+      - "{{BaseURL}}/php_info.php"
+      - "{{BaseURL}}/php-info.php"
+      - "{{BaseURL}}/phpinfo"
+      - "{{BaseURL}}/php_info"
+      - "{{BaseURL}}/info.php"
+      - "{{BaseURL}}/info"
+      - "{{BaseURL}}/test.php"
+      - "{{BaseURL}}/test"
+      - "{{BaseURL}}/i.php"
+      - "{{BaseURL}}/p.php"
+      - "{{BaseURL}}/pi.php"
+      - "{{BaseURL}}/php.php"
+      - "{{BaseURL}}/phpversion.php"
+      - "{{BaseURL}}/version.php"
+      - "{{BaseURL}}/debug.php"
+      - "{{BaseURL}}/server_info.php"
+      - "{{BaseURL}}/server-info.php"
+      - "{{BaseURL}}/admin/phpinfo.php"
+      - "{{BaseURL}}/admin/info.php"
+      - "{{BaseURL}}/api/phpinfo.php"
+      - "{{BaseURL}}/dev/phpinfo.php"
+      - "{{BaseURL}}/public/phpinfo.php"
+
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: and
+        words:
+          - "phpinfo()"
+          - "PHP Version"
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "System"
+          - "Build Date"
+          - "Configure Command"
+          - "Server API"
+          - "Loaded Configuration File"
+          - "DOCUMENT_ROOT"
+          - "_SERVER["
+          - "_ENV["
+          - "allow_url_fopen"
+          - "disable_functions"
+
+      - type: dsl
+        dsl:
+          - "len(body) < 20971520"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)(PHP Version|Loaded Configuration File|DOCUMENT_ROOT|SERVER_SOFTWARE|disable_functions|open_basedir)[^\\r\\n<]{0,160}"
+

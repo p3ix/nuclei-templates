@@ -1,0 +1,110 @@
+id: exposed-serverless-framework-configs
+
+info:
+  name: Exposed Serverless Framework Configuration
+  author: p3i
+  severity: high
+  description: Detects exposed Serverless Framework configuration files that can leak functions, stages, regions, environment variables, IAM permissions, ARNs, API gateways, and provider secrets.
+  tags: exposure,serverless,aws,lambda,cloud,secrets
+  metadata:
+    max-request: 72
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{serverless_file}}"
+
+    payloads:
+      serverless_file:
+        - "serverless.yml"
+        - "serverless.yaml"
+        - "serverless.json"
+        - "serverless.ts"
+        - "serverless.js"
+        - "serverless.local.yml"
+        - "serverless.local.yaml"
+        - "serverless.dev.yml"
+        - "serverless.dev.yaml"
+        - "serverless.staging.yml"
+        - "serverless.staging.yaml"
+        - "serverless.prod.yml"
+        - "serverless.prod.yaml"
+        - "serverless.production.yml"
+        - "serverless.production.yaml"
+        - "sls.yml"
+        - "sls.yaml"
+        - "config/serverless.yml"
+        - "config/serverless.yaml"
+        - "deploy/serverless.yml"
+        - "deploy/serverless.yaml"
+        - "deployment/serverless.yml"
+        - "deployment/serverless.yaml"
+        - "infra/serverless.yml"
+        - "infra/serverless.yaml"
+        - "infrastructure/serverless.yml"
+        - "infrastructure/serverless.yaml"
+        - "lambda/serverless.yml"
+        - "lambda/serverless.yaml"
+        - "functions/serverless.yml"
+        - "functions/serverless.yaml"
+        - "api/serverless.yml"
+        - "api/serverless.yaml"
+        - "backend/serverless.yml"
+        - "backend/serverless.yaml"
+        - ".serverless/serverless-state.json"
+        - ".serverless/cloudformation-template-update-stack.json"
+        - ".serverless/cloudformation-template-create-stack.json"
+        - ".serverless/serverless-state.yml"
+        - ".serverless/serverless-state.yaml"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "service:"
+          - "\"service\""
+          - "provider:"
+          - "\"provider\""
+          - "functions:"
+          - "\"functions\""
+          - "serverless"
+          - "runtime:"
+          - "handler:"
+          - "stage:"
+          - "region:"
+          - "environment:"
+          - "iamRoleStatements"
+          - "events:"
+          - "httpApi:"
+          - "http:"
+          - "arn:aws:"
+          - "AWS::Lambda::Function"
+          - "AWS::ApiGateway"
+          - "AWS::IAM::Role"
+          - "AWS::Serverless"
+          - "custom:"
+          - "plugins:"
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), '<html')"
+          - "!contains(tolower(body), '<!doctype')"
+          - "len(body) < 52428800"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)(arn:aws:[a-z0-9-]+:[a-z0-9-]*:[0-9]{12}:[^\\s\"'<>]+)"
+          - "(?im)(AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|SECRET|TOKEN|PASSWORD|DATABASE_URL|API_KEY|provider|runtime|handler|stage|region)[\"'\\s:=]+[^\\r\\n,;<>]+"
+

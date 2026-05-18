@@ -1,0 +1,104 @@
+id: exposed-object-storage
+
+info:
+  name: Exposed Object Storage Listings And Configs
+  author: p3i
+  severity: high
+  description: Detects exposed object storage bucket listings, storage configuration files, CORS policies, and static hosting metadata.
+  tags: exposure,storage,bucket,s3,gcs,azure,object-storage
+  metadata:
+    max-request: 74
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{storage_path}}"
+
+    payloads:
+      storage_path:
+        - ""
+        - "?list-type=2"
+        - "?max-keys=100"
+        - "s3/"
+        - "s3"
+        - "bucket/"
+        - "bucket"
+        - "buckets/"
+        - "storage/"
+        - "storage"
+        - "uploads/"
+        - "uploads"
+        - "files/"
+        - "files"
+        - "media/"
+        - "media"
+        - "assets/"
+        - "assets"
+        - "static/"
+        - "static"
+        - ".s3cfg"
+        - "s3cfg"
+        - "cors.json"
+        - "cors.xml"
+        - "bucket-policy.json"
+        - "bucket_policy.json"
+        - "policy.json"
+        - "storage.json"
+        - "storage.yml"
+        - "storage.yaml"
+        - "gcs.json"
+        - "gcloud.json"
+        - "azure-storage.json"
+        - "azure-storage.yaml"
+        - "blob-storage.json"
+        - "minio.json"
+        - "minio.env"
+        - ".minio.sys/config/config.json"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 3
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "ListBucketResult"
+          - "<Contents>"
+          - "<Key>"
+          - "<BucketName>"
+          - "BlobNotFound"
+          - "PublicAccess"
+          - "\"AllowedOrigins\""
+          - "\"AllowedMethods\""
+          - "\"Statement\""
+          - "\"Principal\""
+          - "\"s3:\""
+          - "aws_access_key_id"
+          - "aws_secret_access_key"
+          - "storage_account"
+          - "accountName"
+          - "accountKey"
+          - "MINIO_ROOT_USER"
+          - "MINIO_ROOT_PASSWORD"
+          - "type = s3"
+          - "gs://"
+          - "s3://"
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), '<html') || contains(body, 'ListBucketResult') || contains(body, '<Contents>')"
+          - "len(body) < 10485760"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)(aws_access_key_id|aws_secret_access_key|accountKey|MINIO_ROOT_PASSWORD|bucket|endpoint|s3://|gs://)[\"'\\s:=<>/-]+[^\\r\\n,<>]+"
+

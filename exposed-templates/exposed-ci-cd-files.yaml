@@ -1,0 +1,106 @@
+id: exposed-ci-cd-files
+
+info:
+  name: Exposed CI/CD Files
+  author: p3i
+  severity: medium
+  description: Detects exposed CI/CD configuration files that may leak build logic, internal hosts, deployment credentials, tokens, or repository structure.
+  tags: exposure,cicd,devops,config
+  metadata:
+    max-request: 52
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{cicd_file}}"
+
+    payloads:
+      cicd_file:
+        - ".github/workflows/build.yml"
+        - ".github/workflows/build.yaml"
+        - ".github/workflows/deploy.yml"
+        - ".github/workflows/deploy.yaml"
+        - ".github/workflows/ci.yml"
+        - ".github/workflows/ci.yaml"
+        - ".github/workflows/release.yml"
+        - ".github/workflows/release.yaml"
+        - ".gitlab-ci.yml"
+        - ".gitlab-ci.yaml"
+        - "Jenkinsfile"
+        - "jenkinsfile"
+        - ".circleci/config.yml"
+        - ".travis.yml"
+        - "azure-pipelines.yml"
+        - "azure-pipelines.yaml"
+        - "bitbucket-pipelines.yml"
+        - "bitbucket-pipelines.yaml"
+        - "buildkite.yml"
+        - ".buildkite/pipeline.yml"
+        - ".drone.yml"
+        - ".woodpecker.yml"
+        - "appveyor.yml"
+        - ".appveyor.yml"
+        - "cloudbuild.yaml"
+        - "cloudbuild.yml"
+        - "skaffold.yaml"
+        - "skaffold.yml"
+        - "deploy.yml"
+        - "deploy.yaml"
+        - "deployment.yml"
+        - "deployment.yaml"
+        - "docker-compose.yml"
+        - "docker-compose.yaml"
+        - "docker-compose.override.yml"
+        - "compose.yml"
+        - "compose.yaml"
+        - "Makefile"
+        - "Taskfile.yml"
+        - "Taskfile.yaml"
+        - "justfile"
+        - "Procfile"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "name:"
+          - "on:"
+          - "jobs:"
+          - "stages:"
+          - "script:"
+          - "pipeline"
+          - "Jenkinsfile"
+          - "agent {"
+          - "docker-compose"
+          - "services:"
+          - "environment:"
+          - "secrets."
+          - "GITHUB_TOKEN"
+          - "CI_JOB_TOKEN"
+          - "DEPLOY_KEY"
+          - "DOCKER_PASSWORD"
+          - "kubectl"
+          - "helm"
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), '<html')"
+          - "!contains(tolower(body), '<!doctype')"
+          - "len(body) < 1048576"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)(GITHUB_TOKEN|CI_JOB_TOKEN|DEPLOY_KEY|DOCKER_PASSWORD|AWS_ACCESS_KEY_ID|KUBECONFIG|SECRET)[\"'\\s:=]+[^\\r\\n,]+"
+

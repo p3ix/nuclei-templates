@@ -1,0 +1,136 @@
+id: exposed-embedded-database-files
+
+info:
+  name: Exposed Embedded Database Files
+  author: p3i
+  severity: high
+  description: Detects exposed SQLite, Access, DuckDB, H2, Derby, Realm, and other embedded database files.
+  tags: exposure,database,sqlite,db,embedded,access,duckdb
+  metadata:
+    max-request: 110
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{embedded_db_file}}"
+
+    payloads:
+      embedded_db_file:
+        - "database.sqlite"
+        - "database.sqlite3"
+        - "database.db"
+        - "db.sqlite"
+        - "db.sqlite3"
+        - "db.db"
+        - "app.sqlite"
+        - "app.sqlite3"
+        - "app.db"
+        - "data.sqlite"
+        - "data.sqlite3"
+        - "data.db"
+        - "dev.sqlite3"
+        - "development.sqlite3"
+        - "test.sqlite3"
+        - "production.sqlite3"
+        - "prod.sqlite3"
+        - "staging.sqlite3"
+        - "local.sqlite"
+        - "local.sqlite3"
+        - "storage.sqlite"
+        - "storage.sqlite3"
+        - "cache.sqlite"
+        - "cache.sqlite3"
+        - "session.sqlite"
+        - "sessions.sqlite"
+        - "users.sqlite"
+        - "users.db"
+        - "auth.db"
+        - "auth.sqlite3"
+        - "main.db"
+        - "main.sqlite3"
+        - "default.db"
+        - "site.db"
+        - "cms.db"
+        - "wordpress.db"
+        - "backup.db"
+        - "backup.sqlite3"
+        - "dump.db"
+        - "export.db"
+        - "config/database.sqlite"
+        - "config/database.sqlite3"
+        - "config/database.db"
+        - "db/database.sqlite3"
+        - "db/development.sqlite3"
+        - "db/production.sqlite3"
+        - "db/test.sqlite3"
+        - "database/database.sqlite3"
+        - "storage/database.sqlite3"
+        - "var/database.sqlite3"
+        - "tmp/database.sqlite3"
+        - "public/database.sqlite3"
+        - "app.mdb"
+        - "database.mdb"
+        - "data.mdb"
+        - "db.mdb"
+        - "backup.mdb"
+        - "app.accdb"
+        - "database.accdb"
+        - "data.accdb"
+        - "db.accdb"
+        - "backup.accdb"
+        - "app.duckdb"
+        - "database.duckdb"
+        - "data.duckdb"
+        - "db.duckdb"
+        - "metabase.db"
+        - "metabase.db.mv.db"
+        - "h2.db"
+        - "h2.mv.db"
+        - "test.mv.db"
+        - "prod.mv.db"
+        - "derby.log"
+        - "realm.db"
+        - "default.realm"
+        - "objectbox/data.mdb"
+        - "chroma.sqlite3"
+        - "chromadb.sqlite3"
+        - "chroma/chroma.sqlite3"
+
+    attack: batteringram
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: dsl
+        condition: or
+        dsl:
+          - "contains(body, 'SQLite format 3')"
+          - "contains(tolower(body), 'sqlite_master')"
+          - "contains(tolower(body), 'microsoft access')"
+          - "contains(tolower(body), 'standard jet db')"
+          - "contains(tolower(body), 'duckdb')"
+          - "contains(tolower(body), 'h2 database')"
+          - "contains(tolower(header), 'application/vnd.ms-access')"
+          - "contains(tolower(header), 'application/x-sqlite3')"
+          - "contains(tolower(header), 'application/octet-stream')"
+          - "contains(tolower(header), 'filename=')"
+
+      - type: dsl
+        dsl:
+          - "len(body) > 64"
+          - "len(body) < 209715200"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)(SQLite format 3|sqlite_master|CREATE TABLE|users|password|token|secret).{0,160}"
+      - type: regex
+        part: header
+        regex:
+          - "(?i)(content-type|content-length|content-disposition): [^\\r\\n]+"
+

@@ -1,0 +1,122 @@
+id: exposed-log-debug-files
+
+info:
+  name: Exposed Logs And Debug Files
+  author: p3i
+  severity: medium
+  description: Detects exposed logs, debug files, stack traces, and runtime diagnostic artifacts that may leak paths, credentials, tokens, SQL queries, or internal errors.
+  tags: exposure,logs,debug,errors
+  metadata:
+    max-request: 78
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{log_file}}"
+
+    payloads:
+      log_file:
+        - "debug.log"
+        - "error.log"
+        - "errors.log"
+        - "access.log"
+        - "app.log"
+        - "application.log"
+        - "server.log"
+        - "system.log"
+        - "laravel.log"
+        - "production.log"
+        - "development.log"
+        - "test.log"
+        - "trace.log"
+        - "exception.log"
+        - "exceptions.log"
+        - "php_errors.log"
+        - "php-error.log"
+        - "phpinfo.php"
+        - "info.php"
+        - "test.php"
+        - "debug.php"
+        - "logs/debug.log"
+        - "logs/error.log"
+        - "logs/access.log"
+        - "logs/app.log"
+        - "logs/application.log"
+        - "logs/server.log"
+        - "logs/system.log"
+        - "logs/laravel.log"
+        - "log/debug.log"
+        - "log/error.log"
+        - "log/access.log"
+        - "log/app.log"
+        - "log/application.log"
+        - "log/server.log"
+        - "storage/logs/laravel.log"
+        - "var/log/debug.log"
+        - "var/log/error.log"
+        - "var/log/nginx/access.log"
+        - "var/log/nginx/error.log"
+        - "var/log/apache2/access.log"
+        - "var/log/apache2/error.log"
+        - "runtime/logs/app.log"
+        - "tmp/debug.log"
+        - "tmp/error.log"
+        - "wp-content/debug.log"
+        - "wp-content/uploads/debug.log"
+        - "admin/debug.log"
+        - "api/debug.log"
+        - "api/error.log"
+        - "backend/debug.log"
+        - "backend/error.log"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "Stack trace:"
+          - "Traceback (most recent call last):"
+          - "Fatal error:"
+          - "PHP Warning:"
+          - "PHP Notice:"
+          - "PHP Parse error:"
+          - "Uncaught Exception"
+          - "NullPointerException"
+          - "SQLException"
+          - "QueryException"
+          - "PDOException"
+          - "Illuminate\\"
+          - "Symfony\\Component\\"
+          - "Django"
+          - "Express error"
+          - "[error]"
+          - "ERROR"
+          - "WARN"
+          - "GET /"
+          - "POST /"
+          - "phpinfo()"
+          - "PHP Version"
+          - "_SERVER["
+          - "DOCUMENT_ROOT"
+
+      - type: dsl
+        dsl:
+          - "len(body) < 10485760"
+          - "!contains(tolower(body), '<!doctype html') || contains(body, 'phpinfo()') || contains(body, 'PHP Version')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)(fatal error|uncaught exception|traceback|stack trace|pdoexception|sqlexception|php warning).{0,120}"
+          - "(?im)(password|token|secret|api[_-]?key)[\"'\\s:=]+[^\\r\\n,;]+"
+

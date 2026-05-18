@@ -1,0 +1,104 @@
+id: exposed-source-maps
+
+info:
+  name: Exposed JavaScript Source Maps
+  author: p3i
+  severity: medium
+  description: Detects exposed JavaScript source maps that can reveal original frontend source code, internal endpoints, comments, routes, and secrets accidentally bundled into client builds.
+  tags: exposure,sourcemap,javascript,source,frontend
+  metadata:
+    max-request: 64
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{map_file}}"
+
+    payloads:
+      map_file:
+        - "main.js.map"
+        - "app.js.map"
+        - "bundle.js.map"
+        - "runtime.js.map"
+        - "vendor.js.map"
+        - "vendors.js.map"
+        - "polyfills.js.map"
+        - "index.js.map"
+        - "script.js.map"
+        - "scripts.js.map"
+        - "static/js/main.js.map"
+        - "static/js/app.js.map"
+        - "static/js/bundle.js.map"
+        - "static/js/runtime.js.map"
+        - "static/js/vendor.js.map"
+        - "static/js/vendors.js.map"
+        - "assets/js/main.js.map"
+        - "assets/js/app.js.map"
+        - "assets/js/bundle.js.map"
+        - "assets/js/vendor.js.map"
+        - "dist/main.js.map"
+        - "dist/app.js.map"
+        - "dist/bundle.js.map"
+        - "dist/vendor.js.map"
+        - "build/main.js.map"
+        - "build/app.js.map"
+        - "build/bundle.js.map"
+        - "build/static/js/main.js.map"
+        - "build/static/js/app.js.map"
+        - "_next/static/chunks/main.js.map"
+        - "_next/static/chunks/pages/index.js.map"
+        - "_nuxt/app.js.map"
+        - "_nuxt/vendors.js.map"
+        - "js/main.js.map"
+        - "js/app.js.map"
+        - "js/bundle.js.map"
+        - "js/vendor.js.map"
+        - "public/js/main.js.map"
+        - "public/js/app.js.map"
+        - "public/js/bundle.js.map"
+        - "public/build/app.js.map"
+        - "public/build/manifest.js.map"
+        - "public/build/vendor.js.map"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: and
+        words:
+          - "\"version\""
+          - "\"sources\""
+          - "\"mappings\""
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"sourcesContent\""
+          - "webpack://"
+          - "ng://"
+          - "src/"
+          - "node_modules/"
+          - ".vue"
+          - ".tsx"
+          - ".jsx"
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), '<html')"
+          - "len(body) < 52428800"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)(api[_-]?key|secret|token|password|bearer|graphql|admin|internal).{0,120}"
+

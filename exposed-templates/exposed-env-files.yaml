@@ -1,0 +1,115 @@
+id: exposed-env-files
+
+info:
+  name: Exposed Environment Files
+  author: p3i
+  severity: high
+  description: Detects exposed environment files containing application secrets, credentials, or runtime configuration.
+  tags: exposure,files,env,secrets,config
+  metadata:
+    max-request: 52
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{env_file}}"
+
+    payloads:
+      env_file:
+        - ".env"
+        - ".env.local"
+        - ".env.dev"
+        - ".env.development"
+        - ".env.prod"
+        - ".env.production"
+        - ".env.production.local"
+        - ".env.stage"
+        - ".env.staging"
+        - ".env.test"
+        - ".env.testing"
+        - ".env.backup"
+        - ".env.bak"
+        - ".env.old"
+        - ".env.save"
+        - ".env.example"
+        - "api/.env"
+        - "app/.env"
+        - "backend/.env"
+        - "config/.env"
+        - "current/.env"
+        - "html/.env"
+        - "laravel/.env"
+        - "public/.env"
+        - "server/.env"
+        - "src/.env"
+        - "web/.env"
+        - "www/.env"
+        - "admin/.env"
+        - "application/.env"
+        - "apps/.env"
+        - "client/.env"
+        - "core/.env"
+        - "docker/.env"
+        - "frontend/.env"
+        - "new/.env"
+        - "old/.env"
+        - "prod/.env"
+        - "production/.env"
+        - "release/.env"
+        - "staging/.env"
+        - "test/.env"
+        - "v1/.env"
+        - "v2/.env"
+        - "vendor/.env"
+        - "site/.env"
+        - "sites/.env"
+        - "shop/.env"
+        - "store/.env"
+        - "portal/.env"
+        - "crm/.env"
+
+    attack: batteringram
+    stop-at-first-match: true
+    redirects: true
+    max-redirects: 2
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "APP_KEY="
+          - "APP_SECRET="
+          - "APP_ENV="
+          - "DB_PASSWORD="
+          - "DATABASE_URL="
+          - "MYSQL_PASSWORD="
+          - "POSTGRES_PASSWORD="
+          - "REDIS_PASSWORD="
+          - "MAIL_PASSWORD="
+          - "SMTP_PASSWORD="
+          - "AWS_ACCESS_KEY_ID="
+          - "AWS_SECRET_ACCESS_KEY="
+          - "STRIPE_SECRET_KEY="
+          - "JWT_SECRET="
+          - "SECRET_KEY="
+          - "PRIVATE_KEY="
+          - "MONGODB_URI="
+          - "GOOGLE_API_KEY="
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), '<html')"
+          - "!contains(tolower(body), '<!doctype')"
+          - "len(body) < 524288"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?m)^(APP_KEY|APP_SECRET|DB_PASSWORD|DATABASE_URL|AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|JWT_SECRET|SECRET_KEY|PRIVATE_KEY|MONGODB_URI)\\s*=\\s*[^\\r\\n]+"
+

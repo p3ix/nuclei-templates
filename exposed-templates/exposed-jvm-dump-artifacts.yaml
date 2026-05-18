@@ -1,0 +1,108 @@
+id: exposed-jvm-dump-artifacts
+
+info:
+  name: Exposed JVM Heap Thread And Diagnostic Dumps
+  author: p3i
+  severity: high
+  description: Detects exposed JVM heap dumps, thread dumps, HPROF files, hs_err crash logs, and Java diagnostic artifacts that can contain secrets, tokens, memory contents, classpaths, and environment details.
+  tags: exposure,jvm,java,heapdump,threaddump,hprof,diagnostics
+  metadata:
+    max-request: 82
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{jvm_dump_file}}"
+
+    payloads:
+      jvm_dump_file:
+        - "heapdump"
+        - "heapdump.hprof"
+        - "heap.hprof"
+        - "dump.hprof"
+        - "java.hprof"
+        - "app.hprof"
+        - "application.hprof"
+        - "server.hprof"
+        - "prod.hprof"
+        - "production.hprof"
+        - "staging.hprof"
+        - "dev.hprof"
+        - "test.hprof"
+        - "heap-dump.hprof"
+        - "heap_dump.hprof"
+        - "heapdump.bin"
+        - "heap-dump.bin"
+        - "heap_dump.bin"
+        - "threaddump"
+        - "threaddump.txt"
+        - "thread-dump.txt"
+        - "thread_dump.txt"
+        - "threads.txt"
+        - "jstack.txt"
+        - "jstack.log"
+        - "jcmd.txt"
+        - "jcmd.log"
+        - "hs_err_pid.log"
+        - "hs_err_pid1.log"
+        - "hs_err_pid1234.log"
+        - "java_error.log"
+        - "hotspot.log"
+        - "gc.log"
+        - "gc.log.0"
+        - "logs/threaddump.txt"
+        - "logs/thread-dump.txt"
+        - "logs/jstack.txt"
+        - "logs/hs_err_pid.log"
+        - "dumps/heapdump.hprof"
+        - "dumps/heap.hprof"
+        - "dumps/threaddump.txt"
+        - "dump/heapdump.hprof"
+        - "dump/threaddump.txt"
+        - "tmp/heapdump.hprof"
+        - "tmp/threaddump.txt"
+        - "var/heapdump.hprof"
+        - "actuator/heapdump"
+        - "actuator/threaddump"
+        - "manage/actuator/heapdump"
+        - "manage/actuator/threaddump"
+        - "management/heapdump"
+        - "management/threaddump"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: dsl
+        condition: or
+        dsl:
+          - "contains(body, 'JAVA PROFILE')"
+          - "contains(body, 'HPROF')"
+          - "contains(body, 'Full thread dump')"
+          - "contains(body, 'Java HotSpot')"
+          - "contains(body, 'OpenJDK')"
+          - "contains(body, 'JNI global refs')"
+          - "contains(body, 'java.lang.Thread.State')"
+          - "contains(body, 'at java.')"
+          - "contains(body, 'Exception in thread')"
+          - "contains(body, '# A fatal error has been detected by the Java Runtime Environment')"
+          - "contains(tolower(header), 'application/octet-stream') && len(body) > 1024"
+
+      - type: dsl
+        dsl:
+          - "len(body) > 128"
+          - "len(body) < 314572800"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)(JAVA PROFILE|Full thread dump|java\\.lang\\.Thread\\.State|Exception in thread|Java HotSpot|OpenJDK|A fatal error has been detected).{0,180}"
+          - "(?im)(password|secret|token|api[_-]?key|authorization|database_url|jdbc:|mongodb://|redis://).{0,180}"
+

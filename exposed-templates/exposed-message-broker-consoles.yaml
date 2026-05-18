@@ -1,0 +1,124 @@
+id: exposed-message-broker-consoles
+
+info:
+  name: Exposed Message Broker And Streaming Consoles
+  author: p3i
+  severity: medium
+  description: Detects exposed message broker, streaming platform, queue, MQTT, and NATS monitoring consoles that can reveal topics, queues, consumers, credentials, cluster topology, or operational metadata.
+  tags: exposure,messaging,queue,kafka,rabbitmq,nats,mqtt,broker
+  metadata:
+    max-request: 76
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{broker_path}}"
+
+    payloads:
+      broker_path:
+        - "rabbitmq/"
+        - "rabbitmq/#/"
+        - "rabbitmq/api/overview"
+        - "management/"
+        - "rabbitmq-management/"
+        - "kafka/"
+        - "kafka-ui/"
+        - "kafkaui/"
+        - "kafdrop/"
+        - "akhq/"
+        - "kowl/"
+        - "redpanda/"
+        - "redpanda-console/"
+        - "cmak/"
+        - "kafka-manager/"
+        - "schema-registry/"
+        - "subjects"
+        - "connectors"
+        - "kafka-connect/"
+        - "control-center/"
+        - "activemq/"
+        - "admin/"
+        - "hawtio/"
+        - "artemis/"
+        - "console/"
+        - "rocketmq/"
+        - "rocketmq-console/"
+        - "emqx/"
+        - "emqx/dashboard"
+        - "mqtt/"
+        - "mqtt-dashboard/"
+        - "vernemq/status"
+        - "nats/"
+        - "varz"
+        - "connz"
+        - "subsz"
+        - "routez"
+        - "jsz"
+        - "pulsar/"
+        - "pulsar-manager/"
+        - "bookkeeper/"
+        - "nsq/"
+        - "nsqadmin/"
+        - "celery/"
+        - "flower/"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 3
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 401
+          - 403
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "RabbitMQ Management"
+          - "\"rabbitmq_version\""
+          - "Kafka UI"
+          - "Kafdrop"
+          - "AKHQ"
+          - "Redpanda Console"
+          - "Kafka Manager"
+          - "CMAK"
+          - "Schema Registry"
+          - "\"subjects\""
+          - "\"connectors\""
+          - "ActiveMQ"
+          - "Apache ActiveMQ"
+          - "Hawtio"
+          - "Artemis Console"
+          - "RocketMQ"
+          - "EMQX"
+          - "MQTT"
+          - "\"server_id\""
+          - "\"connections\""
+          - "\"subscriptions\""
+          - "NATS"
+          - "Pulsar Manager"
+          - "BookKeeper"
+          - "NSQ"
+          - "Flower"
+          - "Celery"
+
+      - type: dsl
+        dsl:
+          - "len(body) < 20971520"
+          - "!contains(tolower(body), 'not found')"
+          - "!contains(tolower(body), 'was not found')"
+          - "!contains(tolower(body), 'requested url')"
+          - "!contains(tolower(body), 'the requested resource')"
+          - "!contains(tolower(body), '404')"
+          - "!contains(tolower(body), 'page does not exist')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)(RabbitMQ|Kafka UI|Kafdrop|AKHQ|Redpanda Console|ActiveMQ|Hawtio|EMQX|NATS|Pulsar|NSQ|Flower)[^\\r\\n<]{0,140}"
+          - "(?im)\"(server_id|version|connections|subscriptions|queues|topics|consumer_groups|cluster_name)\"\\s*:\\s*[^,}\\r\\n]+"

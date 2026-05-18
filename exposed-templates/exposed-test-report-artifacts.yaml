@@ -1,0 +1,120 @@
+id: exposed-test-report-artifacts
+
+info:
+  name: Exposed JUnit Allure And Test Report Artifacts
+  author: p3i
+  severity: medium
+  description: Detects exposed test reports from JUnit, Allure, Surefire, pytest, Playwright, Cypress, Jest, and similar tooling that can leak internal paths, URLs, stack traces, screenshots, and environment details.
+  tags: exposure,tests,junit,allure,playwright,cypress,jest,reports
+  metadata:
+    max-request: 94
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{test_report_file}}"
+
+    payloads:
+      test_report_file:
+        - "junit.xml"
+        - "junit-report.xml"
+        - "junit-results.xml"
+        - "test-results.xml"
+        - "test-report.xml"
+        - "tests.xml"
+        - "xunit.xml"
+        - "surefire-reports/"
+        - "surefire-reports/TEST-results.xml"
+        - "target/surefire-reports/"
+        - "target/surefire-reports/TEST-results.xml"
+        - "target/failsafe-reports/"
+        - "build/test-results/test/"
+        - "build/test-results/test/TEST-results.xml"
+        - "build/reports/tests/test/index.html"
+        - "reports/junit.xml"
+        - "reports/test-results.xml"
+        - "reports/tests/index.html"
+        - "test-results/"
+        - "test-results/index.html"
+        - "test-results/junit.xml"
+        - "allure-report/"
+        - "allure-report/index.html"
+        - "allure-report/widgets/summary.json"
+        - "allure-report/widgets/suites.json"
+        - "allure-report/widgets/environment.json"
+        - "allure-results/"
+        - "allure-results/environment.properties"
+        - "allure-results/executor.json"
+        - "allure-results/categories.json"
+        - "playwright-report/"
+        - "playwright-report/index.html"
+        - "playwright-report/data/test-results.json"
+        - "playwright/.cache/"
+        - "cypress/reports/"
+        - "cypress/reports/index.html"
+        - "cypress/screenshots/"
+        - "cypress/videos/"
+        - "mochawesome-report/"
+        - "mochawesome-report/mochawesome.html"
+        - "mochawesome.json"
+        - "jest_html_reporters.html"
+        - "jest-report.html"
+        - "jest-junit.xml"
+        - "pytest-report.html"
+        - "pytest.xml"
+        - "rspec.html"
+        - "rspec.xml"
+        - "phpunit.xml"
+        - "phpunit-report.xml"
+        - "phpunit-junit.xml"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "<testsuite"
+          - "<testsuites"
+          - "<testcase"
+          - "<failure"
+          - "<error"
+          - "JUnit"
+          - "Surefire"
+          - "Failsafe"
+          - "Allure Report"
+          - "allure-report"
+          - "\"statistic\""
+          - "\"suites\""
+          - "\"environment\""
+          - "Playwright Test Report"
+          - "playwright-report"
+          - "Cypress"
+          - "Mochawesome"
+          - "Jest"
+          - "pytest"
+          - "RSpec"
+          - "PHPUnit"
+          - "Stack trace"
+          - "Traceback"
+          - "AssertionError"
+
+      - type: dsl
+        dsl:
+          - "len(body) < 104857600"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)(AssertionError|Traceback|Stack trace|Expected|Actual|failed|error).{0,160}"
+          - "(?i)(https?://[^\\s\"'<>]+|/home/[A-Za-z0-9._/-]+|/Users/[A-Za-z0-9._/-]+|[A-Z]:\\\\[A-Za-z0-9._\\\\ -]+)"
+

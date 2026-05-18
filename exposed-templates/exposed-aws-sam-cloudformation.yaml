@@ -1,0 +1,126 @@
+id: exposed-aws-sam-cloudformation
+
+info:
+  name: Exposed AWS SAM And CloudFormation Templates
+  author: p3i
+  severity: high
+  description: Detects exposed AWS SAM, CloudFormation, and related IaC templates that can leak ARNs, resource names, IAM policies, Lambda environment variables, parameters, outputs, and secrets.
+  tags: exposure,aws,sam,cloudformation,iac,serverless,secrets
+  metadata:
+    max-request: 92
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{sam_file}}"
+
+    payloads:
+      sam_file:
+        - "template.yaml"
+        - "template.yml"
+        - "template.json"
+        - "sam-template.yaml"
+        - "sam-template.yml"
+        - "sam-template.json"
+        - "samconfig.toml"
+        - "cloudformation.yaml"
+        - "cloudformation.yml"
+        - "cloudformation.json"
+        - "cfn.yaml"
+        - "cfn.yml"
+        - "cfn.json"
+        - "stack.yaml"
+        - "stack.yml"
+        - "stack.json"
+        - "aws.yaml"
+        - "aws.yml"
+        - "aws.json"
+        - "infrastructure.yaml"
+        - "infrastructure.yml"
+        - "infrastructure.json"
+        - "infra.yaml"
+        - "infra.yml"
+        - "infra.json"
+        - "deploy/template.yaml"
+        - "deploy/template.yml"
+        - "deploy/template.json"
+        - "deployment/template.yaml"
+        - "deployment/template.yml"
+        - "deployment/template.json"
+        - "infra/template.yaml"
+        - "infra/template.yml"
+        - "infra/template.json"
+        - "infrastructure/template.yaml"
+        - "infrastructure/template.yml"
+        - "infrastructure/template.json"
+        - "cloudformation/template.yaml"
+        - "cloudformation/template.yml"
+        - "cloudformation/template.json"
+        - "sam/template.yaml"
+        - "sam/template.yml"
+        - "sam/template.json"
+        - ".aws-sam/template.yaml"
+        - ".aws-sam/template.yml"
+        - ".aws-sam/build/template.yaml"
+        - ".aws-sam/build/template.yml"
+        - "cdk.json"
+        - "cdk.context.json"
+        - "cdk.out/manifest.json"
+        - "cdk.out/tree.json"
+        - "cdk.out/assembly-*.json"
+        - "cdk.out/*.template.json"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "AWSTemplateFormatVersion"
+          - "Transform: AWS::Serverless"
+          - "\"Transform\""
+          - "AWS::Serverless::Function"
+          - "AWS::Lambda::Function"
+          - "AWS::ApiGateway"
+          - "AWS::IAM::Role"
+          - "AWS::IAM::Policy"
+          - "AWS::S3::Bucket"
+          - "AWS::DynamoDB::Table"
+          - "AWS::SecretsManager::Secret"
+          - "Resources:"
+          - "\"Resources\""
+          - "Parameters:"
+          - "\"Parameters\""
+          - "Outputs:"
+          - "\"Outputs\""
+          - "Environment:"
+          - "\"Environment\""
+          - "Policies:"
+          - "\"Policies\""
+          - "arn:aws:"
+          - "[default.deploy.parameters]"
+          - "stack_name"
+          - "capabilities"
+          - "CDKMetadata"
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), '<html')"
+          - "!contains(tolower(body), '<!doctype')"
+          - "len(body) < 52428800"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)(arn:aws:[a-z0-9-]+:[a-z0-9-]*:[0-9]{12}:[^\\s\"'<>]+)"
+          - "(?im)(AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|SECRET|TOKEN|PASSWORD|DATABASE_URL|API_KEY|stack_name|region|s3_bucket|capabilities|RoleArn|FunctionName)[\"'\\s:=]+[^\\r\\n,;<>]+"
+

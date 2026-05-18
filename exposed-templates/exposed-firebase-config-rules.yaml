@@ -1,0 +1,112 @@
+id: exposed-firebase-config-rules
+
+info:
+  name: Exposed Firebase Configuration And Rules
+  author: p3i
+  severity: medium
+  description: Detects exposed Firebase project configuration, Firestore rules, Realtime Database rules, Storage rules, indexes, and client SDK configuration.
+  tags: exposure,firebase,firestore,rtdb,storage,rules,cloud
+  metadata:
+    max-request: 74
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{firebase_file}}"
+
+    payloads:
+      firebase_file:
+        - ".firebaserc"
+        - ".firebaserc.bak"
+        - ".firebaserc.old"
+        - ".firebaserc.save"
+        - "firebase.json"
+        - "firebase-debug.log"
+        - "firebase-debug.log.gz"
+        - "firestore.rules"
+        - "firestore.indexes.json"
+        - "database.rules.json"
+        - "storage.rules"
+        - "remoteconfig.template.json"
+        - "extensions.json"
+        - "firebase-config.json"
+        - "firebaseConfig.json"
+        - "firebase-config.js"
+        - "firebaseConfig.js"
+        - "google-services.json"
+        - "GoogleService-Info.plist"
+        - "app/google-services.json"
+        - "android/app/google-services.json"
+        - "ios/GoogleService-Info.plist"
+        - "ios/Runner/GoogleService-Info.plist"
+        - "config/firebase.json"
+        - "config/.firebaserc"
+        - "config/firestore.rules"
+        - "config/database.rules.json"
+        - "config/storage.rules"
+        - "public/firebase-config.js"
+        - "public/firebaseConfig.js"
+        - "src/firebase-config.js"
+        - "src/firebaseConfig.js"
+        - "app/firebase-config.js"
+        - "app/firebaseConfig.js"
+        - "functions/.runtimeconfig.json"
+        - "functions/firebase-debug.log"
+        - "functions/package.json"
+        - "firebase/functions/package.json"
+        - ".firebase/hosting.cache"
+        - ".firebase/hosting..cache"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"projects\""
+          - "\"default\""
+          - "\"firestore\""
+          - "\"database\""
+          - "\"storage\""
+          - "\"rules\""
+          - "\"indexes\""
+          - "rules_version"
+          - "service cloud.firestore"
+          - "service firebase.storage"
+          - "match /databases/{database}/documents"
+          - "allow read"
+          - "allow write"
+          - ".read"
+          - ".write"
+          - "firebaseConfig"
+          - "apiKey"
+          - "authDomain"
+          - "databaseURL"
+          - "projectId"
+          - "storageBucket"
+          - "messagingSenderId"
+          - "mobilesdk_app_id"
+          - "GOOGLE_APP_ID"
+          - "FIREBASE_CONFIG"
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), '<html')"
+          - "!contains(tolower(body), '<!doctype')"
+          - "len(body) < 20971520"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)(apiKey|authDomain|databaseURL|projectId|storageBucket|messagingSenderId|appId|mobilesdk_app_id|GOOGLE_APP_ID|FIREBASE_CONFIG)[\"'\\s:=]+[^\\r\\n,;<>]+"
+          - "(?im)(allow\\s+(read|write|create|update|delete):\\s*if\\s+[^;]+|\"\\.(read|write)\"\\s*:\\s*[^,}\\r\\n]+)"
+

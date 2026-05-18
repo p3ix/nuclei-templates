@@ -1,0 +1,103 @@
+id: exposed-well-known-files
+
+info:
+  name: Exposed Well-Known And Site Metadata Files
+  author: p3i
+  severity: low
+  description: Detects well-known and site metadata files that can disclose security contacts, app links, payment configuration, federation metadata, crawled paths, and platform integrations.
+  tags: exposure,well-known,metadata,securitytxt,robots,sitemap
+  metadata:
+    max-request: 78
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{well_known_file}}"
+
+    payloads:
+      well_known_file:
+        - ".well-known/security.txt"
+        - "security.txt"
+        - ".well-known/change-password"
+        - ".well-known/assetlinks.json"
+        - ".well-known/apple-app-site-association"
+        - "apple-app-site-association"
+        - ".well-known/webfinger"
+        - ".well-known/nodeinfo"
+        - ".well-known/host-meta"
+        - ".well-known/host-meta.json"
+        - ".well-known/matrix/server"
+        - ".well-known/matrix/client"
+        - ".well-known/mercure"
+        - ".well-known/dnt-policy.txt"
+        - ".well-known/gpc.json"
+        - ".well-known/traffic-advice"
+        - ".well-known/ai-plugin.json"
+        - ".well-known/ai-plugin.json"
+        - ".well-known/openapi.json"
+        - ".well-known/openapi.yaml"
+        - ".well-known/terraform.json"
+        - ".well-known/apple-developer-merchantid-domain-association"
+        - ".well-known/apple-app-site-association"
+        - ".well-known/acme-challenge/"
+        - "robots.txt"
+        - "sitemap.xml"
+        - "sitemap_index.xml"
+        - "crossdomain.xml"
+        - "clientaccesspolicy.xml"
+        - "humans.txt"
+        - "ads.txt"
+        - "app-ads.txt"
+        - "manifest.json"
+        - "browserconfig.xml"
+        - "service-worker.js"
+        - "sw.js"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 3
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "Contact:"
+          - "Expires:"
+          - "Preferred-Languages:"
+          - "canonical"
+          - "delegate_permission/common.handle_all_urls"
+          - "applinks:"
+          - "webcredentials:"
+          - "acct:"
+          - "nodeinfo"
+          - "m.server"
+          - "m.homeserver"
+          - "Disallow:"
+          - "Allow:"
+          - "<urlset"
+          - "<sitemapindex"
+          - "<cross-domain-policy"
+          - "<access-policy"
+          - "\"schema_version\""
+          - "\"api\""
+          - "\"auth\""
+          - "merchantid"
+          - "Service-Worker-Allowed"
+
+      - type: dsl
+        dsl:
+          - "len(body) < 5242880"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)(Contact|Policy|Acknowledgments|Hiring|Canonical|Disallow|Allow|Sitemap):\\s*[^\\r\\n]+"
+          - "(?i)(https?://[^\\s\"'<>]+|mailto:[^\\s\"'<>]+)"
+

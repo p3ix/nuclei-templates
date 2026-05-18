@@ -1,0 +1,134 @@
+id: exposed-kubernetes-docker
+
+info:
+  name: Exposed Kubernetes Docker And Container Artifacts
+  author: p3i
+  severity: high
+  description: Detects exposed Kubernetes, Docker, Helm, Compose, container runtime, and orchestration artifacts that may leak credentials, cluster details, services, or deployment internals.
+  tags: exposure,kubernetes,docker,helm,containers,devops
+  metadata:
+    max-request: 96
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{container_file}}"
+
+    payloads:
+      container_file:
+        - "Dockerfile"
+        - "Dockerfile.prod"
+        - "Dockerfile.production"
+        - "Dockerfile.dev"
+        - "Dockerfile.debug"
+        - ".dockerignore"
+        - "docker-compose.yml"
+        - "docker-compose.yaml"
+        - "docker-compose.override.yml"
+        - "docker-compose.prod.yml"
+        - "docker-compose.production.yml"
+        - "docker-compose.dev.yml"
+        - "compose.yml"
+        - "compose.yaml"
+        - ".docker/config.json"
+        - ".dockercfg"
+        - "docker/config.json"
+        - "kubernetes.yml"
+        - "kubernetes.yaml"
+        - "k8s.yml"
+        - "k8s.yaml"
+        - "deployment.yml"
+        - "deployment.yaml"
+        - "deploy.yml"
+        - "deploy.yaml"
+        - "service.yml"
+        - "service.yaml"
+        - "ingress.yml"
+        - "ingress.yaml"
+        - "secret.yml"
+        - "secret.yaml"
+        - "secrets.yml"
+        - "secrets.yaml"
+        - "configmap.yml"
+        - "configmap.yaml"
+        - "namespace.yml"
+        - "namespace.yaml"
+        - "cronjob.yml"
+        - "cronjob.yaml"
+        - "job.yml"
+        - "job.yaml"
+        - "kustomization.yml"
+        - "kustomization.yaml"
+        - "skaffold.yml"
+        - "skaffold.yaml"
+        - "tiltfile"
+        - "Tiltfile"
+        - "helm/Chart.yaml"
+        - "helm/values.yaml"
+        - "chart/Chart.yaml"
+        - "chart/values.yaml"
+        - "charts/Chart.yaml"
+        - "charts/values.yaml"
+        - "values.yaml"
+        - "values.yml"
+        - "values-prod.yaml"
+        - "values-production.yaml"
+        - "values-dev.yaml"
+        - "values-staging.yaml"
+        - ".helm/values.yaml"
+        - ".kube/config"
+        - "kubeconfig"
+        - "admin.conf"
+        - "containerd/config.toml"
+        - "daemon.json"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "FROM "
+          - "docker-compose"
+          - "services:"
+          - "image:"
+          - "ports:"
+          - "environment:"
+          - "\"auths\""
+          - "\"credsStore\""
+          - "apiVersion:"
+          - "kind:"
+          - "metadata:"
+          - "Deployment"
+          - "Service"
+          - "Ingress"
+          - "ConfigMap"
+          - "Secret"
+          - "current-context:"
+          - "certificate-authority-data:"
+          - "client-key-data:"
+          - "Chart.yaml"
+          - "appVersion:"
+          - "replicaCount:"
+          - "imagePullSecrets"
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), '<html')"
+          - "!contains(tolower(body), '<!doctype')"
+          - "len(body) < 10485760"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)(password|secret|token|api[_-]?key|image|namespace|server|registry|client-key-data)[\"'\\s:=]+[^\\r\\n,]+"
+

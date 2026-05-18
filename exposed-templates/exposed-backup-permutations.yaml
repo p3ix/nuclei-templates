@@ -1,0 +1,148 @@
+id: exposed-backup-permutations
+
+info:
+  name: Exposed Backup Naming Permutations
+  author: p3i
+  severity: high
+  description: Detects exposed backups using common domain, environment, extension, date, and archive naming patterns.
+  tags: exposure,backup,archive,dump,permutation
+  metadata:
+    max-request: 120
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{backup_name}}"
+
+    payloads:
+      backup_name:
+        - "{{Hostname}}.zip"
+        - "{{Hostname}}.tar.gz"
+        - "{{Hostname}}.tgz"
+        - "{{Hostname}}.rar"
+        - "{{Hostname}}.7z"
+        - "{{Hostname}}.sql"
+        - "{{Hostname}}.sql.gz"
+        - "{{Hostname}}.bak"
+        - "{{Hostname}}.old"
+        - "{{Hostname}}_backup.zip"
+        - "{{Hostname}}_backup.tar.gz"
+        - "{{Hostname}}_backup.sql"
+        - "{{Hostname}}-backup.zip"
+        - "{{Hostname}}-backup.tar.gz"
+        - "{{Hostname}}-backup.sql"
+        - "backup-{{Hostname}}.zip"
+        - "backup-{{Hostname}}.tar.gz"
+        - "backup-{{Hostname}}.sql"
+        - "wwwroot.zip"
+        - "wwwroot.tar.gz"
+        - "htdocs.zip"
+        - "htdocs.tar.gz"
+        - "public_html.zip"
+        - "public_html.tar.gz"
+        - "public_html.sql"
+        - "httpdocs.zip"
+        - "httpdocs.tar.gz"
+        - "vhost.zip"
+        - "vhosts.zip"
+        - "home.zip"
+        - "home.tar.gz"
+        - "root.zip"
+        - "root.tar.gz"
+        - "backup_2026.zip"
+        - "backup_2026.tar.gz"
+        - "backup_2026.sql"
+        - "backup-2026.zip"
+        - "backup-2026.tar.gz"
+        - "backup-2026.sql"
+        - "backup_2025.zip"
+        - "backup_2025.tar.gz"
+        - "backup_2025.sql"
+        - "backup-2025.zip"
+        - "backup-2025.tar.gz"
+        - "backup-2025.sql"
+        - "backup_2024.zip"
+        - "backup_2024.tar.gz"
+        - "backup_2024.sql"
+        - "backup-2024.zip"
+        - "backup-2024.tar.gz"
+        - "backup-2024.sql"
+        - "backup_latest.zip"
+        - "backup_latest.tar.gz"
+        - "backup_latest.sql"
+        - "backup-latest.zip"
+        - "backup-latest.tar.gz"
+        - "latest.zip"
+        - "latest.tar.gz"
+        - "latest.sql"
+        - "full-backup.zip"
+        - "full-backup.tar.gz"
+        - "full_backup.zip"
+        - "full_backup.tar.gz"
+        - "daily.zip"
+        - "daily.tar.gz"
+        - "weekly.zip"
+        - "weekly.tar.gz"
+        - "monthly.zip"
+        - "monthly.tar.gz"
+        - "prod.bak"
+        - "production.bak"
+        - "staging.bak"
+        - "dev.bak"
+        - "old.bak"
+        - "site.bak"
+        - "website.bak"
+        - "database_backup.sql"
+        - "database-backup.sql"
+        - "db_backup.sql"
+        - "db-backup.sql"
+        - "mysql_backup.sql"
+        - "mysql-backup.sql"
+        - "postgres_backup.sql"
+        - "postgres-backup.sql"
+        - "dump_2026.sql"
+        - "dump-2026.sql"
+        - "dump_2025.sql"
+        - "dump-2025.sql"
+        - "dump_latest.sql"
+        - "dump-latest.sql"
+
+    attack: batteringram
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: dsl
+        condition: or
+        dsl:
+          - "contains(tolower(header), 'application/zip')"
+          - "contains(tolower(header), 'application/x-zip')"
+          - "contains(tolower(header), 'application/x-gzip')"
+          - "contains(tolower(header), 'application/gzip')"
+          - "contains(tolower(header), 'application/x-tar')"
+          - "contains(tolower(header), 'application/x-7z')"
+          - "contains(tolower(header), 'application/x-rar')"
+          - "contains(tolower(header), 'application/octet-stream')"
+          - "contains(tolower(header), 'filename=')"
+          - "contains(tolower(body), 'create table')"
+          - "contains(tolower(body), 'insert into')"
+          - "contains(tolower(body), 'mysqldump')"
+          - "contains(tolower(body), 'postgresql database dump')"
+          - "contains(tolower(body), 'db_password')"
+          - "contains(tolower(body), 'database_url')"
+
+      - type: dsl
+        dsl:
+          - "len(body) > 128"
+          - "len(body) < 209715200"
+
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "(?i)(content-type|content-length|content-disposition): [^\\r\\n]+"
+

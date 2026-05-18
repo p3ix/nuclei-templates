@@ -1,0 +1,132 @@
+id: exposed-ai-llm-configs
+
+info:
+  name: Exposed AI LLM And Agent Configuration
+  author: p3i
+  severity: high
+  description: Detects exposed AI, LLM, vector database, agent, prompt, and provider configuration files that can leak API keys, model providers, internal prompts, tools, or data infrastructure.
+  tags: exposure,ai,llm,openai,agents,vector-db,secrets
+  metadata:
+    max-request: 88
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{ai_file}}"
+
+    payloads:
+      ai_file:
+        - "openai.env"
+        - "openai.json"
+        - "openai.yml"
+        - "openai.yaml"
+        - "anthropic.env"
+        - "anthropic.json"
+        - "gemini.env"
+        - "gemini.json"
+        - "azure-openai.env"
+        - "azure-openai.json"
+        - "llm.env"
+        - "llm.json"
+        - "llm.yml"
+        - "llm.yaml"
+        - "ai.env"
+        - "ai.json"
+        - "ai.yml"
+        - "ai.yaml"
+        - "agents.json"
+        - "agents.yml"
+        - "agents.yaml"
+        - "agent.json"
+        - "agent.yml"
+        - "agent.yaml"
+        - "prompt.txt"
+        - "prompts.txt"
+        - "prompts.json"
+        - "prompts.yml"
+        - "prompts.yaml"
+        - "system_prompt.txt"
+        - "system-prompt.txt"
+        - "config/prompts.yml"
+        - "config/prompts.yaml"
+        - "config/llm.yml"
+        - "config/llm.yaml"
+        - "config/ai.yml"
+        - "config/ai.yaml"
+        - "langchain.json"
+        - "langchain.yml"
+        - "langchain.yaml"
+        - "langgraph.json"
+        - "langgraph.yml"
+        - "langgraph.yaml"
+        - "flowise.json"
+        - "dify.json"
+        - "dify.yml"
+        - "llamaindex.json"
+        - "chainlit.md"
+        - ".chainlit/config.toml"
+        - "vectorstore.json"
+        - "vectors.json"
+        - "pinecone.json"
+        - "weaviate.json"
+        - "qdrant.json"
+        - "milvus.json"
+        - "chroma.sqlite3"
+        - "chromadb.sqlite3"
+        - "chroma/chroma.sqlite3"
+        - "storage/context.json"
+        - "storage/docstore.json"
+        - "storage/index_store.json"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "OPENAI_API_KEY"
+          - "ANTHROPIC_API_KEY"
+          - "GOOGLE_API_KEY"
+          - "GEMINI_API_KEY"
+          - "AZURE_OPENAI_API_KEY"
+          - "MISTRAL_API_KEY"
+          - "COHERE_API_KEY"
+          - "HUGGINGFACE_API_KEY"
+          - "PINECONE_API_KEY"
+          - "WEAVIATE_API_KEY"
+          - "QDRANT_API_KEY"
+          - "LANGCHAIN_API_KEY"
+          - "LANGSMITH_API_KEY"
+          - "model:"
+          - "\"model\""
+          - "system_prompt"
+          - "system prompt"
+          - "You are ChatGPT"
+          - "tools:"
+          - "\"tools\""
+          - "retriever"
+          - "vectorstore"
+          - "embeddings"
+          - "SQLite format 3"
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), '<html')"
+          - "!contains(tolower(body), '<!doctype')"
+          - "len(body) < 52428800"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)(OPENAI_API_KEY|ANTHROPIC_API_KEY|GOOGLE_API_KEY|GEMINI_API_KEY|AZURE_OPENAI_API_KEY|MISTRAL_API_KEY|COHERE_API_KEY|HUGGINGFACE_API_KEY|PINECONE_API_KEY|WEAVIATE_API_KEY|QDRANT_API_KEY|LANGCHAIN_API_KEY|LANGSMITH_API_KEY)[\"'\\s:=]+[^\\r\\n,;]+"
+          - "(?im)(system_prompt|prompt|model|provider|base_url|vectorstore|embedding)[\"'\\s:=]+[^\\r\\n,;]{1,180}"
+

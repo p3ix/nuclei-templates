@@ -1,0 +1,132 @@
+id: exposed-python-pickle-ml-artifacts
+
+info:
+  name: Exposed Python Pickle And ML Artifacts
+  author: p3i
+  severity: high
+  description: Detects exposed Python pickle files and common machine learning artifacts that may leak models, datasets, credentials, feature names, internal paths, or unsafe serialized objects.
+  tags: exposure,python,pickle,ml,model,notebook,data
+  metadata:
+    max-request: 110
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{pickle_file}}"
+
+    payloads:
+      pickle_file:
+        - "model.pkl"
+        - "model.pickle"
+        - "classifier.pkl"
+        - "classifier.pickle"
+        - "regressor.pkl"
+        - "regressor.pickle"
+        - "pipeline.pkl"
+        - "pipeline.pickle"
+        - "preprocessor.pkl"
+        - "preprocessor.pickle"
+        - "vectorizer.pkl"
+        - "vectorizer.pickle"
+        - "encoder.pkl"
+        - "encoder.pickle"
+        - "scaler.pkl"
+        - "scaler.pickle"
+        - "tokenizer.pkl"
+        - "tokenizer.pickle"
+        - "features.pkl"
+        - "features.pickle"
+        - "dataset.pkl"
+        - "dataset.pickle"
+        - "data.pkl"
+        - "data.pickle"
+        - "train.pkl"
+        - "train.pickle"
+        - "test.pkl"
+        - "test.pickle"
+        - "predictions.pkl"
+        - "predictions.pickle"
+        - "cache.pkl"
+        - "cache.pickle"
+        - "session.pkl"
+        - "sessions.pkl"
+        - "joblib.pkl"
+        - "model.joblib"
+        - "pipeline.joblib"
+        - "vectorizer.joblib"
+        - "scaler.joblib"
+        - "model.sav"
+        - "models/model.pkl"
+        - "models/model.pickle"
+        - "models/classifier.pkl"
+        - "models/pipeline.pkl"
+        - "models/vectorizer.pkl"
+        - "models/scaler.pkl"
+        - "ml/model.pkl"
+        - "ml/pipeline.pkl"
+        - "ml/vectorizer.pkl"
+        - "ai/model.pkl"
+        - "ai/pipeline.pkl"
+        - "data/model.pkl"
+        - "data/dataset.pkl"
+        - "data/features.pkl"
+        - "storage/model.pkl"
+        - "storage/cache.pkl"
+        - "artifacts/model.pkl"
+        - "artifacts/pipeline.pkl"
+        - "artifacts/model.joblib"
+        - "notebooks/model.pkl"
+        - "notebooks/data.pkl"
+        - "checkpoints/model.pkl"
+        - "checkpoints/checkpoint.pkl"
+        - "checkpoint.pkl"
+        - "checkpoint.pickle"
+        - "best_model.pkl"
+        - "best-model.pkl"
+        - "final_model.pkl"
+        - "final-model.pkl"
+        - "prod_model.pkl"
+        - "production_model.pkl"
+        - "staging_model.pkl"
+
+    attack: batteringram
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: dsl
+        condition: or
+        dsl:
+          - "contains(body, 'sklearn')"
+          - "contains(body, 'numpy')"
+          - "contains(body, 'pandas')"
+          - "contains(body, 'joblib')"
+          - "contains(body, 'torch')"
+          - "contains(body, 'tensorflow')"
+          - "contains(body, 'xgboost')"
+          - "contains(body, 'lightgbm')"
+          - "contains(body, 'pickle')"
+          - "contains(tolower(header), 'application/octet-stream') && len(body) > 64"
+          - "contains(tolower(header), 'application/x-pickle')"
+          - "contains(tolower(header), 'filename=')"
+
+      - type: dsl
+        dsl:
+          - "len(body) > 32"
+          - "len(body) < 209715200"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)(sklearn|numpy|pandas|joblib|torch|tensorflow|xgboost|lightgbm|pickle|model|vectorizer|scaler|classifier).{0,160}"
+          - "(?i)(/home/[A-Za-z0-9._/-]+|/Users/[A-Za-z0-9._/-]+|password|secret|token|api[_-]?key).{0,160}"
+      - type: regex
+        part: header
+        regex:
+          - "(?i)(content-type|content-length|content-disposition): [^\\r\\n]+"
+

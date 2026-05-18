@@ -1,0 +1,159 @@
+id: exposed-database-dumps
+
+info:
+  name: Exposed Database Dumps And Data Exports
+  author: p3i
+  severity: high
+  description: Detects exposed database dumps and exported datasets using common dump, export, backup, and environment naming patterns.
+  tags: exposure,database,dump,backup,export,sql
+  metadata:
+    max-request: 128
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{dump_file}}"
+
+    payloads:
+      dump_file:
+        - "dump.sql"
+        - "dump.sql.gz"
+        - "dump.sql.zip"
+        - "dump.dump"
+        - "dump.bak"
+        - "dump.tar.gz"
+        - "db.sql"
+        - "db.sql.gz"
+        - "db.dump"
+        - "db.bak"
+        - "db.tar.gz"
+        - "database.sql"
+        - "database.sql.gz"
+        - "database.dump"
+        - "database.bak"
+        - "database.tar.gz"
+        - "backup.sql"
+        - "backup.sql.gz"
+        - "backup.dump"
+        - "backup.bak"
+        - "backup.tar.gz"
+        - "export.sql"
+        - "export.sql.gz"
+        - "export.dump"
+        - "export.bak"
+        - "export.tar.gz"
+        - "data.sql"
+        - "data.sql.gz"
+        - "data.dump"
+        - "data.bak"
+        - "data.tar.gz"
+        - "mysql.sql"
+        - "mysql.sql.gz"
+        - "mysql.dump"
+        - "postgres.sql"
+        - "postgres.sql.gz"
+        - "postgres.dump"
+        - "postgresql.sql"
+        - "postgresql.sql.gz"
+        - "postgresql.dump"
+        - "mssql.sql"
+        - "mssql.bak"
+        - "oracle.dmp"
+        - "oracle.dump"
+        - "mongo.dump"
+        - "mongodb.dump"
+        - "redis.rdb"
+        - "dump.rdb"
+        - "prod.sql"
+        - "prod.sql.gz"
+        - "production.sql"
+        - "production.sql.gz"
+        - "staging.sql"
+        - "staging.sql.gz"
+        - "dev.sql"
+        - "dev.sql.gz"
+        - "test.sql"
+        - "test.sql.gz"
+        - "latest.sql"
+        - "latest.sql.gz"
+        - "latest.dump"
+        - "latest.tar.gz"
+        - "dump_2026.sql"
+        - "dump-2026.sql"
+        - "dump_2026.sql.gz"
+        - "dump-2026.sql.gz"
+        - "dump_2025.sql"
+        - "dump-2025.sql"
+        - "dump_2025.sql.gz"
+        - "dump-2025.sql.gz"
+        - "backup_2026.sql"
+        - "backup-2026.sql"
+        - "backup_2025.sql"
+        - "backup-2025.sql"
+        - "export_2026.sql"
+        - "export-2026.sql"
+        - "export_2025.sql"
+        - "export-2025.sql"
+        - "database_backup.sql"
+        - "database-backup.sql"
+        - "database_export.sql"
+        - "database-export.sql"
+        - "db_backup.sql"
+        - "db-backup.sql"
+        - "db_export.sql"
+        - "db-export.sql"
+        - "backup/dump.sql"
+        - "backup/database.sql"
+        - "backup/db.sql"
+        - "backups/dump.sql"
+        - "backups/database.sql"
+        - "backups/db.sql"
+        - "exports/export.sql"
+        - "exports/database.sql"
+        - "dumps/dump.sql"
+        - "dumps/database.sql"
+
+    attack: batteringram
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: dsl
+        condition: or
+        dsl:
+          - "contains(tolower(header), 'application/sql')"
+          - "contains(tolower(header), 'application/x-sql')"
+          - "contains(tolower(header), 'application/gzip')"
+          - "contains(tolower(header), 'application/x-gzip')"
+          - "contains(tolower(header), 'application/x-tar')"
+          - "contains(tolower(header), 'application/zip')"
+          - "contains(tolower(header), 'application/octet-stream')"
+          - "contains(tolower(header), 'filename=')"
+          - "contains(tolower(body), 'create table')"
+          - "contains(tolower(body), 'insert into')"
+          - "contains(tolower(body), 'mysqldump')"
+          - "contains(tolower(body), 'postgresql database dump')"
+          - "contains(tolower(body), 'pg_dump')"
+          - "contains(tolower(body), 'dumped from database version')"
+          - "contains(tolower(body), 'sqlite format 3')"
+          - "contains(tolower(body), 'mongodb')"
+
+      - type: dsl
+        dsl:
+          - "len(body) > 128"
+          - "len(body) < 209715200"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)(CREATE TABLE|INSERT INTO|COPY [A-Za-z0-9_.]+|PostgreSQL database dump|MySQL dump|Dumped from database version).{0,160}"
+      - type: regex
+        part: header
+        regex:
+          - "(?i)(content-type|content-length|content-disposition): [^\\r\\n]+"
+

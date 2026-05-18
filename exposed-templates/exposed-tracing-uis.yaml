@@ -1,0 +1,85 @@
+id: exposed-tracing-uis
+
+info:
+  name: Exposed Jaeger Zipkin Tempo And Tracing UIs
+  author: p3i
+  severity: medium
+  description: Detects exposed distributed tracing UIs and APIs such as Jaeger, Zipkin, Grafana Tempo, and OpenTelemetry collectors that can leak internal services, spans, endpoints, errors, and request metadata.
+  tags: exposure,tracing,jaeger,zipkin,tempo,opentelemetry
+  metadata:
+    max-request: 70
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/jaeger/"
+      - "{{BaseURL}}/jaeger/search"
+      - "{{BaseURL}}/jaeger/api/services"
+      - "{{BaseURL}}/jaeger/api/traces"
+      - "{{BaseURL}}/search"
+      - "{{BaseURL}}/api/services"
+      - "{{BaseURL}}/api/traces"
+      - "{{BaseURL}}/zipkin/"
+      - "{{BaseURL}}/zipkin"
+      - "{{BaseURL}}/zipkin/api/v2/services"
+      - "{{BaseURL}}/zipkin/api/v2/spans"
+      - "{{BaseURL}}/api/v2/services"
+      - "{{BaseURL}}/api/v2/spans"
+      - "{{BaseURL}}/tempo/"
+      - "{{BaseURL}}/tempo/api/search"
+      - "{{BaseURL}}/tempo/api/traces"
+      - "{{BaseURL}}/api/search"
+      - "{{BaseURL}}/api/traces"
+      - "{{BaseURL}}/tracing/"
+      - "{{BaseURL}}/tracing/search"
+      - "{{BaseURL}}/traces/"
+      - "{{BaseURL}}/trace/"
+      - "{{BaseURL}}/otel/"
+      - "{{BaseURL}}/opentelemetry/"
+      - "{{BaseURL}}/collector/"
+
+    redirects: true
+    max-redirects: 3
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 400
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "Jaeger UI"
+          - "Jaeger"
+          - "jaeger"
+          - "\"services\""
+          - "\"traceID\""
+          - "\"spanID\""
+          - "\"operationName\""
+          - "\"processes\""
+          - "\"spans\""
+          - "Zipkin"
+          - "zipkin"
+          - "\"traceId\""
+          - "\"parentId\""
+          - "\"annotations\""
+          - "\"localEndpoint\""
+          - "Tempo"
+          - "tempo"
+          - "OpenTelemetry"
+          - "otel"
+
+      - type: dsl
+        dsl:
+          - "len(body) < 52428800"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)(Jaeger|Zipkin|Tempo|OpenTelemetry|traceID|traceId|spanID|operationName)[^\\r\\n<]{0,160}"
+          - "(?i)\"(serviceName|operationName|traceID|traceId|spanID|localEndpoint|remoteEndpoint)\"\\s*:\\s*[^,\\r\\n]+"
+

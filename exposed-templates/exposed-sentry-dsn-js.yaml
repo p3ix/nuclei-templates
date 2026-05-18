@@ -1,0 +1,92 @@
+id: exposed-sentry-dsn-js
+
+info:
+  name: Exposed Sentry DSN In Client JavaScript
+  author: p3i
+  severity: medium
+  description: Detects Sentry DSNs and Sentry client configuration exposed in HTML or JavaScript assets, which can enable fake event submission and reveal project or organization identifiers.
+  tags: exposure,sentry,dsn,javascript,frontend,monitoring
+  metadata:
+    max-request: 70
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/"
+      - "{{BaseURL}}/index.html"
+      - "{{BaseURL}}/app.js"
+      - "{{BaseURL}}/main.js"
+      - "{{BaseURL}}/bundle.js"
+      - "{{BaseURL}}/runtime.js"
+      - "{{BaseURL}}/vendor.js"
+      - "{{BaseURL}}/static/js/main.js"
+      - "{{BaseURL}}/static/js/app.js"
+      - "{{BaseURL}}/static/js/bundle.js"
+      - "{{BaseURL}}/static/js/vendor.js"
+      - "{{BaseURL}}/assets/js/main.js"
+      - "{{BaseURL}}/assets/js/app.js"
+      - "{{BaseURL}}/assets/js/bundle.js"
+      - "{{BaseURL}}/assets/js/vendor.js"
+      - "{{BaseURL}}/js/main.js"
+      - "{{BaseURL}}/js/app.js"
+      - "{{BaseURL}}/js/bundle.js"
+      - "{{BaseURL}}/dist/main.js"
+      - "{{BaseURL}}/dist/app.js"
+      - "{{BaseURL}}/build/main.js"
+      - "{{BaseURL}}/build/app.js"
+      - "{{BaseURL}}/_next/static/chunks/main.js"
+      - "{{BaseURL}}/_next/static/chunks/pages/_app.js"
+      - "{{BaseURL}}/_next/static/chunks/pages/index.js"
+      - "{{BaseURL}}/_nuxt/app.js"
+      - "{{BaseURL}}/_nuxt/vendors.js"
+      - "{{BaseURL}}/config.js"
+      - "{{BaseURL}}/env.js"
+      - "{{BaseURL}}/settings.js"
+
+    redirects: true
+    max-redirects: 3
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "Sentry.init"
+          - "@sentry/"
+          - "sentry.io"
+          - "ingest.sentry.io"
+          - "SENTRY_DSN"
+          - "REACT_APP_SENTRY_DSN"
+          - "NEXT_PUBLIC_SENTRY_DSN"
+          - "VITE_SENTRY_DSN"
+          - "sentryDsn"
+          - "dsn:"
+          - "\"dsn\""
+          - "tracesSampleRate"
+          - "environment:"
+          - "release:"
+
+      - type: regex
+        part: body
+        regex:
+          - "https://[a-f0-9]{16,64}@o[0-9]+\\.ingest\\.sentry\\.io/[0-9]+"
+          - "https://[a-f0-9]{16,64}@[a-z0-9.-]*sentry\\.io/[0-9]+"
+          - "(?i)SENTRY_DSN[\"'\\s:=]+https://[^\\s\"'<>]+"
+
+      - type: dsl
+        dsl:
+          - "len(body) < 52428800"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "https://[a-f0-9]{16,64}@o[0-9]+\\.ingest\\.sentry\\.io/[0-9]+"
+          - "https://[a-f0-9]{16,64}@[a-z0-9.-]*sentry\\.io/[0-9]+"
+          - "(?i)(SENTRY_DSN|REACT_APP_SENTRY_DSN|NEXT_PUBLIC_SENTRY_DSN|VITE_SENTRY_DSN|sentryDsn)[\"'\\s:=]+https://[^\\s\"'<>]+"
+

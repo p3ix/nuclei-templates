@@ -1,0 +1,61 @@
+id: exposed-werkzeug-debugger
+
+info:
+  name: Exposed Werkzeug Interactive Debugger
+  author: p3i
+  severity: critical
+  description: Detects exposed Werkzeug interactive debugger in production. This debugger can allow interactive code execution if accessible and unlocked.
+  tags: exposure,werkzeug,flask,python,debug,rce
+  metadata:
+    max-request: 28
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/?__debugger__=yes"
+      - "{{BaseURL}}/console"
+      - "{{BaseURL}}/console/"
+      - "{{BaseURL}}/debugger"
+      - "{{BaseURL}}/debugger/"
+      - "{{BaseURL}}/werkzeug/console"
+      - "{{BaseURL}}/api/?__debugger__=yes"
+      - "{{BaseURL}}/admin/?__debugger__=yes"
+
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "Werkzeug Debugger"
+          - "werkzeug/debug"
+          - "__debugger__"
+          - "console.png"
+          - "Interactive Console"
+          - "Console Locked"
+          - "PIN"
+          - "Traceback"
+          - "The debugger caught an exception"
+          - "flask.debughelpers"
+          - "werkzeug.exceptions"
+          - "Python Console"
+
+      - type: dsl
+        dsl:
+          - "contains(tolower(body), 'werkzeug') || contains(body, '__debugger__') || contains(body, 'Console Locked')"
+          - "len(body) < 10485760"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)(Werkzeug Debugger|Interactive Console|Console Locked|The debugger caught an exception|__debugger__)"
+          - "(?im)(File \"[^\"]+\", line [0-9]+|Traceback \\(most recent call last\\))"
+

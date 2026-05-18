@@ -1,0 +1,105 @@
+id: exposed-remote-access-consoles
+
+info:
+  name: Exposed Remote Access And Web Terminal Consoles
+  author: p3i
+  severity: high
+  description: Detects exposed browser-based remote access, VNC, RDP gateway, SSH terminal, system administration, and web shell consoles that can expose privileged management interfaces.
+  tags: exposure,remote-access,terminal,vnc,rdp,ssh,admin
+  metadata:
+    max-request: 68
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{remote_path}}"
+
+    payloads:
+      remote_path:
+        - "guacamole/"
+        - "guacamole/#/"
+        - "rdp/"
+        - "remote/"
+        - "remoteaccess/"
+        - "remote-access/"
+        - "novnc/"
+        - "noVNC/"
+        - "novnc/vnc.html"
+        - "noVNC/vnc.html"
+        - "vnc.html"
+        - "vnc/"
+        - "websockify/"
+        - "ttyd/"
+        - "wetty/"
+        - "terminal/"
+        - "term/"
+        - "shell/"
+        - "console/"
+        - "webssh/"
+        - "ssh/"
+        - "gotty/"
+        - "xterm/"
+        - "cockpit/"
+        - "cockpit/login"
+        - "webmin/"
+        - "webmin/session_login.cgi"
+        - "usermin/"
+        - "adminer/"
+        - "filebrowser/"
+        - "files/"
+        - "code-server/"
+        - "coder/"
+        - "ide/"
+        - "cloud9/"
+        - "c9/"
+        - "jupyter/terminals/1"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 3
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 401
+          - 403
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "Apache Guacamole"
+          - "guacamole"
+          - "noVNC"
+          - "websockify"
+          - "ttyd"
+          - "WeTTY"
+          - "GoTTY"
+          - "WebSSH"
+          - "xterm.js"
+          - "Cockpit"
+          - "Webmin"
+          - "Usermin"
+          - "File Browser"
+          - "code-server"
+          - "Coder"
+          - "Cloud9"
+          - "Jupyter Terminal"
+
+      - type: dsl
+        dsl:
+          - "len(body) < 20971520"
+          - "!contains(tolower(body), 'not found')"
+          - "!contains(tolower(body), 'was not found')"
+          - "!contains(tolower(body), 'requested url')"
+          - "!contains(tolower(body), 'the requested resource')"
+          - "!contains(tolower(body), '404')"
+          - "!contains(tolower(body), 'page does not exist')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)(Apache Guacamole|noVNC|websockify|ttyd|WeTTY|GoTTY|WebSSH|Cockpit|Webmin|File Browser|code-server|Coder|Cloud9|Jupyter Terminal)[^\\r\\n<]{0,140}"

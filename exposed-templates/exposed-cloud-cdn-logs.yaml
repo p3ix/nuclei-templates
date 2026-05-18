@@ -1,0 +1,126 @@
+id: exposed-cloud-cdn-logs
+
+info:
+  name: Exposed Cloud CDN And Access Logs
+  author: p3i
+  severity: medium
+  description: Detects exposed cloud, CDN, load balancer, WAF, reverse proxy, and access logs that may disclose IPs, paths, tokens, buckets, origins, and internal infrastructure.
+  tags: exposure,logs,cloud,cdn,waf,access
+  metadata:
+    max-request: 94
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{cloud_log}}"
+
+    payloads:
+      cloud_log:
+        - "access.log"
+        - "access.log.gz"
+        - "cdn.log"
+        - "cdn.log.gz"
+        - "cloudfront.log"
+        - "cloudfront.log.gz"
+        - "cloudfront-access.log"
+        - "elb.log"
+        - "elb.log.gz"
+        - "alb.log"
+        - "alb.log.gz"
+        - "loadbalancer.log"
+        - "load-balancer.log"
+        - "waf.log"
+        - "waf.log.gz"
+        - "firewall.log"
+        - "firewall.log.gz"
+        - "modsec_audit.log"
+        - "modsecurity.log"
+        - "akamai.log"
+        - "akamai.log.gz"
+        - "cloudflare.log"
+        - "cloudflare.log.gz"
+        - "fastly.log"
+        - "fastly.log.gz"
+        - "varnish.log"
+        - "varnishncsa.log"
+        - "nginx/access.log"
+        - "nginx/error.log"
+        - "apache/access.log"
+        - "apache/error.log"
+        - "logs/access.log"
+        - "logs/access.log.gz"
+        - "logs/cdn.log"
+        - "logs/cloudfront.log"
+        - "logs/elb.log"
+        - "logs/alb.log"
+        - "logs/waf.log"
+        - "logs/firewall.log"
+        - "logs/nginx/access.log"
+        - "logs/nginx/error.log"
+        - "logs/apache/access.log"
+        - "logs/apache/error.log"
+        - "log/access.log"
+        - "log/cdn.log"
+        - "log/cloudfront.log"
+        - "log/waf.log"
+        - "var/log/access.log"
+        - "var/log/nginx/access.log"
+        - "var/log/apache2/access.log"
+        - "storage/logs/access.log"
+        - "storage/logs/cloudfront.log"
+        - "s3-access.log"
+        - "s3-access.log.gz"
+        - "bucket-access.log"
+        - "origin-access.log"
+        - "edge-access.log"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "CloudFront"
+          - "cloudfront.net"
+          - "ELB-HealthChecker"
+          - "AWSALB"
+          - "AWSALBCORS"
+          - "X-Amz-Cf-Id"
+          - "x-edge-location"
+          - "cs-uri-stem"
+          - "cs(User-Agent)"
+          - "cs(Referer)"
+          - "Cloudflare"
+          - "cf-ray"
+          - "AkamaiGHost"
+          - "Fastly"
+          - "ModSecurity"
+          - "Message: Warning"
+          - "GET /"
+          - "POST /"
+          - "HTTP/1.1"
+          - "HTTP/2.0"
+          - "upstream:"
+          - "client:"
+          - "request:"
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), '<html')"
+          - "len(body) < 52428800"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)(GET|POST|PUT|DELETE|PATCH)\\s+/[^\\s?#]*(\\?[^\\s#]*)?\\s+HTTP/[0-9.]+"
+          - "(?i)(authorization|bearer|token|api[_-]?key|session|jwt|password)=?[^\\s&]{0,120}"
+

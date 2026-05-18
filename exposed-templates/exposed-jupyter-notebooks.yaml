@@ -1,0 +1,126 @@
+id: exposed-jupyter-notebooks
+
+info:
+  name: Exposed Jupyter Notebooks And Jupyter Servers
+  author: p3i
+  severity: high
+  description: Detects exposed Jupyter notebooks, JupyterLab, Notebook, JupyterHub, kernelspecs, checkpoints, and notebook server pages that can leak code, credentials, tokens, outputs, datasets, or unauthenticated execution surfaces.
+  tags: exposure,jupyter,notebook,python,ml,ipynb
+  metadata:
+    max-request: 112
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{jupyter_path}}"
+
+    payloads:
+      jupyter_path:
+        - "notebook.ipynb"
+        - "Untitled.ipynb"
+        - "Untitled1.ipynb"
+        - "analysis.ipynb"
+        - "eda.ipynb"
+        - "exploration.ipynb"
+        - "model.ipynb"
+        - "training.ipynb"
+        - "train.ipynb"
+        - "test.ipynb"
+        - "demo.ipynb"
+        - "debug.ipynb"
+        - "dev.ipynb"
+        - "prod.ipynb"
+        - "production.ipynb"
+        - "staging.ipynb"
+        - "notebooks/"
+        - "notebooks/index.html"
+        - "notebooks/notebook.ipynb"
+        - "notebooks/Untitled.ipynb"
+        - "notebooks/analysis.ipynb"
+        - "notebooks/model.ipynb"
+        - "notebooks/training.ipynb"
+        - "notebooks/.ipynb_checkpoints/"
+        - "notebooks/.ipynb_checkpoints/notebook-checkpoint.ipynb"
+        - "notebooks/.ipynb_checkpoints/Untitled-checkpoint.ipynb"
+        - ".ipynb_checkpoints/"
+        - ".ipynb_checkpoints/notebook-checkpoint.ipynb"
+        - ".ipynb_checkpoints/Untitled-checkpoint.ipynb"
+        - "jupyter/"
+        - "jupyter/tree"
+        - "jupyter/lab"
+        - "jupyter/notebooks"
+        - "jupyter/api"
+        - "jupyter/api/contents"
+        - "jupyter/api/sessions"
+        - "jupyter/api/kernels"
+        - "jupyterhub/"
+        - "jupyterhub/hub/login"
+        - "jupyterhub/hub/home"
+        - "hub/login"
+        - "hub/home"
+        - "lab"
+        - "lab/"
+        - "tree"
+        - "tree/"
+        - "notebooks"
+        - "api"
+        - "api/contents"
+        - "api/sessions"
+        - "api/kernels"
+        - "kernelspecs"
+        - "kernelspecs/python3/kernel.json"
+        - "nbextensions"
+        - "static/components"
+        - "voila/"
+        - "voila/render/notebook.ipynb"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 3
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"nbformat\""
+          - "\"nbformat_minor\""
+          - "\"cells\""
+          - "\"cell_type\""
+          - "\"source\""
+          - "\"outputs\""
+          - "\"execution_count\""
+          - "Jupyter Notebook"
+          - "JupyterLab"
+          - "Jupyter Server"
+          - "JupyterHub"
+          - "jupyter-notebook"
+          - "jupyterlab"
+          - "ipynb"
+          - "api/contents"
+          - "\"kernelspec\""
+          - "\"language_info\""
+          - "\"kernel_name\""
+          - "\"type\": \"notebook\""
+          - "\"writable\""
+          - "\"last_modified\""
+          - "NotebookApp"
+          - "ServerApp"
+
+      - type: dsl
+        dsl:
+          - "len(body) < 104857600"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)(OPENAI_API_KEY|AWS_SECRET_ACCESS_KEY|password|secret|token|api[_-]?key|DATABASE_URL|mongodb://|postgres://|mysql://).{0,180}"
+          - "(?i)(Jupyter Notebook|JupyterLab|JupyterHub|api/contents|\"nbformat\"|\"cell_type\"|\"kernelspec\").{0,160}"
+          - "(?i)(/home/[A-Za-z0-9._/-]+|/Users/[A-Za-z0-9._/-]+|[A-Z]:\\\\[A-Za-z0-9._\\\\ -]+)"
+

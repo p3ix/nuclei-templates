@@ -1,0 +1,64 @@
+id: exposed-rails-info-pages
+
+info:
+  name: Exposed Ruby On Rails Info Pages
+  author: p3i
+  severity: medium
+  description: Detects exposed Rails info, routes, properties, and mailer preview pages that can disclose application routes, environment, mailer classes, and framework internals.
+  tags: exposure,rails,ruby,debug,routes,mailers
+  metadata:
+    max-request: 28
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/rails/info/properties"
+      - "{{BaseURL}}/rails/info/routes"
+      - "{{BaseURL}}/rails/mailers"
+      - "{{BaseURL}}/rails/mailers/"
+      - "{{BaseURL}}/rails/conductor/action_mailbox/inbound_emails"
+      - "{{BaseURL}}/admin/rails/info/properties"
+      - "{{BaseURL}}/admin/rails/info/routes"
+      - "{{BaseURL}}/admin/rails/mailers"
+      - "{{BaseURL}}/app/rails/info/properties"
+      - "{{BaseURL}}/app/rails/info/routes"
+
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "Ruby on Rails"
+          - "Rails Info"
+          - "Rails::Info"
+          - "Routes"
+          - "Prefix Verb URI Pattern"
+          - "Controller#Action"
+          - "rails/info"
+          - "Action Mailer"
+          - "Mailer Previews"
+          - "Preview all emails"
+          - "action_mailbox"
+          - "RAILS_ENV"
+          - "Rails version"
+          - "Ruby version"
+
+      - type: dsl
+        dsl:
+          - "len(body) < 10485760"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)(GET|POST|PATCH|PUT|DELETE)\\s+(/[A-Za-z0-9_./:()-]+)"
+          - "(?i)(Rails version|Ruby version|RAILS_ENV|Action Mailer|Mailer Previews)[^\\r\\n<]{0,120}"
+

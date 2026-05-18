@@ -1,0 +1,112 @@
+id: exposed-low-code-admin-consoles
+
+info:
+  name: Exposed Low-Code Headless CMS And Internal Tool Consoles
+  author: p3i
+  severity: medium
+  description: Detects exposed low-code, no-code, headless CMS, GraphQL engine, and internal-tool administration consoles that can reveal schemas, users, integrations, data sources, or application metadata.
+  tags: exposure,lowcode,cms,admin,hasura,strapi,directus,internal-tools
+  metadata:
+    max-request: 74
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{lowcode_path}}"
+
+    payloads:
+      lowcode_path:
+        - "admin/"
+        - "strapi/admin"
+        - "strapi/admin/"
+        - "directus/"
+        - "directus/admin"
+        - "directus/admin/"
+        - "ghost/"
+        - "ghost/#/signin"
+        - "keystone/"
+        - "keystone/signin"
+        - "payload/admin"
+        - "payload/admin/"
+        - "sanity/"
+        - "sanity/desk"
+        - "hasura/"
+        - "hasura/console"
+        - "console/"
+        - "v1/graphql"
+        - "appsmith/"
+        - "applications/"
+        - "tooljet/"
+        - "tooljet/login"
+        - "budibase/"
+        - "nocodb/"
+        - "noco/"
+        - "baserow/"
+        - "retool/"
+        - "supabase/"
+        - "supabase/project"
+        - "postgrest/"
+        - "graphiql/"
+        - "graphql/console"
+        - "nhost/"
+        - "pocketbase/"
+        - "_/"
+        - "_admin/"
+        - "studio/"
+        - "cms/"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 3
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 401
+          - 403
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "Strapi"
+          - "strapi"
+          - "Directus"
+          - "directus"
+          - "Ghost Admin"
+          - "Keystone"
+          - "Payload"
+          - "Sanity Studio"
+          - "Hasura Console"
+          - "hasura-console"
+          - "Appsmith"
+          - "ToolJet"
+          - "Budibase"
+          - "NocoDB"
+          - "Baserow"
+          - "Retool"
+          - "Supabase"
+          - "PostgREST"
+          - "PocketBase"
+          - "\"__schema\""
+          - "\"data_sources\""
+          - "\"collections\""
+
+      - type: dsl
+        dsl:
+          - "len(body) < 20971520"
+          - "!contains(tolower(body), 'not found')"
+          - "!contains(tolower(body), 'was not found')"
+          - "!contains(tolower(body), 'requested url')"
+          - "!contains(tolower(body), 'the requested resource')"
+          - "!contains(tolower(body), '404')"
+          - "!contains(tolower(body), 'page does not exist')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)(Strapi|Directus|Ghost Admin|Keystone|Payload|Sanity Studio|Hasura Console|Appsmith|ToolJet|Budibase|NocoDB|Baserow|Retool|Supabase|PocketBase)[^\\r\\n<]{0,140}"
+          - "(?im)\"(collections|data_sources|graphql|admin|project|workspace|organization)\"\\s*:\\s*[^,}\\r\\n]+"

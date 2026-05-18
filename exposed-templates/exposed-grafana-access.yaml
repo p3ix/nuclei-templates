@@ -1,0 +1,75 @@
+id: exposed-grafana-access
+
+info:
+  name: Exposed Grafana Login Or Anonymous Access
+  author: p3i
+  severity: medium
+  description: Detects exposed Grafana instances, login pages, anonymous dashboards, and public API responses. This template does not attempt default credentials.
+  tags: exposure,grafana,monitoring,dashboard,anonymous
+  metadata:
+    max-request: 58
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/grafana/"
+      - "{{BaseURL}}/grafana/login"
+      - "{{BaseURL}}/grafana/api/health"
+      - "{{BaseURL}}/grafana/api/org"
+      - "{{BaseURL}}/grafana/api/search"
+      - "{{BaseURL}}/grafana/dashboards"
+      - "{{BaseURL}}/grafana/dashboards/home"
+      - "{{BaseURL}}/login"
+      - "{{BaseURL}}/api/health"
+      - "{{BaseURL}}/api/org"
+      - "{{BaseURL}}/api/search"
+      - "{{BaseURL}}/dashboards"
+      - "{{BaseURL}}/dashboards/home"
+      - "{{BaseURL}}/d/"
+      - "{{BaseURL}}/public-dashboards/"
+      - "{{BaseURL}}/dashboard/snapshot/"
+      - "{{BaseURL}}/grafana/public-dashboards/"
+      - "{{BaseURL}}/grafana/dashboard/snapshot/"
+
+    redirects: true
+    max-redirects: 3
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 401
+          - 403
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "Grafana"
+          - "grafana-app"
+          - "Grafana Labs"
+          - "\"database\""
+          - "\"version\""
+          - "\"commit\""
+          - "\"orgId\""
+          - "\"title\""
+          - "\"uri\""
+          - "\"type\":\"dash-db\""
+          - "\"isStarred\""
+          - "public-dashboards"
+          - "dashboard-solo"
+          - "Welcome to Grafana"
+          - "login-subtitle"
+
+      - type: dsl
+        dsl:
+          - "len(body) < 20971520"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)(Grafana|grafana-app|Welcome to Grafana|public-dashboards|dashboard/snapshot)[^\\r\\n<]{0,160}"
+          - "(?i)\"(title|uri|url|version|commit|database)\"\\s*:\\s*\"[^\"]+\""
+

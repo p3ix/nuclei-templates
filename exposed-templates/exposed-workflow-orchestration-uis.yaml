@@ -1,0 +1,114 @@
+id: exposed-workflow-orchestration-uis
+
+info:
+  name: Exposed Workflow Orchestration And Job Consoles
+  author: p3i
+  severity: medium
+  description: Detects exposed workflow orchestration, scheduler, job runner, and automation consoles that can reveal DAGs, tasks, logs, parameters, worker topology, or deployment metadata.
+  tags: exposure,workflow,scheduler,airflow,argo,temporal,prefect,dagster
+  metadata:
+    max-request: 72
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{workflow_path}}"
+
+    payloads:
+      workflow_path:
+        - "airflow/"
+        - "airflow/home"
+        - "admin/airflow/"
+        - "argo/"
+        - "argo-workflows/"
+        - "workflows/"
+        - "workflow/"
+        - "temporal/"
+        - "temporalio/"
+        - "temporal-web/"
+        - "prefect/"
+        - "prefect-ui/"
+        - "dagster/"
+        - "dagit/"
+        - "luigi/"
+        - "azkaban/"
+        - "rundeck/"
+        - "rundeck/user/login"
+        - "jenkins/"
+        - "jenkins/login"
+        - "buildkite/"
+        - "drone/"
+        - "concourse/"
+        - "go/"
+        - "go/pipelines"
+        - "spinnaker/"
+        - "deck/"
+        - "tekton/"
+        - "tekton-dashboard/"
+        - "argo-cd/"
+        - "argocd/"
+        - "cd/"
+        - "cron/"
+        - "cronicle/"
+        - "scheduler/"
+        - "jobs/"
+        - "tasks/"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 3
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 401
+          - 403
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "Airflow"
+          - "Apache Airflow"
+          - "DAGs"
+          - "Argo Workflows"
+          - "argo-server"
+          - "Temporal Web"
+          - "Temporal"
+          - "Prefect"
+          - "Dagster"
+          - "Dagit"
+          - "Luigi"
+          - "Azkaban"
+          - "Rundeck"
+          - "Jenkins"
+          - "Buildkite"
+          - "Drone CI"
+          - "Concourse"
+          - "GoCD"
+          - "Spinnaker"
+          - "Tekton Dashboard"
+          - "Argo CD"
+          - "Cronicle"
+          - "\"workflows\""
+          - "\"dag_id\""
+          - "\"pipeline\""
+
+      - type: dsl
+        dsl:
+          - "len(body) < 20971520"
+          - "!contains(tolower(body), 'not found')"
+          - "!contains(tolower(body), 'was not found')"
+          - "!contains(tolower(body), 'requested url')"
+          - "!contains(tolower(body), 'the requested resource')"
+          - "!contains(tolower(body), '404')"
+          - "!contains(tolower(body), 'page does not exist')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)(Apache Airflow|Argo Workflows|Temporal Web|Prefect|Dagster|Luigi|Azkaban|Rundeck|Jenkins|Concourse|GoCD|Spinnaker|Tekton|Argo CD|Cronicle)[^\\r\\n<]{0,140}"
+          - "(?im)\"(dag_id|workflow|pipeline|job|task|environment|namespace|cluster)\"\\s*:\\s*[^,}\\r\\n]+"

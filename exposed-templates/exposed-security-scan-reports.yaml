@@ -1,0 +1,151 @@
+id: exposed-security-scan-reports
+
+info:
+  name: Exposed SAST DAST And Security Scan Reports
+  author: p3i
+  severity: high
+  description: Detects exposed security scan reports from Sonar, Semgrep, Trivy, Snyk, OWASP ZAP, Burp, Dependency-Check, Checkov, tfsec, Gitleaks, and similar tools.
+  tags: exposure,security,sast,dast,sonar,semgrep,trivy,snyk,zap,burp
+  metadata:
+    max-request: 112
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{security_report_file}}"
+
+    payloads:
+      security_report_file:
+        - "sonar-report.json"
+        - "sonar-report.html"
+        - "sonar-project.properties"
+        - ".scannerwork/report-task.txt"
+        - ".scannerwork/scanner-report/component-1.pb"
+        - "semgrep.json"
+        - "semgrep.sarif"
+        - "semgrep-report.json"
+        - "semgrep-report.sarif"
+        - "trivy.json"
+        - "trivy.sarif"
+        - "trivy-report.json"
+        - "trivy-report.sarif"
+        - "snyk.json"
+        - "snyk.sarif"
+        - "snyk-report.json"
+        - "snyk-report.html"
+        - "zap-report.html"
+        - "zap-report.json"
+        - "zap-report.xml"
+        - "owasp-zap-report.html"
+        - "owasp-zap-report.json"
+        - "burp-report.html"
+        - "burp-report.xml"
+        - "burp-report.json"
+        - "dependency-check-report.html"
+        - "dependency-check-report.json"
+        - "dependency-check-report.xml"
+        - "dependency-check-junit.xml"
+        - "gitleaks-report.json"
+        - "gitleaks.json"
+        - "gitleaks.sarif"
+        - "detect-secrets.json"
+        - ".secrets.baseline"
+        - "trufflehog.json"
+        - "checkov-report.json"
+        - "checkov-report.sarif"
+        - "tfsec.json"
+        - "tfsec.sarif"
+        - "tfsec-report.json"
+        - "kics-results.json"
+        - "kics-results.sarif"
+        - "grype.json"
+        - "grype.sarif"
+        - "grype-report.json"
+        - "clair-report.json"
+        - "anchore-report.json"
+        - "bandit.json"
+        - "bandit-report.json"
+        - "brakeman.html"
+        - "brakeman.json"
+        - "brakeman-report.html"
+        - "brakeman-report.json"
+        - "npm-audit.json"
+        - "yarn-audit.json"
+        - "audit.json"
+        - "audit-report.json"
+        - "reports/sonar-report.json"
+        - "reports/semgrep.sarif"
+        - "reports/trivy.json"
+        - "reports/snyk.json"
+        - "reports/zap-report.html"
+        - "reports/burp-report.html"
+        - "reports/dependency-check-report.html"
+        - "reports/gitleaks-report.json"
+        - "reports/checkov-report.json"
+        - "reports/tfsec.json"
+        - "security/semgrep.sarif"
+        - "security/trivy.json"
+        - "security/snyk.json"
+        - "security/zap-report.html"
+        - "security/burp-report.html"
+        - "security/gitleaks-report.json"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "SonarQube"
+          - "sonar.projectKey"
+          - "scanner-report"
+          - "Semgrep"
+          - "\"semgrep\""
+          - "\"sarif\""
+          - "\"runs\""
+          - "\"rules\""
+          - "\"results\""
+          - "Trivy"
+          - "\"Vulnerabilities\""
+          - "\"Misconfigurations\""
+          - "Snyk"
+          - "OWASP ZAP"
+          - "ZAP Scanning Report"
+          - "Burp Suite"
+          - "Dependency-Check"
+          - "Gitleaks"
+          - "detect-secrets"
+          - "trufflehog"
+          - "Checkov"
+          - "tfsec"
+          - "KICS"
+          - "Grype"
+          - "Bandit"
+          - "Brakeman"
+          - "npm audit"
+          - "\"severity\""
+          - "\"vulnerabilities\""
+          - "\"cve\""
+          - "\"CVE-"
+          - "\"secret\""
+
+      - type: dsl
+        dsl:
+          - "len(body) < 104857600"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)(CVE-[0-9]{4}-[0-9]{4,}|CWE-[0-9]+|GHSA-[a-z0-9-]+)"
+          - "(?im)(critical|high|medium|low|severity|vulnerab|secret|token|password|api[_-]?key).{0,180}"
+          - "(?i)(https?://[^\\s\"'<>]+|/home/[A-Za-z0-9._/-]+|/Users/[A-Za-z0-9._/-]+)"
+

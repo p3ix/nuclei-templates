@@ -1,0 +1,90 @@
+id: exposed-node-express-debug
+
+info:
+  name: Exposed Node Express Debug Routes
+  author: p3i
+  severity: medium
+  description: Detects exposed Node.js and Express debug routes, route listings, development endpoints, and runtime diagnostics.
+  tags: exposure,nodejs,express,debug,routes,javascript
+  metadata:
+    max-request: 54
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/__routes"
+      - "{{BaseURL}}/__routes/"
+      - "{{BaseURL}}/_routes"
+      - "{{BaseURL}}/_routes/"
+      - "{{BaseURL}}/routes"
+      - "{{BaseURL}}/routes.json"
+      - "{{BaseURL}}/debug/routes"
+      - "{{BaseURL}}/debug/routes.json"
+      - "{{BaseURL}}/debug"
+      - "{{BaseURL}}/debug/"
+      - "{{BaseURL}}/debug/vars"
+      - "{{BaseURL}}/debug/config"
+      - "{{BaseURL}}/debug/env"
+      - "{{BaseURL}}/debug/pprof"
+      - "{{BaseURL}}/__debug"
+      - "{{BaseURL}}/__debug__"
+      - "{{BaseURL}}/__express"
+      - "{{BaseURL}}/__express/routes"
+      - "{{BaseURL}}/_express/routes"
+      - "{{BaseURL}}/express/routes"
+      - "{{BaseURL}}/api/__routes"
+      - "{{BaseURL}}/api/debug"
+      - "{{BaseURL}}/api/debug/routes"
+      - "{{BaseURL}}/admin/__routes"
+      - "{{BaseURL}}/admin/debug"
+      - "{{BaseURL}}/status"
+      - "{{BaseURL}}/status.json"
+      - "{{BaseURL}}/health"
+      - "{{BaseURL}}/healthcheck"
+
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "Express"
+          - "express"
+          - "Node.js"
+          - "nodejs"
+          - "\"routes\""
+          - "\"method\""
+          - "\"path\""
+          - "\"stack\""
+          - "\"regexp\""
+          - "\"middleware\""
+          - "\"router\""
+          - "app._router"
+          - "Layer"
+          - "Route"
+          - "process.env"
+          - "NODE_ENV"
+          - "DEBUG="
+          - "\"uptime\""
+          - "\"memoryUsage\""
+          - "\"versions\""
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), '<!doctype html')"
+          - "len(body) < 10485760"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)(GET|POST|PUT|PATCH|DELETE)\\s+(/[A-Za-z0-9_./:()-]+)"
+          - "(?im)(NODE_ENV|process\\.env|password|secret|token|api[_-]?key|authorization).{0,160}"
+

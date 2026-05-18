@@ -1,0 +1,123 @@
+id: exposed-database-admin-panels
+
+info:
+  name: Exposed Database Admin Panels
+  author: p3i
+  severity: medium
+  description: Detects exposed database administration panels and web consoles that may increase attack surface or reveal service details.
+  tags: exposure,database,admin,panel,phpmyadmin,adminer,pgadmin
+  metadata:
+    max-request: 72
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{db_panel}}"
+
+    payloads:
+      db_panel:
+        - "phpmyadmin/"
+        - "phpMyAdmin/"
+        - "pma/"
+        - "myadmin/"
+        - "mysql/"
+        - "dbadmin/"
+        - "db-admin/"
+        - "database/"
+        - "admin/phpmyadmin/"
+        - "admin/pma/"
+        - "admin/mysql/"
+        - "administrator/phpmyadmin/"
+        - "adminer.php"
+        - "adminer/"
+        - "Adminer.php"
+        - "editor.php"
+        - "pgadmin/"
+        - "pgadmin4/"
+        - "phppgadmin/"
+        - "phpPgAdmin/"
+        - "mongo-express/"
+        - "mongo/"
+        - "mongodb/"
+        - "rockmongo/"
+        - "redis/"
+        - "redis-commander/"
+        - "redisadmin/"
+        - "solr/"
+        - "solr/admin/"
+        - "elasticsearch/"
+        - "_plugin/head/"
+        - "_plugin/kopf/"
+        - "couchdb/"
+        - "_utils/"
+        - "influxdb/"
+        - "chronograf/"
+        - "neo4j/"
+        - "arangodb/"
+        - "orientdb/"
+        - "h2-console/"
+        - "druid/"
+        - "superset/"
+        - "metabase/"
+        - "kibana/"
+        - "grafana/"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 3
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 401
+          - 403
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "pma_username"
+          - "Welcome to phpMyAdmin"
+          - "phpMyAdmin</title>"
+          - "phpMyAdmin - "
+          - "name=\"pma_servername\""
+          - "Adminer"
+          - "Login - Adminer"
+          - "pgAdmin"
+          - "phpPgAdmin"
+          - "mongo-express"
+          - "RockMongo"
+          - "Redis Commander"
+          - "Solr Admin"
+          - "Elasticsearch"
+          - "CouchDB"
+          - "Fauxton"
+          - "Chronograf"
+          - "Neo4j Browser"
+          - "ArangoDB"
+          - "H2 Console"
+          - "Apache Druid"
+          - "Apache Superset"
+          - "Metabase"
+          - "Kibana"
+          - "Grafana"
+
+      - type: dsl
+        dsl:
+          - "len(body) < 10485760"
+          - "!contains(tolower(body), 'not found')"
+          - "!contains(tolower(body), 'was not found')"
+          - "!contains(tolower(body), 'requested url')"
+          - "!contains(tolower(body), 'the requested resource')"
+          - "!contains(tolower(body), '404')"
+          - "!contains(tolower(body), 'page does not exist')"
+          - "!contains(tolower(body), 'no encontrado')"
+          - "!contains(tolower(body), 'no se ha encontrado')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)(Welcome to phpMyAdmin|pma_username|Adminer|pgAdmin|mongo-express|Redis Commander|Solr Admin|Kibana|Grafana|Metabase)[^\\r\\n<]{0,120}"

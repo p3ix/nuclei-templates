@@ -1,0 +1,123 @@
+id: exposed-cms-sensitive-files
+
+info:
+  name: Exposed CMS Sensitive Files
+  author: p3i
+  severity: medium
+  description: Detects exposed CMS-specific files from WordPress, Drupal, Joomla, Magento, PrestaShop, and common plugins that can leak versions, backups, configs, logs, or install state.
+  tags: exposure,cms,wordpress,drupal,joomla,magento,prestashop
+  metadata:
+    max-request: 90
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{cms_file}}"
+
+    payloads:
+      cms_file:
+        - "wp-config.php.bak"
+        - "wp-config.php.old"
+        - "wp-config.php.save"
+        - "wp-config.php~"
+        - "wp-config-sample.php"
+        - "wp-content/debug.log"
+        - "wp-content/uploads/debug.log"
+        - "wp-content/backup-db/"
+        - "wp-content/backups/"
+        - "wp-content/updraft/"
+        - "wp-content/ai1wm-backups/"
+        - "wp-content/wflogs/"
+        - "wp-content/plugins/revslider/temp/update_extract/"
+        - "wp-content/plugins/revslider/temp/update_extract/revslider/"
+        - "wp-content/plugins/woocommerce/logs/"
+        - "wp-content/uploads/wc-logs/"
+        - "wp-content/uploads/woocommerce_uploads/"
+        - "readme.html"
+        - "license.txt"
+        - "xmlrpc.php"
+        - "sites/default/settings.php.bak"
+        - "sites/default/settings.php.old"
+        - "sites/default/files/"
+        - "sites/default/files/private/"
+        - "sites/default/files/php/"
+        - "CHANGELOG.txt"
+        - "core/CHANGELOG.txt"
+        - "update.php"
+        - "install.php"
+        - "administrator/manifests/files/joomla.xml"
+        - "configuration.php.bak"
+        - "configuration.php.old"
+        - "configuration.php~"
+        - "configuration.php-dist"
+        - "administrator/logs/"
+        - "logs/"
+        - "tmp/"
+        - "app/etc/local.xml"
+        - "app/etc/env.php"
+        - "app/etc/config.php"
+        - "var/log/system.log"
+        - "var/log/exception.log"
+        - "var/report/"
+        - "downloader/"
+        - "downloader/index.php"
+        - "adminer.php"
+        - "phpmyadmin/"
+        - "pma/"
+        - "app/config/parameters.php"
+        - "app/config/parameters.yml"
+        - "app/config/config.inc.php"
+        - "config/settings.inc.php"
+        - "config/settings.old.php"
+        - "var/logs/"
+        - "var/cache/"
+        - "install/"
+        - "install-dev/"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 3
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 403
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "define('DB_NAME'"
+          - "define( 'DB_NAME'"
+          - "define('DB_PASSWORD'"
+          - "WordPress"
+          - "wp-content"
+          - "This file is part of WordPress"
+          - "Drupal"
+          - "sites/default"
+          - "Joomla!"
+          - "<extension"
+          - "public $password"
+          - "Mage::"
+          - "<crypt>"
+          - "install_date"
+          - "PrestaShop"
+          - "_DB_PASSWD_"
+          - "Index of /"
+          - "Directory listing"
+          - "Fatal error"
+          - "PHP Warning"
+
+      - type: dsl
+        dsl:
+          - "status_code == 403 || len(body) < 10485760"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)(DB_NAME|DB_USER|DB_PASSWORD|_DB_NAME_|_DB_USER_|_DB_PASSWD_|password|crypt|secret|key)[\"'\\s:=(),]+[^\\r\\n,;<>]+"
+          - "(?i)(WordPress|Drupal|Joomla!|Magento|PrestaShop)[^\\r\\n<]{0,120}"
+

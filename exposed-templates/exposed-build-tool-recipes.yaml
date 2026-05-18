@@ -1,0 +1,110 @@
+id: exposed-build-tool-recipes
+
+info:
+  name: Exposed Build Tool Recipes With Sensitive Commands
+  author: p3i
+  severity: medium
+  description: Detects exposed Makefile, Taskfile, Justfile, and related command recipes that disclose backup, tar, deploy, rsync, SSH, Docker, Kubernetes, Terraform, or secret-handling commands.
+  tags: exposure,tooling,makefile,taskfile,justfile,deploy,backup
+  metadata:
+    max-request: 64
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{recipe_file}}"
+
+    payloads:
+      recipe_file:
+        - "Makefile"
+        - "makefile"
+        - "GNUmakefile"
+        - "Taskfile.yml"
+        - "Taskfile.yaml"
+        - "taskfile.yml"
+        - "taskfile.yaml"
+        - "Justfile"
+        - "justfile"
+        - "Rakefile"
+        - "Jakefile"
+        - "Magefile.go"
+        - "build.mk"
+        - "common.mk"
+        - "docker.mk"
+        - "deploy.mk"
+        - "scripts/Makefile"
+        - "build/Makefile"
+        - "deploy/Makefile"
+        - "deployment/Makefile"
+        - "infra/Makefile"
+        - "infrastructure/Makefile"
+        - "ops/Makefile"
+        - "config/Taskfile.yml"
+        - "deploy/Taskfile.yml"
+        - "infra/Taskfile.yml"
+        - "ops/Taskfile.yml"
+        - "config/Justfile"
+        - "deploy/Justfile"
+        - "infra/Justfile"
+        - "ops/Justfile"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "tar "
+          - "tar -"
+          - "gzip"
+          - "mysqldump"
+          - "pg_dump"
+          - "mongodump"
+          - "redis-cli"
+          - "backup"
+          - "restore"
+          - "deploy"
+          - "release"
+          - "rsync"
+          - "scp "
+          - "ssh "
+          - "kubectl"
+          - "helm "
+          - "docker "
+          - "docker-compose"
+          - "terraform"
+          - "ansible"
+          - "vault "
+          - "aws "
+          - "gcloud "
+          - "az "
+          - "s3://"
+          - "gs://"
+          - "DATABASE_URL"
+          - "PASSWORD"
+          - "TOKEN"
+          - "SECRET"
+          - "API_KEY"
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), '<html')"
+          - "!contains(tolower(body), '<!doctype')"
+          - "len(body) < 5242880"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)^[A-Za-z0-9_.-]+:.*$"
+          - "(?im)(tar\\s+-[A-Za-z0-9]+\\s+[^\\r\\n]+|mysqldump[^\\r\\n]+|pg_dump[^\\r\\n]+|rsync[^\\r\\n]+|scp\\s+[^\\r\\n]+|ssh\\s+[^\\r\\n]+)"
+          - "(?im)(DATABASE_URL|PASSWORD|TOKEN|SECRET|API_KEY|AWS_SECRET_ACCESS_KEY)[\"'\\s:=]+[^\\r\\n,;]+"
+

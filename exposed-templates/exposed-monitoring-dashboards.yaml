@@ -1,0 +1,140 @@
+id: exposed-monitoring-dashboards
+
+info:
+  name: Exposed Monitoring Dashboards And Observability Consoles
+  author: p3i
+  severity: medium
+  description: Detects exposed monitoring, metrics, tracing, logging, uptime, and observability dashboards or endpoints.
+  tags: exposure,monitoring,metrics,dashboard,grafana,prometheus,observability
+  metadata:
+    max-request: 92
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{monitor_path}}"
+
+    payloads:
+      monitor_path:
+        - "grafana/"
+        - "grafana/login"
+        - "prometheus/"
+        - "prometheus/targets"
+        - "prometheus/graph"
+        - "metrics"
+        - "metrics/"
+        - "federate"
+        - "alertmanager/"
+        - "alertmanager/#/alerts"
+        - "kibana/"
+        - "app/kibana"
+        - "app/home"
+        - "elasticsearch/"
+        - "opensearch/"
+        - "_dashboards/"
+        - "jaeger/"
+        - "jaeger/search"
+        - "zipkin/"
+        - "zipkin/"
+        - "tracing/"
+        - "traces/"
+        - "loki/"
+        - "loki/api/v1/labels"
+        - "graylog/"
+        - "splunk/"
+        - "zabbix/"
+        - "nagios/"
+        - "icingaweb2/"
+        - "munin/"
+        - "netdata/"
+        - "server-status"
+        - "server-status?auto"
+        - "server-info"
+        - "status"
+        - "status/"
+        - "health"
+        - "health/"
+        - "ready"
+        - "readyz"
+        - "live"
+        - "livez"
+        - "debug/metrics"
+        - "debug/vars"
+        - "debug/pprof"
+        - "stats"
+        - "stats/"
+        - "haproxy?stats"
+        - "nginx_status"
+        - "stub_status"
+        - "traefik/"
+        - "dashboard/"
+        - "dashboard/#/"
+        - "consul/"
+        - "consul/ui/"
+        - "nomad/"
+        - "nomad/ui/"
+        - "vault/"
+        - "vault/ui/"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 3
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 401
+          - 403
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "Grafana"
+          - "Prometheus"
+          - "Alertmanager"
+          - "Kibana"
+          - "OpenSearch Dashboards"
+          - "Jaeger"
+          - "Zipkin"
+          - "Loki"
+          - "Graylog"
+          - "Splunk"
+          - "Zabbix"
+          - "Nagios"
+          - "Icinga"
+          - "Munin"
+          - "Netdata"
+          - "Apache Server Status"
+          - "Active connections"
+          - "# HELP"
+          - "# TYPE"
+          - "go_gc_duration_seconds"
+          - "process_cpu_seconds_total"
+          - "Traefik"
+          - "traefik_dashboard"
+          - "traefik_entrypoint"
+          - "Consul"
+          - "Nomad"
+          - "Vault"
+
+      - type: dsl
+        dsl:
+          - "len(body) < 52428800"
+          - "!contains(tolower(body), 'not found')"
+          - "!contains(tolower(body), 'was not found')"
+          - "!contains(tolower(body), 'requested url')"
+          - "!contains(tolower(body), 'the requested resource')"
+          - "!contains(tolower(body), '404')"
+          - "!contains(tolower(body), 'page does not exist')"
+          - "!contains(tolower(body), 'no encontrado')"
+          - "!contains(tolower(body), 'no se ha encontrado')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)(Grafana|Prometheus|Alertmanager|Kibana|Jaeger|Zipkin|Zabbix|Nagios|Netdata|Consul|Nomad|Vault)[^\\r\\n<]{0,120}"
+          - "(?im)^#\\s+(HELP|TYPE)\\s+[a-zA-Z_:][a-zA-Z0-9_:]*.*$"

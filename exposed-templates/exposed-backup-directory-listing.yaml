@@ -1,0 +1,143 @@
+id: exposed-backup-directory-listing
+
+info:
+  name: Exposed Backup Directory Listing
+  author: p3i
+  severity: high
+  description: Detects directory listing enabled on backup, dump, archive, export, snapshot, and migration directories.
+  tags: exposure,directory-listing,backup,dump,archive
+  metadata:
+    max-request: 82
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{backup_dir}}/"
+
+    payloads:
+      backup_dir:
+        - "backup"
+        - "backups"
+        - "backup_old"
+        - "backup-old"
+        - "backup_new"
+        - "backup-new"
+        - "backup_latest"
+        - "backup-latest"
+        - "backup2026"
+        - "backup-2026"
+        - "backup_2026"
+        - "backup2025"
+        - "backup-2025"
+        - "backup_2025"
+        - "backup2024"
+        - "backup-2024"
+        - "backup_2024"
+        - "dump"
+        - "dumps"
+        - "dbdump"
+        - "dbdumps"
+        - "database"
+        - "databases"
+        - "database_backup"
+        - "database-backup"
+        - "db_backup"
+        - "db-backup"
+        - "mysql"
+        - "postgres"
+        - "postgresql"
+        - "mssql"
+        - "oracle"
+        - "mongo"
+        - "mongodb"
+        - "redis"
+        - "archive"
+        - "archives"
+        - "archived"
+        - "old"
+        - "oldsite"
+        - "old-site"
+        - "old_site"
+        - "previous"
+        - "snapshot"
+        - "snapshots"
+        - "export"
+        - "exports"
+        - "import"
+        - "imports"
+        - "migration"
+        - "migrations"
+        - "restore"
+        - "restores"
+        - "save"
+        - "saved"
+        - "saves"
+        - "private/backups"
+        - "private/backup"
+        - "storage/backups"
+        - "storage/backup"
+        - "var/backups"
+        - "var/backup"
+        - "tmp/backups"
+        - "tmp/backup"
+        - "admin/backups"
+        - "admin/backup"
+        - "wp-content/backups"
+        - "wp-content/backup-db"
+        - "wp-content/updraft"
+        - "wp-content/ai1wm-backups"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "Index of /"
+          - "<title>Index of"
+          - "Directory Listing For"
+          - "Directory listing for"
+          - "Parent Directory"
+          - "[To Parent Directory]"
+          - "Last modified"
+          - "Name</th>"
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - ".sql"
+          - ".sql.gz"
+          - ".dump"
+          - ".bak"
+          - ".zip"
+          - ".tar.gz"
+          - ".tgz"
+          - ".7z"
+          - ".rar"
+          - ".gz"
+          - ".env"
+          - ".old"
+          - ".backup"
+          - "backup"
+          - "dump"
+          - "database"
+
+      - type: dsl
+        dsl:
+          - "len(body) < 5242880"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)href=\"[^\"]+\\.(sql|dump|bak|zip|tar\\.gz|tgz|7z|rar|gz|env|old|backup)[^\"]*\""
+

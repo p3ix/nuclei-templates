@@ -1,0 +1,101 @@
+id: exposed-oidc-jwks-config
+
+info:
+  name: Exposed OIDC OAuth JWKS And JWT Configuration
+  author: p3i
+  severity: medium
+  description: Detects exposed OpenID Connect, OAuth, JWKS, SAML, and token-related configuration that can reveal issuers, clients, scopes, signing keys, auth endpoints, and identity infrastructure.
+  tags: exposure,oidc,oauth,jwks,jwt,saml,auth
+  metadata:
+    max-request: 70
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{auth_config}}"
+
+    payloads:
+      auth_config:
+        - ".well-known/openid-configuration"
+        - ".well-known/oauth-authorization-server"
+        - ".well-known/jwks.json"
+        - ".well-known/jwk.json"
+        - "openid-configuration"
+        - "oauth-authorization-server"
+        - "jwks.json"
+        - "jwk.json"
+        - "keys.json"
+        - "oauth/jwks"
+        - "oauth/jwks.json"
+        - "oauth/keys"
+        - "oauth/keys.json"
+        - "auth/jwks"
+        - "auth/jwks.json"
+        - "auth/keys"
+        - "auth/keys.json"
+        - "realms/master/.well-known/openid-configuration"
+        - "realms/master/protocol/openid-connect/certs"
+        - "auth/realms/master/.well-known/openid-configuration"
+        - "auth/realms/master/protocol/openid-connect/certs"
+        - "sso/.well-known/openid-configuration"
+        - "sso/oauth2/default/.well-known/openid-configuration"
+        - "oauth2/default/.well-known/openid-configuration"
+        - "oauth2/v1/keys"
+        - "oauth2/v1/authorize"
+        - "connect/token"
+        - "connect/authorize"
+        - "connect/userinfo"
+        - "connect/jwks"
+        - "connect/jwks.json"
+        - "saml/metadata"
+        - "saml/metadata.xml"
+        - "FederationMetadata/2007-06/FederationMetadata.xml"
+        - "adfs/.well-known/openid-configuration"
+        - "adfs/discovery/keys"
+        - "adfs/ls/"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 3
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"issuer\""
+          - "\"authorization_endpoint\""
+          - "\"token_endpoint\""
+          - "\"userinfo_endpoint\""
+          - "\"jwks_uri\""
+          - "\"response_types_supported\""
+          - "\"grant_types_supported\""
+          - "\"keys\""
+          - "\"kty\""
+          - "\"kid\""
+          - "\"x5c\""
+          - "\"n\""
+          - "\"e\""
+          - "EntityDescriptor"
+          - "IDPSSODescriptor"
+          - "SPSSODescriptor"
+          - "X509Certificate"
+          - "Keycloak"
+          - "ADFS"
+
+      - type: dsl
+        dsl:
+          - "len(body) < 10485760"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)(issuer|authorization_endpoint|token_endpoint|jwks_uri|client_id|kid|x5t)[\"'\\s:=<>/-]+[^\\r\\n,<>]+"
+          - "(?i)-----BEGIN CERTIFICATE-----"
+

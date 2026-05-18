@@ -1,0 +1,67 @@
+id: exposed-django-debug-admin
+
+info:
+  name: Exposed Django Debug Toolbar And Admin Panel
+  author: p3i
+  severity: medium
+  description: Detects exposed Django debug toolbar endpoints and Django admin login pages. Admin detection is passive and does not attempt default credentials.
+  tags: exposure,django,debug,admin,python
+  metadata:
+    max-request: 36
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/__debug__/"
+      - "{{BaseURL}}/__debug__/render_panel/"
+      - "{{BaseURL}}/__debug__/history_sidebar/"
+      - "{{BaseURL}}/__debug__/sql_select/"
+      - "{{BaseURL}}/__debug__/template_source/"
+      - "{{BaseURL}}/admin/"
+      - "{{BaseURL}}/admin/login/"
+      - "{{BaseURL}}/django-admin/"
+      - "{{BaseURL}}/backend/admin/"
+      - "{{BaseURL}}/cms/admin/"
+      - "{{BaseURL}}/control/admin/"
+      - "{{BaseURL}}/dashboard/admin/"
+      - "{{BaseURL}}/manage/admin/"
+
+    redirects: true
+    max-redirects: 3
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 302
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "Django Debug Toolbar"
+          - "djDebug"
+          - "djdt"
+          - "__debug__"
+          - "SQL queries"
+          - "Request Vars"
+          - "Templates"
+          - "Django administration"
+          - "Log in | Django site admin"
+          - "csrfmiddlewaretoken"
+          - "id_username"
+          - "id_password"
+          - "Django"
+
+      - type: dsl
+        dsl:
+          - "len(body) < 10485760"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)(Django Debug Toolbar|Django administration|Log in \\| Django site admin|csrfmiddlewaretoken)"
+          - "(?i)(__debug__/[a-z0-9_/-]+|/admin/login/?)"
+

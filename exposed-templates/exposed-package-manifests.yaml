@@ -1,0 +1,120 @@
+id: exposed-package-manifests
+
+info:
+  name: Exposed Package Manifests And Lockfiles
+  author: p3i
+  severity: low
+  description: Detects exposed dependency manifests and lockfiles that disclose application stack, package versions, private packages, repository URLs, and supply-chain attack surface.
+  tags: exposure,dependencies,manifest,lockfile,source
+  metadata:
+    max-request: 70
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{manifest_file}}"
+
+    payloads:
+      manifest_file:
+        - "package.json"
+        - "package-lock.json"
+        - "yarn.lock"
+        - "pnpm-lock.yaml"
+        - "npm-shrinkwrap.json"
+        - "composer.json"
+        - "composer.lock"
+        - "Gemfile"
+        - "Gemfile.lock"
+        - "requirements.txt"
+        - "requirements-dev.txt"
+        - "requirements/prod.txt"
+        - "requirements/dev.txt"
+        - "Pipfile"
+        - "Pipfile.lock"
+        - "pyproject.toml"
+        - "poetry.lock"
+        - "setup.py"
+        - "setup.cfg"
+        - "Cargo.toml"
+        - "Cargo.lock"
+        - "go.mod"
+        - "go.sum"
+        - "pom.xml"
+        - "build.gradle"
+        - "build.gradle.kts"
+        - "gradle.properties"
+        - "settings.gradle"
+        - "mix.exs"
+        - "mix.lock"
+        - "rebar.config"
+        - "pubspec.yaml"
+        - "pubspec.lock"
+        - "Package.swift"
+        - "Podfile"
+        - "Podfile.lock"
+        - "Cartfile"
+        - "Cartfile.resolved"
+        - "packages.config"
+        - "*.csproj"
+        - "Directory.Packages.props"
+        - "src/package.json"
+        - "app/package.json"
+        - "api/package.json"
+        - "backend/package.json"
+        - "frontend/package.json"
+        - "web/package.json"
+        - "public/package.json"
+        - "vendor/composer/installed.json"
+        - "vendor/composer/installed.php"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"dependencies\""
+          - "\"devDependencies\""
+          - "\"scripts\""
+          - "\"lockfileVersion\""
+          - "__metadata:"
+          - "\"packages\""
+          - "\"require\""
+          - "\"require-dev\""
+          - "GEM"
+          - "remote:"
+          - "source \"https://rubygems.org\""
+          - "asgiref=="
+          - "Django=="
+          - "[tool.poetry"
+          - "[package]"
+          - "module "
+          - "<project"
+          - "plugins {"
+          - "dependencies {"
+          - "defmodule "
+          - "name:"
+          - "sdk:"
+          - "Pod::Spec"
+          - "<PackageReference"
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), '<html')"
+          - "!contains(tolower(body), '<!doctype')"
+          - "len(body) < 10485760"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)(repository|resolved|registry|source|private|token|password|_authToken|npm.pkg.github.com).{0,160}"
+

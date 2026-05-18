@@ -1,0 +1,106 @@
+id: exposed-auth-identity-consoles
+
+info:
+  name: Exposed Authentication And Identity Provider Consoles
+  author: p3i
+  severity: medium
+  description: Detects exposed authentication, identity provider, SSO, IAM, OAuth/OIDC, and access management consoles that can reveal realms, clients, tenants, login policies, or provider details.
+  tags: exposure,auth,identity,sso,oidc,oauth,iam,keycloak
+  metadata:
+    max-request: 78
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{identity_path}}"
+
+    payloads:
+      identity_path:
+        - "auth/"
+        - "auth/admin/"
+        - "auth/admin/master/console/"
+        - "auth/realms/master/account/"
+        - "keycloak/"
+        - "keycloak/admin/"
+        - "keycloak/admin/master/console/"
+        - "realms/master/account/"
+        - "realms/master/.well-known/openid-configuration"
+        - "admin/master/console/"
+        - "identity/"
+        - "iam/"
+        - "sso/"
+        - "oauth/"
+        - "oauth2/"
+        - "oauth2/sign_in"
+        - "dex/"
+        - "dex/auth"
+        - "hydra/"
+        - "ory/"
+        - "kratos/"
+        - "zitadel/"
+        - "ui/login"
+        - "authentik/"
+        - "if/flow/default-authentication-flow/"
+        - "authelia/"
+        - "login"
+        - "cas/"
+        - "cas/login"
+        - "saml/"
+        - "adfs/"
+        - "adfs/ls/"
+        - "idp/"
+        - "identity/.well-known/openid-configuration"
+        - ".well-known/openid-configuration"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 3
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 401
+          - 403
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "Keycloak"
+          - "keycloak"
+          - "Realm"
+          - "OpenID Connect"
+          - "\"issuer\""
+          - "\"authorization_endpoint\""
+          - "\"token_endpoint\""
+          - "oauth2-proxy"
+          - "Dex"
+          - "ORY Hydra"
+          - "ORY Kratos"
+          - "ZITADEL"
+          - "authentik"
+          - "Authelia"
+          - "Central Authentication Service"
+          - "SAML"
+          - "ADFS"
+          - "Identity Provider"
+          - "Single Sign-On"
+
+      - type: dsl
+        dsl:
+          - "len(body) < 10485760"
+          - "!contains(tolower(body), 'not found')"
+          - "!contains(tolower(body), 'was not found')"
+          - "!contains(tolower(body), 'requested url')"
+          - "!contains(tolower(body), 'the requested resource')"
+          - "!contains(tolower(body), '404')"
+          - "!contains(tolower(body), 'page does not exist')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)(Keycloak|OpenID Connect|oauth2-proxy|Dex|ORY Hydra|ORY Kratos|ZITADEL|authentik|Authelia|Central Authentication Service|ADFS|Identity Provider)[^\\r\\n<]{0,140}"
+          - "(?im)\"(issuer|authorization_endpoint|token_endpoint|jwks_uri|registration_endpoint|realm|client_id)\"\\s*:\\s*\"[^\"]+\""

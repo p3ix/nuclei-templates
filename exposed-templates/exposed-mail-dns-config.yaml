@@ -1,0 +1,127 @@
+id: exposed-mail-dns-config
+
+info:
+  name: Exposed Mail DNS And Messaging Configuration
+  author: p3i
+  severity: medium
+  description: Detects exposed mail, DNS, SMTP, DKIM, DMARC, queue, and messaging configuration files that may disclose infrastructure, credentials, domains, or relay details.
+  tags: exposure,mail,dns,smtp,dkim,dmarc,messaging
+  metadata:
+    max-request: 84
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{mail_file}}"
+
+    payloads:
+      mail_file:
+        - "mail.ini"
+        - "mail.yml"
+        - "mail.yaml"
+        - "mail.json"
+        - "mailer.yml"
+        - "mailer.yaml"
+        - "smtp.ini"
+        - "smtp.yml"
+        - "smtp.yaml"
+        - "smtp.json"
+        - "email.yml"
+        - "email.yaml"
+        - "email.json"
+        - "config/mail.php"
+        - "config/mail.yml"
+        - "config/mail.yaml"
+        - "config/smtp.yml"
+        - "config/email.yml"
+        - "postfix/main.cf"
+        - "postfix/master.cf"
+        - "etc/postfix/main.cf"
+        - "etc/postfix/master.cf"
+        - "exim.conf"
+        - "etc/exim/exim.conf"
+        - "dovecot.conf"
+        - "etc/dovecot/dovecot.conf"
+        - "opendkim.conf"
+        - "dkim/private.key"
+        - "dkim.key"
+        - "private.key"
+        - "dmarc.xml"
+        - "dns-zone.txt"
+        - "zone.txt"
+        - "bind.zone"
+        - "named.conf"
+        - "named.conf.local"
+        - "db.{{Hostname}}"
+        - "{{Hostname}}.zone"
+        - "mailgun.env"
+        - "sendgrid.env"
+        - "postmark.env"
+        - "ses.env"
+        - "config/services.php"
+        - "config/services.yml"
+        - "queue.yml"
+        - "queue.yaml"
+        - "config/queue.php"
+        - "rabbitmq.conf"
+        - "rabbitmq.env"
+        - "celeryconfig.py"
+        - "config/celery.py"
+        - "kafka.properties"
+        - "config/kafka.properties"
+        - "zookeeper.properties"
+        - "mosquitto.conf"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "MAIL_HOST"
+          - "MAIL_PASSWORD"
+          - "SMTP_PASSWORD"
+          - "smtp_password"
+          - "smtp_host"
+          - "mailgun"
+          - "sendgrid"
+          - "postmark"
+          - "ses:"
+          - "DKIM"
+          - "BEGIN RSA PRIVATE KEY"
+          - "BEGIN OPENSSH PRIVATE KEY"
+          - "_dmarc"
+          - "v=DMARC1"
+          - "v=DKIM1"
+          - "IN MX"
+          - "IN TXT"
+          - "IN CNAME"
+          - "relayhost"
+          - "smtpd_"
+          - "rabbitmq"
+          - "amqp://"
+          - "kafka"
+          - "bootstrap.servers"
+          - "CELERY_BROKER_URL"
+          - "mosquitto"
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), '<html')"
+          - "!contains(tolower(body), '<!doctype')"
+          - "len(body) < 10485760"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)(mail_password|smtp_password|MAIL_PASSWORD|SMTP_PASSWORD|SENDGRID_API_KEY|MAILGUN_API_KEY|POSTMARK_TOKEN|AWS_SECRET_ACCESS_KEY|CELERY_BROKER_URL|amqp://|bootstrap.servers)[\"'\\s:=]+[^\\r\\n,;]+"
+

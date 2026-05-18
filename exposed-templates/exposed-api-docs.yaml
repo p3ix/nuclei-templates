@@ -1,0 +1,116 @@
+id: exposed-api-docs
+
+info:
+  name: Exposed API Documentation And Schemas
+  author: p3i
+  severity: medium
+  description: Detects exposed Swagger, OpenAPI, GraphQL, Postman, and API documentation artifacts that can reveal hidden endpoints, auth flows, object schemas, and internal API names.
+  tags: exposure,api,swagger,openapi,graphql,postman,docs
+  metadata:
+    max-request: 72
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{api_doc}}"
+
+    payloads:
+      api_doc:
+        - "swagger.json"
+        - "swagger.yaml"
+        - "swagger.yml"
+        - "api-docs"
+        - "api-docs.json"
+        - "api/docs"
+        - "api/docs/"
+        - "api/swagger.json"
+        - "api/swagger.yaml"
+        - "api/openapi.json"
+        - "api/openapi.yaml"
+        - "openapi.json"
+        - "openapi.yaml"
+        - "openapi.yml"
+        - "v1/swagger.json"
+        - "v1/openapi.json"
+        - "v2/swagger.json"
+        - "v2/openapi.json"
+        - "docs/swagger.json"
+        - "docs/openapi.json"
+        - "swagger-ui.html"
+        - "swagger-ui/"
+        - "swagger/index.html"
+        - "api/swagger-ui.html"
+        - "api/swagger-ui/"
+        - "redoc"
+        - "redoc/"
+        - "redoc.html"
+        - "rapidoc"
+        - "rapidoc/"
+        - "graphql"
+        - "graphql/"
+        - "graphiql"
+        - "graphiql/"
+        - "playground"
+        - "playground/"
+        - "altair"
+        - "altair/"
+        - "voyager"
+        - "voyager/"
+        - "schema.graphql"
+        - "graphql/schema.graphql"
+        - "postman_collection.json"
+        - "postman.json"
+        - "api.postman_collection.json"
+        - "insomnia.json"
+        - "insomnia.yaml"
+        - "raml.yaml"
+        - "api.raml"
+        - "asyncapi.json"
+        - "asyncapi.yaml"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 3
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"openapi\""
+          - "\"swagger\""
+          - "swagger:"
+          - "openapi:"
+          - "Swagger UI"
+          - "swagger-ui"
+          - "ReDoc"
+          - "GraphQL"
+          - "GraphiQL"
+          - "GraphQL Playground"
+          - "__schema"
+          - "type Query"
+          - "type Mutation"
+          - "\"info\""
+          - "\"paths\""
+          - "\"item\""
+          - "\"postman_id\""
+          - "_postman_id"
+          - "\"asyncapi\""
+          - "#%RAML"
+
+      - type: dsl
+        dsl:
+          - "len(body) < 20971520"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)(/api/[A-Za-z0-9_./{}-]+|/v[0-9]+/[A-Za-z0-9_./{}-]+)"
+          - "(?i)(authorization|bearer|api[_-]?key|client[_-]?secret|password).{0,120}"
+

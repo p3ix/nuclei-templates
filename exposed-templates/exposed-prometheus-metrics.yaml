@@ -1,0 +1,77 @@
+id: exposed-prometheus-metrics
+
+info:
+  name: Exposed Prometheus Metrics Without Authentication
+  author: p3i
+  severity: medium
+  description: Detects exposed Prometheus-style metrics endpoints that can disclose service names, internal URLs, versions, labels, infrastructure topology, tenants, and runtime details.
+  tags: exposure,prometheus,metrics,monitoring,observability
+  metadata:
+    max-request: 48
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/metrics"
+      - "{{BaseURL}}/metrics/"
+      - "{{BaseURL}}/prometheus"
+      - "{{BaseURL}}/prometheus/"
+      - "{{BaseURL}}/prometheus/metrics"
+      - "{{BaseURL}}/actuator/prometheus"
+      - "{{BaseURL}}/actuator/metrics"
+      - "{{BaseURL}}/manage/actuator/prometheus"
+      - "{{BaseURL}}/management/prometheus"
+      - "{{BaseURL}}/debug/metrics"
+      - "{{BaseURL}}/api/metrics"
+      - "{{BaseURL}}/internal/metrics"
+      - "{{BaseURL}}/admin/metrics"
+      - "{{BaseURL}}/stats/metrics"
+      - "{{BaseURL}}/federate"
+      - "{{BaseURL}}/-/metrics"
+      - "{{BaseURL}}/_metrics"
+      - "{{BaseURL}}/probe"
+      - "{{BaseURL}}/nginx_status"
+      - "{{BaseURL}}/stub_status"
+
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "# HELP"
+          - "# TYPE"
+          - "go_gc_duration_seconds"
+          - "process_cpu_seconds_total"
+          - "http_requests_total"
+          - "http_request_duration_seconds"
+          - "jvm_memory_used_bytes"
+          - "node_cpu_seconds_total"
+          - "container_cpu_usage_seconds_total"
+          - "nginx_connections_active"
+          - "traefik_service_requests_total"
+          - "envoy_cluster_upstream"
+          - "prometheus_build_info"
+          - "Active connections"
+          - "server accepts handled requests"
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), '<html')"
+          - "len(body) < 52428800"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)^#\\s+(HELP|TYPE)\\s+[a-zA-Z_:][a-zA-Z0-9_:]*.*$"
+          - "(?im)(job|instance|namespace|pod|service|endpoint|tenant|cluster|version)=\"[^\"]+\""
+          - "(?i)(internal|staging|dev|admin|token|secret|password|api[_-]?key)[^\\r\\n]{0,160}"
+

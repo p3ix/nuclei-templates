@@ -1,0 +1,69 @@
+id: exposed-apache-status-info
+
+info:
+  name: Exposed Apache Server Status And Server Info
+  author: p3i
+  severity: medium
+  description: Detects exposed Apache mod_status and mod_info endpoints that can disclose server version, modules, virtual hosts, requests, client IPs, and runtime configuration.
+  tags: exposure,apache,server-status,server-info,mod-status,mod-info
+  metadata:
+    max-request: 22
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/server-status"
+      - "{{BaseURL}}/server-status?auto"
+      - "{{BaseURL}}/server-status/"
+      - "{{BaseURL}}/server-info"
+      - "{{BaseURL}}/server-info/"
+      - "{{BaseURL}}/status"
+      - "{{BaseURL}}/status?auto"
+      - "{{BaseURL}}/apache-status"
+      - "{{BaseURL}}/apache-status?auto"
+      - "{{BaseURL}}/apache/server-status"
+      - "{{BaseURL}}/apache/server-info"
+
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "Apache Server Status"
+          - "Apache Server Information"
+          - "Server Version:"
+          - "Server Built:"
+          - "Current Time:"
+          - "Restart Time:"
+          - "Total accesses:"
+          - "Total Traffic:"
+          - "BusyWorkers:"
+          - "IdleWorkers:"
+          - "Scoreboard:"
+          - "Srv PID Acc"
+          - "Module Name:"
+          - "Loaded Modules"
+          - "Apache Module"
+          - "mod_status"
+          - "mod_info"
+
+      - type: dsl
+        dsl:
+          - "contains(tolower(body), 'apache') || contains(body, 'BusyWorkers:') || contains(body, 'Scoreboard:')"
+          - "len(body) < 10485760"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)(Server Version|Server Built|Current Time|Restart Time|Total accesses|BusyWorkers|IdleWorkers|Scoreboard):\\s*[^\\r\\n<]+"
+          - "(?i)(GET|POST|HEAD|PUT|DELETE)\\s+/[^\\s<]+"
+

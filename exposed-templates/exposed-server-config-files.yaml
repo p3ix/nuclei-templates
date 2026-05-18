@@ -1,0 +1,154 @@
+id: exposed-server-config-files
+
+info:
+  name: Exposed Server Configuration Files
+  author: p3i
+  severity: high
+  description: Detects exposed web server and access-control configuration files such as .htaccess, .htpasswd, web.config, nginx.conf, apache2.conf, httpd.conf, and virtual host configs.
+  tags: exposure,server,config,apache,nginx,iis,htaccess,htpasswd
+  metadata:
+    max-request: 104
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{server_config}}"
+
+    payloads:
+      server_config:
+        - ".htaccess"
+        - ".htpasswd"
+        - ".htgroup"
+        - ".htdigest"
+        - ".htaccess.bak"
+        - ".htaccess.old"
+        - ".htaccess.orig"
+        - ".htaccess.save"
+        - ".htaccess.tmp"
+        - ".htaccess~"
+        - ".htpasswd.bak"
+        - ".htpasswd.old"
+        - ".htpasswd.orig"
+        - ".htpasswd.save"
+        - ".htpasswd.tmp"
+        - ".htpasswd~"
+        - "web.config"
+        - "Web.config"
+        - "web.config.bak"
+        - "web.config.old"
+        - "web.config.orig"
+        - "web.config.save"
+        - "web.config.tmp"
+        - "web.config~"
+        - "nginx.conf"
+        - "nginx.conf.bak"
+        - "nginx.conf.old"
+        - "nginx.conf.orig"
+        - "nginx.conf.save"
+        - "nginx.conf.tmp"
+        - "nginx.conf~"
+        - "apache2.conf"
+        - "apache2.conf.bak"
+        - "apache2.conf.old"
+        - "apache2.conf.orig"
+        - "apache2.conf.save"
+        - "apache2.conf.tmp"
+        - "apache2.conf~"
+        - "httpd.conf"
+        - "httpd.conf.bak"
+        - "httpd.conf.old"
+        - "httpd.conf.orig"
+        - "httpd.conf.save"
+        - "httpd.conf.tmp"
+        - "httpd.conf~"
+        - "vhost.conf"
+        - "vhosts.conf"
+        - "virtualhost.conf"
+        - "default.conf"
+        - "default.vhost"
+        - "000-default.conf"
+        - "ssl.conf"
+        - "proxy.conf"
+        - "fastcgi.conf"
+        - "php-fpm.conf"
+        - "php.ini"
+        - "php.ini.bak"
+        - "php.ini.old"
+        - "conf/nginx.conf"
+        - "conf/apache2.conf"
+        - "conf/httpd.conf"
+        - "conf/vhost.conf"
+        - "conf.d/default.conf"
+        - "conf.d/nginx.conf"
+        - "conf.d/apache.conf"
+        - "sites-enabled/default"
+        - "sites-enabled/000-default.conf"
+        - "sites-available/default"
+        - "sites-available/000-default.conf"
+        - "etc/nginx/nginx.conf"
+        - "etc/nginx/conf.d/default.conf"
+        - "etc/apache2/apache2.conf"
+        - "etc/apache2/sites-enabled/000-default.conf"
+        - "etc/httpd/conf/httpd.conf"
+        - "usr/local/nginx/conf/nginx.conf"
+        - "usr/local/apache2/conf/httpd.conf"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "AuthType Basic"
+          - "AuthUserFile"
+          - "Require valid-user"
+          - "RewriteEngine"
+          - "RewriteRule"
+          - "Deny from all"
+          - "AllowOverride"
+          - "$apr1$"
+          - "$2y$"
+          - "{SHA}"
+          - "<configuration>"
+          - "<system.webServer>"
+          - "<connectionStrings>"
+          - "<appSettings>"
+          - "server {"
+          - "listen "
+          - "server_name"
+          - "location /"
+          - "proxy_pass"
+          - "root "
+          - "upstream "
+          - "worker_processes"
+          - "LoadModule"
+          - "VirtualHost"
+          - "DocumentRoot"
+          - "ServerName"
+          - "DirectoryIndex"
+          - "ErrorLog"
+          - "CustomLog"
+          - "[PHP]"
+          - "disable_functions"
+          - "open_basedir"
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), '<!doctype html')"
+          - "len(body) < 10485760"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)(AuthUserFile|RewriteRule|proxy_pass|server_name|DocumentRoot|ServerName|connectionStrings|appSettings|open_basedir|disable_functions).{0,160}"
+          - "(?m)^[^:\\r\\n]{1,80}:\\$apr1\\$[^\\r\\n]+"
+

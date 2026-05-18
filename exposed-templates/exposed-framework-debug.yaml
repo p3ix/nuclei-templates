@@ -1,0 +1,128 @@
+id: exposed-framework-debug
+
+info:
+  name: Exposed Framework Debug And Diagnostic Endpoints
+  author: p3i
+  severity: high
+  description: Detects exposed framework debug endpoints and diagnostic pages that can leak environment variables, stack traces, routes, beans, metrics, internal paths, or credentials.
+  tags: exposure,debug,framework,actuator,laravel,django,rails,symfony
+  metadata:
+    max-request: 86
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{debug_path}}"
+
+    payloads:
+      debug_path:
+        - "_debugbar"
+        - "_debugbar/open"
+        - "_debugbar/assets/stylesheets"
+        - "_profiler"
+        - "_profiler/"
+        - "_profiler/phpinfo"
+        - "app_dev.php"
+        - "app_dev.php/_profiler"
+        - "index.php/_profiler"
+        - "telescope"
+        - "telescope/requests"
+        - "horizon"
+        - "horizon/api/stats"
+        - "laravel-websockets"
+        - "clockwork"
+        - "__clockwork/latest"
+        - "debug/default/view"
+        - "debug/default/toolbar"
+        - "debug/default/trace"
+        - "__debug__"
+        - "__debug__/render_panel/"
+        - "rails/info/routes"
+        - "rails/info/properties"
+        - "admin/rails/info/routes"
+        - "actuator"
+        - "actuator/"
+        - "actuator/env"
+        - "actuator/configprops"
+        - "actuator/beans"
+        - "actuator/heapdump"
+        - "actuator/threaddump"
+        - "actuator/mappings"
+        - "actuator/metrics"
+        - "actuator/prometheus"
+        - "manage/actuator"
+        - "manage/actuator/env"
+        - "management/env"
+        - "health"
+        - "metrics"
+        - "prometheus"
+        - "env"
+        - "server-status"
+        - "server-info"
+        - "phpinfo"
+        - "phpinfo.php"
+        - "info.php"
+        - "debug"
+        - "debug/"
+        - "debug/vars"
+        - "debug/pprof"
+        - "debug/pprof/heap"
+        - "debug/pprof/goroutine"
+        - "debug/pprof/cmdline"
+        - "debug/requests"
+        - "trace"
+        - "trace/"
+        - "routes"
+        - "routes.json"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 3
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "Laravel Debugbar"
+          - "Laravel Telescope"
+          - "Laravel Horizon"
+          - "Symfony Profiler"
+          - "Symfony Configuration"
+          - "Yii Debugger"
+          - "Django Debug Toolbar"
+          - "Ruby on Rails"
+          - "Routes"
+          - "\"_links\""
+          - "\"beans\""
+          - "\"activeProfiles\""
+          - "\"propertySources\""
+          - "\"contexts\""
+          - "\"measurements\""
+          - "jvm.memory"
+          - "go_memstats"
+          - "goroutine profile"
+          - "heap profile"
+          - "Apache Server Status"
+          - "Server Version:"
+          - "phpinfo()"
+          - "PHP Version"
+          - "Environment"
+          - "Stack trace"
+
+      - type: dsl
+        dsl:
+          - "len(body) < 52428800"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)(password|secret|token|api[_-]?key|database_url|jdbc:|mongodb://|redis://).{0,160}"
+          - "(?i)(/actuator/[a-z0-9_-]+|/_profiler/[a-z0-9]+|/rails/info/[a-z0-9_-]+)"
+
