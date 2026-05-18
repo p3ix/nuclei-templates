@@ -51,12 +51,10 @@ http:
           - "GitBucket"
           - "Explore Repositories"
           - "Explore Repos"
-          - "Create Account"
-          - "Register Account"
 
       - type: dsl
         dsl:
-          - "contains(tolower(body), 'register') || contains(tolower(body), 'explore') || contains(tolower(body), 'repository') || contains(tolower(body), 'sign_up')"
+          - "contains(tolower(body), 'gitea') || contains(tolower(body), 'gogs') || contains(tolower(body), 'forgejo') || contains(tolower(body), 'gitbucket') || contains(tolower(body), 'explore repos') || contains(tolower(body), 'explore repositories')"
           - "!contains(tolower(body), 'registration is disabled')"
           - "!contains(tolower(body), 'registration has been disabled')"
           - "!contains(tolower(body), 'permission to access')"

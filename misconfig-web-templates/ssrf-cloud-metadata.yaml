@@ -81,44 +81,30 @@ http:
         status:
           - 200
 
-      - type: word
-        part: body
-        condition: or
-        words:
-          - "ami-id"
-          - "ami-launch-index"
-          - "instance-id"
-          - "instance-type"
-          - "local-ipv4"
-          - "placement"
-          - "security-credentials"
-          - "iam/security-credentials"
-          - "AWSAccessKeyId"
-          - "AccessKeyId"
-          - "SecretAccessKey"
-          - "Token"
-          - "Expiration"
-          - "project-id"
-          - "numeric-project-id"
-          - "serviceAccounts"
-          - "computeMetadata"
-          - "\"subscriptionId\""
-          - "\"resourceGroupName\""
-          - "\"vmId\""
-          - "\"location\""
-          - "droplet_id"
-          - "oracle-cloud"
-          - "ocid"
-          - "\"tenancyId\""
+      - type: dsl
+        dsl:
+          - >
+            (contains(body, 'ami-id') && contains(body, 'instance-id')) ||
+            contains(body, 'ami-launch-index') ||
+            contains(body, 'AWSAccessKeyId') ||
+            (contains(body, 'AccessKeyId') && contains(body, 'SecretAccessKey')) ||
+            contains(body, 'iam/security-credentials') ||
+            contains(body, 'computeMetadata') ||
+            (contains(body, 'serviceAccounts') && contains(body, 'numeric-project-id')) ||
+            (contains(body, '"subscriptionId"') && contains(body, '"resourceGroupName"')) ||
+            contains(body, 'droplet_id') ||
+            contains(body, '"tenancyId"')
+          - "!contains(tolower(header), 'content-type: text/html')"
+          - "len(body) > 20"
 
     extractors:
       - type: regex
         part: body
         regex:
-          - "(?im)(ami-id|instance-id|instance-type|local-ipv4|placement|security-credentials).*"
-          - "(?im)(AccessKeyId|SecretAccessKey|Token|Expiration)\\s*[=:\"]+\\s*[^\\r\\n,\"]{10,}"
-          - "(?im)(serviceAccounts|project-id|numeric-project-id)[^\\r\\n]{0,160}"
-          - "(?im)(subscriptionId|resourceGroupName|vmId|location)[^\\r\\n]{0,160}"
+          - "(?im)(ami-id|instance-id|instance-type|local-ipv4|security-credentials).*"
+          - "(?im)(AccessKeyId|SecretAccessKey)\\s*[=:\"]+\\s*[^\\r\\n,\"]{10,}"
+          - "(?im)(serviceAccounts|numeric-project-id|computeMetadata)[^\\r\\n]{0,160}"
+          - "(?im)(subscriptionId|resourceGroupName|vmId)[^\\r\\n]{0,160}"
       - type: dsl
         name: status
         dsl:
