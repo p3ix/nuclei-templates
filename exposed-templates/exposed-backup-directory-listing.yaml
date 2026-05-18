@@ -140,4 +140,7 @@ http:
         part: body
         regex:
           - "(?i)href=\"[^\"]+\\.(sql|dump|bak|zip|tar\\.gz|tgz|7z|rar|gz|env|old|backup)[^\"]*\""
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

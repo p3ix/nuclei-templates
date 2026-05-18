@@ -64,4 +64,7 @@ http:
         regex:
           - "(?i)(Django Debug Toolbar|Django administration|Log in \\| Django site admin|csrfmiddlewaretoken)"
           - "(?i)(__debug__/[a-z0-9_/-]+|/admin/login/?)"
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

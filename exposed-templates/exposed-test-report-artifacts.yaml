@@ -117,4 +117,7 @@ http:
         regex:
           - "(?i)(AssertionError|Traceback|Stack trace|Expected|Actual|failed|error).{0,160}"
           - "(?i)(https?://[^\\s\"'<>]+|/home/[A-Za-z0-9._/-]+|/Users/[A-Za-z0-9._/-]+|[A-Z]:\\\\[A-Za-z0-9._\\\\ -]+)"
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

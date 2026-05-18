@@ -76,4 +76,7 @@ http:
         part: body
         regex:
           - "(?i)(PHP Version|Loaded Configuration File|DOCUMENT_ROOT|SERVER_SOFTWARE|disable_functions|open_basedir)[^\\r\\n<]{0,160}"
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

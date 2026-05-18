@@ -215,3 +215,7 @@ http:
         part: body
         regex:
           - "(?im)(APP_KEY|DB_PASSWORD|DATABASE_URL|SECRET_KEY|AWS_SECRET_ACCESS_KEY|password|token|secret|api[_-]?key|AuthUserFile|connectionStrings)[\"'\\s:=(),]+[^\\r\\n,;<>]+"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

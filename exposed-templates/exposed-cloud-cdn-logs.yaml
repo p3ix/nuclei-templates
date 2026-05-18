@@ -124,4 +124,7 @@ http:
         regex:
           - "(?im)(GET|POST|PUT|DELETE|PATCH)\\s+/[^\\s?#]*(\\?[^\\s#]*)?\\s+HTTP/[0-9.]+"
           - "(?i)(authorization|bearer|token|api[_-]?key|session|jwt|password)=?[^\\s&]{0,120}"
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

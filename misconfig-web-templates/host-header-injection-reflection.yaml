@@ -52,8 +52,7 @@ http:
 
       - type: dsl
         dsl:
-          - "contains(tolower(header), 'host-header-bugbounty.example') || contains(tolower(body), 'host-header-bugbounty.example')"
-          - "!contains(tolower(body), 'host-header-bugbounty.example</title>')"
+          - "contains(tolower(header), 'host-header-bugbounty.example') || (contains(tolower(body), 'host-header-bugbounty.example') && (contains(tolower(body), 'href=') || contains(tolower(body), 'src=') || contains(tolower(body), 'action=') || contains(tolower(body), 'canonical') || contains(tolower(body), 'base href') || contains(tolower(body), 'url(') || contains(tolower(body), 'location.href') || contains(tolower(body), 'window.location')))"
 
     extractors:
       - type: regex

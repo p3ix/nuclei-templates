@@ -113,4 +113,7 @@ http:
           - "(?im)^(SF|FN|DA|BRDA):[^\\r\\n]+"
           - "(?i)(/home/[A-Za-z0-9._/-]+|/Users/[A-Za-z0-9._/-]+|[A-Z]:\\\\[A-Za-z0-9._\\\\ -]+)"
           - "(?i)(src/[A-Za-z0-9_./-]+|app/[A-Za-z0-9_./-]+|internal/[A-Za-z0-9_./-]+)"
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

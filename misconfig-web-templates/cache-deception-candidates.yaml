@@ -50,8 +50,9 @@ http:
       - type: dsl
         dsl:
           - "contains(tolower(header), 'content-type: text/html') || contains(tolower(body), '<html') || contains(tolower(body), '<!doctype')"
-          - "contains(tolower(header), 'x-cache') || contains(tolower(header), 'cf-cache-status') || contains(tolower(header), 'age:') || contains(tolower(header), 'via:') || contains(tolower(header), 'cache-control: public') || contains(tolower(header), 'max-age') || contains(tolower(header), 's-maxage')"
-          - "contains(tolower(body), 'login') || contains(tolower(body), 'sign in') || contains(tolower(body), 'dashboard') || contains(tolower(body), 'account') || contains(tolower(body), 'profile') || contains(tolower(body), 'settings') || contains(tolower(body), 'billing') || contains(tolower(body), 'admin')"
+          - "!contains(tolower(header), 'x-cache: error')"
+          - "contains(tolower(header), 'x-cache: hit') || contains(tolower(header), 'cf-cache-status: hit') || contains(tolower(header), 'cf-cache-status: stale') || contains(tolower(header), 's-maxage') || contains(tolower(header), 'surrogate-control') || (contains(tolower(header), 'age:') && !contains(tolower(header), 'age: 0') && !contains(tolower(header), 'x-cache: miss'))"
+          - "contains(tolower(body), '<form') || contains(tolower(body), 'type=\"password\"') || contains(tolower(body), 'csrf') || contains(tolower(body), 'csrftoken') || contains(tolower(body), 'invoice') || contains(tolower(body), 'balance') || contains(tolower(body), 'transaction') || contains(tolower(body), 'payment method') || contains(tolower(body), 'credit card') || contains(tolower(body), 'bearer') || contains(tolower(body), 'access_token')"
 
     extractors:
       - type: regex

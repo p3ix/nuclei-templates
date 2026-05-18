@@ -119,4 +119,7 @@ http:
         regex:
           - "(?im)(fatal error|uncaught exception|traceback|stack trace|pdoexception|sqlexception|php warning).{0,120}"
           - "(?im)(password|token|secret|api[_-]?key)[\"'\\s:=]+[^\\r\\n,;]+"
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

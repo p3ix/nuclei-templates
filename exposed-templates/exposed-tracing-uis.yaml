@@ -82,4 +82,7 @@ http:
         regex:
           - "(?i)(Jaeger|Zipkin|Tempo|OpenTelemetry|traceID|traceId|spanID|operationName)[^\\r\\n<]{0,160}"
           - "(?i)\"(serviceName|operationName|traceID|traceId|spanID|localEndpoint|remoteEndpoint)\"\\s*:\\s*[^,\\r\\n]+"
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

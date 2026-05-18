@@ -113,4 +113,7 @@ http:
         regex:
           - "(?i)(/api/[A-Za-z0-9_./{}-]+|/v[0-9]+/[A-Za-z0-9_./{}-]+)"
           - "(?i)(authorization|bearer|api[_-]?key|client[_-]?secret|password).{0,120}"
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

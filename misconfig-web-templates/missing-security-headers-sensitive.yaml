@@ -42,16 +42,17 @@ http:
       - type: status
         status:
           - 200
-          - 401
-          - 403
 
       - type: dsl
         dsl:
+          - "contains(tolower(header), 'content-type: text/html')"
           - "!contains(tolower(header), 'content-security-policy:')"
           - "!contains(tolower(header), 'x-frame-options:')"
           - "!contains(tolower(header), 'x-content-type-options: nosniff')"
           - "!contains(tolower(header), 'referrer-policy:')"
-          - "contains(tolower(body), 'login') || contains(tolower(body), 'sign in') || contains(tolower(body), 'password') || contains(tolower(body), 'account') || contains(tolower(body), 'dashboard') || contains(tolower(body), 'billing') || contains(tolower(body), 'checkout') || contains(tolower(body), 'admin')"
+          - "contains(tolower(body), '<form') || contains(tolower(body), 'type=\"password\"') || contains(tolower(body), \"type='password'\") || contains(tolower(body), 'input type') || contains(tolower(body), '<button')"
+          - "!contains(tolower(body), 'access denied')"
+          - "!contains(tolower(body), 'you don't have permission')"
 
     extractors:
       - type: regex

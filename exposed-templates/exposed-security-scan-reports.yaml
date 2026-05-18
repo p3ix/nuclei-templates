@@ -148,4 +148,7 @@ http:
           - "(?i)(CVE-[0-9]{4}-[0-9]{4,}|CWE-[0-9]+|GHSA-[a-z0-9-]+)"
           - "(?im)(critical|high|medium|low|severity|vulnerab|secret|token|password|api[_-]?key).{0,180}"
           - "(?i)(https?://[^\\s\"'<>]+|/home/[A-Za-z0-9._/-]+|/Users/[A-Za-z0-9._/-]+)"
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

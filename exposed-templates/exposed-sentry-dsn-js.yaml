@@ -89,4 +89,7 @@ http:
           - "https://[a-f0-9]{16,64}@o[0-9]+\\.ingest\\.sentry\\.io/[0-9]+"
           - "https://[a-f0-9]{16,64}@[a-z0-9.-]*sentry\\.io/[0-9]+"
           - "(?i)(SENTRY_DSN|REACT_APP_SENTRY_DSN|NEXT_PUBLIC_SENTRY_DSN|VITE_SENTRY_DSN|sentryDsn)[\"'\\s:=]+https://[^\\s\"'<>]+"
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

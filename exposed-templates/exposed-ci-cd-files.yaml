@@ -104,4 +104,7 @@ http:
         part: body
         regex:
           - "(?im)(GITHUB_TOKEN|CI_JOB_TOKEN|DEPLOY_KEY|DOCKER_PASSWORD|AWS_ACCESS_KEY_ID|KUBECONFIG|SECRET)[\"'\\s:=]+[^\\r\\n,]+"
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

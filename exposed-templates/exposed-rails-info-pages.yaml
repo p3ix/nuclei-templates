@@ -61,4 +61,7 @@ http:
         regex:
           - "(?i)(GET|POST|PATCH|PUT|DELETE)\\s+(/[A-Za-z0-9_./:()-]+)"
           - "(?i)(Rails version|Ruby version|RAILS_ENV|Action Mailer|Mailer Previews)[^\\r\\n<]{0,120}"
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

@@ -198,4 +198,7 @@ http:
           - "-----BEGIN (RSA |DSA |EC |OPENSSH |ENCRYPTED )?PRIVATE KEY-----"
           - "-----BEGIN PGP PRIVATE KEY BLOCK-----"
           - "-----BEGIN (NEW )?CERTIFICATE REQUEST-----"
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

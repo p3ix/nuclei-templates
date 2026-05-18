@@ -75,4 +75,7 @@ http:
           - "(?im)^#\\s+(HELP|TYPE)\\s+[a-zA-Z_:][a-zA-Z0-9_:]*.*$"
           - "(?im)(job|instance|namespace|pod|service|endpoint|tenant|cluster|version)=\"[^\"]+\""
           - "(?i)(internal|staging|dev|admin|token|secret|password|api[_-]?key)[^\\r\\n]{0,160}"
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

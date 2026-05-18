@@ -125,4 +125,7 @@ http:
         part: body
         regex:
           - "(?im)(mail_password|smtp_password|MAIL_PASSWORD|SMTP_PASSWORD|SENDGRID_API_KEY|MAILGUN_API_KEY|POSTMARK_TOKEN|AWS_SECRET_ACCESS_KEY|CELERY_BROKER_URL|amqp://|bootstrap.servers)[\"'\\s:=]+[^\\r\\n,;]+"
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

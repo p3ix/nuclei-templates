@@ -110,4 +110,7 @@ http:
         regex:
           - "(?im)(apiKey|authDomain|databaseURL|projectId|storageBucket|messagingSenderId|appId|mobilesdk_app_id|GOOGLE_APP_ID|FIREBASE_CONFIG)[\"'\\s:=]+[^\\r\\n,;<>]+"
           - "(?im)(allow\\s+(read|write|create|update|delete):\\s*if\\s+[^;]+|\"\\.(read|write)\"\\s*:\\s*[^,}\\r\\n]+)"
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

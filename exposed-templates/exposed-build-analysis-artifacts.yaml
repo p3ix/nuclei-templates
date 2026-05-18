@@ -115,4 +115,7 @@ http:
         regex:
           - "(?i)(webpack://[^\\s\"'<>]+|wasm://[^\\s\"'<>]+|[A-Za-z0-9_./-]+\\.wasm(?:\\.map)?)"
           - "(?i)(api[_-]?key|secret|token|password|internal|admin|graphql|staging|dev).{0,160}"
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

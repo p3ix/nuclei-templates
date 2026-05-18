@@ -121,3 +121,7 @@ http:
         part: body
         regex:
           - "(?im)(repository|resolved|registry|source|private|token|password|_authToken|npm.pkg.github.com).{0,160}"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

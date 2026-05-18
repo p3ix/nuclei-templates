@@ -100,4 +100,7 @@ http:
         regex:
           - "(?im)(Contact|Policy|Acknowledgments|Hiring|Canonical|Disallow|Allow|Sitemap):\\s*[^\\r\\n]+"
           - "(?i)(https?://[^\\s\"'<>]+|mailto:[^\\s\"'<>]+)"
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

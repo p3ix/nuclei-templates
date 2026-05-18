@@ -120,4 +120,7 @@ http:
         regex:
           - "(?im)(DB_NAME|DB_USER|DB_PASSWORD|_DB_NAME_|_DB_USER_|_DB_PASSWD_|password|crypt|secret|key)[\"'\\s:=(),]+[^\\r\\n,;<>]+"
           - "(?i)(WordPress|Drupal|Joomla!|Magento|PrestaShop)[^\\r\\n<]{0,120}"
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

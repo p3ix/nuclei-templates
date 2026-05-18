@@ -102,4 +102,7 @@ http:
         part: body
         regex:
           - "(?i)(api[_-]?key|secret|token|password|bearer|graphql|admin|internal).{0,120}"
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

@@ -64,7 +64,6 @@ http:
         status:
           - 200
           - 401
-          - 403
 
       - type: word
         part: body
@@ -97,9 +96,14 @@ http:
           - "!contains(tolower(body), 'the requested resource')"
           - "!contains(tolower(body), '404')"
           - "!contains(tolower(body), 'page does not exist')"
+          - "!contains(tolower(body), 'you don't have permission')"
 
     extractors:
       - type: regex
         part: body
         regex:
           - "(?i)(Apache Guacamole|noVNC|websockify|ttyd|WeTTY|GoTTY|WebSSH|Cockpit|Webmin|File Browser|code-server|Coder|Cloud9|Jupyter Terminal)[^\\r\\n<]{0,140}"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

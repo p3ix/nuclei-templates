@@ -49,8 +49,9 @@ http:
 
       - type: dsl
         dsl:
-          - "contains(tolower(header), 'poison-webcache.example') || contains(tolower(body), 'poison-webcache.example') || contains(tolower(body), '/poison-webcache.css')"
-          - "contains(tolower(header), 'x-cache') || contains(tolower(header), 'cf-cache-status') || contains(tolower(header), 'age:') || contains(tolower(header), 'via:') || contains(tolower(header), 'cache-control: public') || contains(tolower(header), 's-maxage') || contains(tolower(header), 'surrogate-control')"
+          - "contains(tolower(header), 'poison-webcache.example') || (contains(tolower(body), 'poison-webcache.example') && (contains(tolower(body), 'href') || contains(tolower(body), 'src=') || contains(tolower(body), 'action=') || contains(tolower(body), 'canonical') || contains(tolower(body), 'base href') || contains(tolower(header), 'location:')))"
+          - "!contains(tolower(header), 'x-cache: error')"
+          - "contains(tolower(header), 'x-cache: hit') || contains(tolower(header), 'cf-cache-status: hit') || contains(tolower(header), 'cf-cache-status: stale') || contains(tolower(header), 's-maxage') || contains(tolower(header), 'surrogate-control') || (contains(tolower(header), 'age:') && !contains(tolower(header), 'age: 0'))"
 
     extractors:
       - type: regex

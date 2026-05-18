@@ -106,4 +106,7 @@ http:
         part: header
         regex:
           - "(?i)(content-type|content-length|content-disposition): [^\\r\\n]+"
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

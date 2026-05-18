@@ -86,7 +86,6 @@ http:
         status:
           - 200
           - 401
-          - 403
 
       - type: word
         part: body
@@ -129,6 +128,7 @@ http:
           - "!contains(tolower(body), 'the requested resource')"
           - "!contains(tolower(body), '404')"
           - "!contains(tolower(body), 'page does not exist')"
+          - "!contains(tolower(body), 'you don't have permission')"
           - "!contains(tolower(body), 'no encontrado')"
           - "!contains(tolower(body), 'no se ha encontrado')"
 
@@ -138,3 +138,7 @@ http:
         regex:
           - "(?i)(Grafana|Prometheus|Alertmanager|Kibana|Jaeger|Zipkin|Zabbix|Nagios|Netdata|Consul|Nomad|Vault)[^\\r\\n<]{0,120}"
           - "(?im)^#\\s+(HELP|TYPE)\\s+[a-zA-Z_:][a-zA-Z0-9_:]*.*$"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

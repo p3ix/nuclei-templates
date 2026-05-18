@@ -57,4 +57,7 @@ http:
         regex:
           - "(?i)<allow-access-from[^>]+>"
           - "(?i)<domain[^>]+uri=\"[^\"]+\"[^>]*>"
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

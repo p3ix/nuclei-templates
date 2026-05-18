@@ -64,7 +64,6 @@ http:
         status:
           - 200
           - 401
-          - 403
 
       - type: word
         part: body
@@ -105,6 +104,7 @@ http:
           - "!contains(tolower(body), 'the requested resource')"
           - "!contains(tolower(body), '404')"
           - "!contains(tolower(body), 'page does not exist')"
+          - "!contains(tolower(body), 'you don't have permission')"
 
     extractors:
       - type: regex
@@ -112,3 +112,7 @@ http:
         regex:
           - "(?i)(Apache Airflow|Argo Workflows|Temporal Web|Prefect|Dagster|Luigi|Azkaban|Rundeck|Jenkins|Concourse|GoCD|Spinnaker|Tekton|Argo CD|Cronicle)[^\\r\\n<]{0,140}"
           - "(?im)\"(dag_id|workflow|pipeline|job|task|environment|namespace|cluster)\"\\s*:\\s*[^,}\\r\\n]+"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

@@ -114,4 +114,7 @@ http:
         regex:
           - "(?im)(host|username|password|token|_authToken|machine|login)[\"'\\s:=]+[^\\r\\n,;<>]+"
           - "(?i)(/home/[A-Za-z0-9._/-]+|/Users/[A-Za-z0-9._/-]+|[A-Z]:\\\\[A-Za-z0-9._\\\\ -]+)"
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

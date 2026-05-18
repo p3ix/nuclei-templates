@@ -72,7 +72,6 @@ http:
         status:
           - 200
           - 401
-          - 403
 
       - type: word
         part: body
@@ -115,6 +114,7 @@ http:
           - "!contains(tolower(body), 'the requested resource')"
           - "!contains(tolower(body), '404')"
           - "!contains(tolower(body), 'page does not exist')"
+          - "!contains(tolower(body), 'you don't have permission')"
 
     extractors:
       - type: regex
@@ -122,3 +122,7 @@ http:
         regex:
           - "(?i)(RabbitMQ|Kafka UI|Kafdrop|AKHQ|Redpanda Console|ActiveMQ|Hawtio|EMQX|NATS|Pulsar|NSQ|Flower)[^\\r\\n<]{0,140}"
           - "(?im)\"(server_id|version|connections|subscriptions|queues|topics|consumer_groups|cluster_name)\"\\s*:\\s*[^,}\\r\\n]+"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

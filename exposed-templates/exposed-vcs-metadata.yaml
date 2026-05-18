@@ -83,4 +83,7 @@ http:
         regex:
           - "ref: refs/heads/[A-Za-z0-9._/-]+"
           - "url = [^\\r\\n]+"
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

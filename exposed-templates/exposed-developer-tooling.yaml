@@ -124,3 +124,7 @@ http:
         part: body
         regex:
           - "(?im)(token|password|secret|_authToken|registry|deploy|ssh|rsync|kubectl|helm|terraform|ansible).{0,160}"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

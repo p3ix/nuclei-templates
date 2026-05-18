@@ -66,4 +66,7 @@ http:
         regex:
           - "(?im)(Server Version|Server Built|Current Time|Restart Time|Total accesses|BusyWorkers|IdleWorkers|Scoreboard):\\s*[^\\r\\n<]+"
           - "(?i)(GET|POST|HEAD|PUT|DELETE)\\s+/[^\\s<]+"
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

@@ -119,4 +119,7 @@ http:
         regex:
           - "(?i)(/[A-Za-z0-9_./-]+\\.(js|css|map|json)|/_next/[A-Za-z0-9_./-]+|/_nuxt/[A-Za-z0-9_./-]+)"
           - "(?i)(api|admin|internal|secret|token|graphql|staging|dev).{0,120}"
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

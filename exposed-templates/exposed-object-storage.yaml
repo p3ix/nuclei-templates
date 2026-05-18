@@ -101,4 +101,7 @@ http:
         part: body
         regex:
           - "(?im)(aws_access_key_id|aws_secret_access_key|accountKey|MINIO_ROOT_PASSWORD|bucket|endpoint|s3://|gs://)[\"'\\s:=<>/-]+[^\\r\\n,<>]+"
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

@@ -116,3 +116,7 @@ http:
           - "(?im)^(\\t@?|\\s{2,}-\\s+)?(tar|gzip|mysqldump|pg_dump|mongodump|redis-cli|rsync|scp|ssh|kubectl|helm|docker|docker-compose|terraform|ansible|vault|aws|gcloud|az)\\b[^\\r\\n]*"
           - "(?im)(tar\\s+-[A-Za-z0-9]+\\s+[^\\r\\n]+|mysqldump[^\\r\\n]+|pg_dump[^\\r\\n]+|rsync[^\\r\\n]+|scp\\s+[^\\r\\n]+|ssh\\s+[^\\r\\n]+)"
           - "(?im)(DATABASE_URL|PASSWORD|TOKEN|SECRET|API_KEY|AWS_SECRET_ACCESS_KEY)[\"'\\s:=]+[^\\r\\n,;]+"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

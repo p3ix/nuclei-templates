@@ -126,3 +126,7 @@ http:
         regex:
           - "(?im)(password|secret|token|api[_-]?key|database_url|jdbc:|mongodb://|redis://).{0,160}"
           - "(?i)(/actuator/[a-z0-9_-]+|/_profiler/[a-z0-9]+|/rails/info/[a-z0-9_-]+)"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

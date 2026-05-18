@@ -40,7 +40,6 @@ http:
         status:
           - 200
           - 401
-          - 403
 
       - type: word
         part: body
@@ -72,4 +71,7 @@ http:
         regex:
           - "(?i)(Grafana|grafana-app|Welcome to Grafana|public-dashboards|dashboard/snapshot)[^\\r\\n<]{0,160}"
           - "(?i)\"(title|uri|url|version|commit|database)\"\\s*:\\s*\"[^\"]+\""
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

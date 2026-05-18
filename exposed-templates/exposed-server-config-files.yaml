@@ -151,4 +151,7 @@ http:
         regex:
           - "(?im)(AuthUserFile|RewriteRule|proxy_pass|server_name|DocumentRoot|ServerName|connectionStrings|appSettings|open_basedir|disable_functions).{0,160}"
           - "(?m)^[^:\\r\\n]{1,80}:\\$apr1\\$[^\\r\\n]+"
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

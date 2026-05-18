@@ -62,7 +62,6 @@ http:
         status:
           - 200
           - 401
-          - 403
 
       - type: word
         part: body
@@ -97,6 +96,7 @@ http:
           - "!contains(tolower(body), 'the requested resource')"
           - "!contains(tolower(body), '404')"
           - "!contains(tolower(body), 'page does not exist')"
+          - "!contains(tolower(body), 'you don't have permission')"
 
     extractors:
       - type: regex
@@ -104,3 +104,7 @@ http:
         regex:
           - "(?i)(Keycloak|OpenID Connect|oauth2-proxy|Dex|ORY Hydra|ORY Kratos|ZITADEL|authentik|Authelia|Central Authentication Service|ADFS|Identity Provider)[^\\r\\n<]{0,140}"
           - "(?im)\"(issuer|authorization_endpoint|token_endpoint|jwks_uri|registration_endpoint|realm|client_id)\"\\s*:\\s*\"[^\"]+\""
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

@@ -82,4 +82,7 @@ http:
         regex:
           - "(?im)(password|secret|token|api[_-]?key|spring\\.datasource|jdbc:|mongodb://|redis://).{0,180}"
           - "(?i)(/actuator/[a-z0-9._-]+|/manage/actuator/[a-z0-9._-]+|/management/[a-z0-9._-]+)"
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

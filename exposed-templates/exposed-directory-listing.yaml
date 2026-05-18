@@ -108,4 +108,7 @@ http:
         regex:
           - "(?i)<title>Index of [^<]+"
           - "(?i)href=\"[^\"]+\""
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

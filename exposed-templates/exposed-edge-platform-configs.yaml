@@ -139,3 +139,7 @@ http:
         regex:
           - "(?im)(account_id|zone_id|projectId|orgId|teamId|site_id|primary_region|compatibility_date|kv_namespaces|d1_databases|r2_buckets|envVars|CLOUDFLARE_API_TOKEN|RAILWAY_[A-Z_]+)[\"'\\s:=]+[^\\r\\n,;<>]+"
           - "(?im)(SECRET|TOKEN|PASSWORD|DATABASE_URL|API_KEY|AUTH|DSN)[\"'\\s:=]+[^\\r\\n,;<>]+"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

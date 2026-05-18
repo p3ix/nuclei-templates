@@ -93,4 +93,7 @@ http:
         regex:
           - "(?i)\"(status|version|build|commit|environment|hostname|database|redis|mongodb|postgres|mysql|rabbitmq|kafka|uptime|memory)\"\\s*:\\s*[^,}\\r\\n]+"
           - "(?i)(jdbc:|mongodb://|redis://|amqp://|kafka|postgres|mysql|internal|staging|prod)[^\\r\\n]{0,160}"
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

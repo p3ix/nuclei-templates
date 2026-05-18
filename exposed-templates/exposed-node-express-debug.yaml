@@ -87,4 +87,7 @@ http:
         regex:
           - "(?im)(GET|POST|PUT|PATCH|DELETE)\\s+(/[A-Za-z0-9_./:()-]+)"
           - "(?im)(NODE_ENV|process\\.env|password|secret|token|api[_-]?key|authorization).{0,160}"
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

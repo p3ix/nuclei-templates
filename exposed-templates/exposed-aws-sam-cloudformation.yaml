@@ -124,3 +124,7 @@ http:
         regex:
           - "(?im)(arn:aws:[a-z0-9-]+:[a-z0-9-]*:[0-9]{12}:[^\\s\"'<>]+)"
           - "(?im)(AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|SECRET|TOKEN|PASSWORD|DATABASE_URL|API_KEY|stack_name|s3_bucket|RoleArn|FunctionName)[\"'\\s:=]+[^\\r\\n,;<>]+"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

@@ -68,4 +68,7 @@ http:
         part: body
         regex:
           - "(?im)(authorization|bearer|cookie|password|token|api[_-]?key|exception|Illuminate\\\\|/telescope/api/[a-z0-9_-]+).{0,180}"
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

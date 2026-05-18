@@ -132,4 +132,7 @@ http:
         part: body
         regex:
           - "(?im)(password|secret|token|api[_-]?key|image|namespace|server|registry|client-key-data)[\"'\\s:=]+[^\\r\\n,]+"
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

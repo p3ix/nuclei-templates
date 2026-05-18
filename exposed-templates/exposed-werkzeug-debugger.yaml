@@ -58,4 +58,7 @@ http:
         regex:
           - "(?i)(Werkzeug Debugger|Interactive Console|Console Locked|The debugger caught an exception|__debugger__)"
           - "(?im)(File \"[^\"]+\", line [0-9]+|Traceback \\(most recent call last\\))"
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

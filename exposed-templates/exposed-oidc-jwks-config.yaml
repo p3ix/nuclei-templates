@@ -98,4 +98,7 @@ http:
         regex:
           - "(?i)(issuer|authorization_endpoint|token_endpoint|jwks_uri|client_id|kid|x5t)[\"'\\s:=<>/-]+[^\\r\\n,<>]+"
           - "(?i)-----BEGIN CERTIFICATE-----"
-
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

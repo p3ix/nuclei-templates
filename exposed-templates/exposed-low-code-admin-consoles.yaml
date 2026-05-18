@@ -65,7 +65,6 @@ http:
         status:
           - 200
           - 401
-          - 403
 
       - type: word
         part: body
@@ -103,6 +102,7 @@ http:
           - "!contains(tolower(body), 'the requested resource')"
           - "!contains(tolower(body), '404')"
           - "!contains(tolower(body), 'page does not exist')"
+          - "!contains(tolower(body), 'you don't have permission')"
 
     extractors:
       - type: regex
@@ -110,3 +110,7 @@ http:
         regex:
           - "(?i)(Strapi|Directus|Ghost Admin|Keystone|Payload|Sanity Studio|Hasura Console|Appsmith|ToolJet|Budibase|NocoDB|Baserow|Retool|Supabase|PocketBase)[^\\r\\n<]{0,140}"
           - "(?im)\"(collections|data_sources|graphql|admin|project|workspace|organization)\"\\s*:\\s*[^,}\\r\\n]+"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"
