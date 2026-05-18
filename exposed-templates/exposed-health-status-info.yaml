@@ -55,12 +55,6 @@ http:
         part: body
         condition: or
         words:
-          - "\"status\""
-          - "\"UP\""
-          - "\"DOWN\""
-          - "\"healthy\""
-          - "\"ready\""
-          - "\"live\""
           - "\"version\""
           - "\"build\""
           - "\"commit\""
@@ -79,12 +73,18 @@ http:
           - "\"environment\""
           - "spring"
           - "checks"
+          - "jdbc:"
+          - "mongodb://"
+          - "redis://"
+          - "amqp://"
 
       - type: dsl
         dsl:
           - "!contains(tolower(body), '<html')"
           - "!contains(tolower(header), 'content-type: text/html')"
           - "!contains(tolower(body), '<!doctype')"
+          - "!regex('(?i)(page not found|does not exist|object moved|no encontrado)', body)"
+          - "!contains(body, '<div id=\"app\">') && !contains(body, 'import-map') && !contains(body, 'GTM-') && !contains(body, 'AmazonS3')"
           - "len(body) < 10485760"
 
     extractors:

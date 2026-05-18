@@ -3,7 +3,7 @@ id: missing-cross-origin-isolation-headers
 info:
   name: Cross-Origin Isolation Headers Missing On Sensitive Pages
   author: p3i
-  severity: low
+  severity: info
   description: Detects sensitive pages missing COOP, COEP, and CORP headers. This is primarily a hardening signal for apps handling sensitive data or using powerful browser APIs.
   tags: misconfig,coop,coep,corp,headers,web
   metadata:

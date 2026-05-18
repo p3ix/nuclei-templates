@@ -57,6 +57,8 @@ http:
       - type: dsl
         dsl:
           - "!regex('(?i)set-cookie:[^\\r\\n]*(session|sid|sess|auth|token|jwt|remember|csrf|xsrf)[^\\r\\n;]*=[^\\r\\n]*\\bsecure\\b', header) || !regex('(?i)set-cookie:[^\\r\\n]*(session|sid|sess|auth|token|jwt|remember|csrf|xsrf)[^\\r\\n;]*=[^\\r\\n]*\\bhttponly\\b', header) || !regex('(?i)set-cookie:[^\\r\\n]*(session|sid|sess|auth|token|jwt|remember|csrf|xsrf)[^\\r\\n;]*=[^\\r\\n]*samesite', header)"
+          - "!regex('(?i)set-cookie:\\s*(__cf_bm|_cfuvid|__cflb|__cfduid|_ga|_gid|_gat|_fbp|_fbc|DT|rxVisitor|rxvt|_uetsid|_uetvid|OptanonConsent|CookieConsent|euconsent)=', header)"
+          - "!regex('(?i)(okta\\.com|statuspage\\.io|skilljar\\.com|safebase\\.io|pathfactory\\.com|zendesk\\.com|atlassian\\.com|auth0\\.com|intercom\\.io|hubspot\\.com|segment\\.io)', host)"
 
     extractors:
       - type: regex

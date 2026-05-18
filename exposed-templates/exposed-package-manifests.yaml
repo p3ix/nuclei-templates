@@ -116,6 +116,8 @@ http:
           - "!contains(tolower(body), '<!doctype')"
           - "!contains(tolower(body), 'wp-content') && !contains(tolower(body), 'wp-includes') && !contains(tolower(body), 'wp-admin') && !contains(tolower(body), 'woocommerce') && !contains(tolower(body), 'wpemoji') && !contains(tolower(body), 'gravityforms') && !contains(tolower(body), 'wpml')"
           - "!contains(tolower(body), 'data-astro-cid') && !contains(tolower(body), '_astro/') && !contains(tolower(body), '__nuxt') && !contains(tolower(body), 'ng-version') && !contains(tolower(body), 'data-reactroot') && !contains(tolower(body), 'rails-ujs')"
+          - "!regex('(?i)(page not found|does not exist|object moved|no encontrado)', body)"
+          - "!contains(body, '<div id=\"app\">') && !contains(body, 'import-map') && !contains(body, 'GTM-') && !contains(body, 'AmazonS3')"
           - "len(body) < 10485760"
 
     extractors:

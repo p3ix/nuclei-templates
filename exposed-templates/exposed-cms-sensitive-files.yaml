@@ -83,7 +83,6 @@ http:
       - type: status
         status:
           - 200
-          - 403
 
       - type: word
         part: body
@@ -112,8 +111,10 @@ http:
 
       - type: dsl
         dsl:
-          - "status_code != 200 || (!contains(tolower(header), 'content-type: text/html') && !contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype'))"
+          - "!contains(tolower(header), 'content-type: text/html') && !contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
           - "!contains(tolower(body), 'wpemoji') && !contains(tolower(body), 'gravityforms') && !contains(tolower(body), 'data-astro-cid') && !contains(tolower(body), '_astro/') && !contains(tolower(body), '__nuxt') && !contains(tolower(body), 'ng-version') && !contains(tolower(body), 'data-reactroot') && !contains(tolower(body), 'rails-ujs')"
+          - "!regex('(?i)(page not found|does not exist|object moved|no encontrado)', body)"
+          - "!contains(body, '<div id=\"app\">') && !contains(body, 'import-map') && !contains(body, 'GTM-') && !contains(body, 'AmazonS3')"
           - "len(body) < 10485760"
 
     extractors:

@@ -47,6 +47,7 @@ http:
       - type: dsl
         dsl:
           - "contains(tolower(header), 'access-control-allow-origin: https://cors-preflight-bugbounty.example')"
+          - "contains(tolower(header), 'access-control-allow-credentials: true')"
           - "contains(tolower(header), 'access-control-allow-methods:')"
           - "contains(tolower(header), 'delete') || contains(tolower(header), 'put') || contains(tolower(header), 'patch')"
           - "contains(tolower(header), 'authorization') || contains(tolower(header), 'access-control-allow-headers: *')"

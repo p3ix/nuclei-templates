@@ -3,7 +3,7 @@ id: exposed-well-known-files
 info:
   name: Exposed Well-Known And Site Metadata Files
   author: p3i
-  severity: low
+  severity: info
   description: Detects well-known and site metadata files that can disclose security contacts, app links, payment configuration, federation metadata, crawled paths, and platform integrations.
   tags: exposure,well-known,metadata,securitytxt,robots,sitemap
   metadata:
@@ -92,6 +92,8 @@ http:
 
       - type: dsl
         dsl:
+          - "!regex('(?i)(page not found|does not exist|object moved|no encontrado)', body)"
+          - "!contains(body, '<div id=\"app\">') && !contains(body, 'import-map') && !contains(body, 'GTM-') && !contains(body, 'AmazonS3')"
           - "len(body) < 5242880"
 
     extractors:

@@ -3,7 +3,7 @@ id: permissive-csp-policy
 info:
   name: Permissive Or Bypassable Content Security Policy
   author: p3i
-  severity: low
+  severity: info
   description: Detects Content Security Policy headers that allow unsafe script execution patterns or overly broad sources, reducing XSS impact mitigation.
   tags: misconfig,csp,headers,xss,web
   metadata:

@@ -49,7 +49,7 @@ http:
       - type: dsl
         dsl:
           - "(contains(tolower(header), 'location:') && contains(header, 'probe-' + randstr + '.bb')) || (contains(body, 'probe-' + randstr + '.bb') && (contains(tolower(body), 'href=') || contains(tolower(body), 'src=') || contains(tolower(body), 'action=') || contains(tolower(body), 'canonical') || contains(tolower(body), 'base href')))"
-          - "!contains(tolower(header), 'x-cache: error') && !contains(tolower(header), 'x-cache: miss') && !contains(tolower(header), 'cache-control: private') && !contains(tolower(header), 'cf-cache-status: dynamic')"
+          - "!contains(tolower(header), 'x-cache: error') && !contains(tolower(header), 'x-cache: miss') && !contains(tolower(header), 'cache-control: private') && !contains(tolower(header), 'cf-cache-status: dynamic') && !contains(tolower(header), 'cf-cache-status: miss') && !contains(tolower(header), 'cf-cache-status: bypass') && !contains(tolower(header), 'cache-control: no-store') && !contains(tolower(header), 'must-revalidate')"
           - "!contains(tolower(body), 'visit_scheme=')"
           - "contains(tolower(header), 'x-cache: hit') || contains(tolower(header), 'cf-cache-status: hit') || contains(tolower(header), 'cf-cache-status: stale') || contains(tolower(header), 's-maxage') || contains(tolower(header), 'surrogate-control') || (contains(tolower(header), 'age:') && !contains(tolower(header), 'age: 0')) || regex('(?i)max-age=[1-9]', header)"
 

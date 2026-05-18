@@ -3,7 +3,7 @@ id: verbose-internal-response-headers
 info:
   name: Verbose Internal Response Headers
   author: p3i
-  severity: low
+  severity: info
   description: Detects verbose response headers that disclose internal hosts, framework versions, upstream services, cache nodes, or infrastructure details.
   tags: misconfig,headers,info-disclosure,internal,web
   metadata:

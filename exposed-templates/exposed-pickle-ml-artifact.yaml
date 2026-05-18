@@ -1,0 +1,91 @@
+id: exposed-pickle-ml-artifact
+
+info:
+  name: Exposed Python Pickle ML Artifact With Magic Bytes
+  author: p3i
+  severity: high
+  description: Detects exposed Python pickle files confirmed by Content-Type application/octet-stream and pickle magic bytes in response body. Pickle files allow arbitrary code execution upon deserialization.
+  tags: exposure,python,pickle,ml,rce,deserialization
+  metadata:
+    max-request: 20
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{pickle_file}}"
+
+    payloads:
+      pickle_file:
+        - "model.pkl"
+        - "model.pickle"
+        - "classifier.pkl"
+        - "classifier.pickle"
+        - "data.pkl"
+        - "data.pickle"
+        - "pipeline.pkl"
+        - "pipeline.pickle"
+        - "model/model.pkl"
+        - "models/model.pkl"
+        - "models/classifier.pkl"
+        - "ml/model.pkl"
+        - "ai/model.pkl"
+        - "artifacts/model.pkl"
+        - "artifacts/pipeline.pkl"
+        - "best_model.pkl"
+        - "final_model.pkl"
+        - "prod_model.pkl"
+        - "checkpoint.pkl"
+        - "test.pickle"
+
+    attack: batteringram
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "content-type: text/html"
+          - "content-type: text/plain"
+        negative: true
+        condition: or
+
+      - type: word
+        part: body
+        words:
+          - "<!DOCTYPE"
+          - "<html"
+          - "Page not found"
+          - "page not found"
+          - "does not exist"
+          - "Not Found"
+        negative: true
+        condition: or
+
+      - type: dsl
+        dsl:
+          - "contains(tolower(header), 'application/octet-stream') || contains(tolower(header), 'application/x-pickle') || contains(tolower(header), 'application/python-pickle')"
+          - "len(body) > 32"
+          - "len(body) < 209715200"
+
+      - type: binary
+        part: body
+        binary:
+          - "8002"
+          - "8003"
+          - "8004"
+          - "8005"
+
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "(?i)(content-type|content-length|content-disposition): [^\\r\\n]+"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

@@ -34,7 +34,6 @@ http:
       - type: status
         status:
           - 200
-          - 302
 
       - type: word
         part: body
@@ -43,19 +42,26 @@ http:
           - "Django Debug Toolbar"
           - "djDebug"
           - "djdt"
-          - "__debug__"
           - "SQL queries"
-          - "Request Vars"
-          - "Templates"
+          - "debugtoolbar"
           - "Django administration"
           - "Log in | Django site admin"
           - "csrfmiddlewaretoken"
           - "id_username"
           - "id_password"
-          - "Django"
+
+      - type: word
+        part: header
+        words:
+          - "Location: /login"
+          - "Location: /signin"
+          - "Location: /auth"
+        negative: true
 
       - type: dsl
         dsl:
+          - "!regex('(?i)(page not found|does not exist|object moved|no encontrado)', body)"
+          - "!contains(body, '<div id=\"app\">') && !contains(body, 'import-map') && !contains(body, 'GTM-') && !contains(body, 'AmazonS3')"
           - "len(body) < 10485760"
 
     extractors:

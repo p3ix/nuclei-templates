@@ -41,8 +41,6 @@ http:
         status:
           - 200
           - 204
-          - 401
-          - 403
 
       - type: dsl
         dsl:

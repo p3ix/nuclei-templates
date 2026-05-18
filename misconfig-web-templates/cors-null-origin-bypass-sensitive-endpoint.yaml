@@ -1,0 +1,66 @@
+id: cors-null-origin-bypass-sensitive-endpoint
+
+info:
+  name: CORS Null Origin Bypass On Sensitive Endpoint
+  author: p3i
+  severity: high
+  description: Detects endpoints that reflect the null origin and allow credentials, enabling cross-origin authenticated reads from sandboxed iframes or local HTML files. Only alerts on non-login paths where data exposure is meaningful.
+  reference:
+    - https://portswigger.net/web-security/cors/lab-null-origin-whitelisted-with-credentials
+  tags: misconfig,cors,null-origin,credentials,headers,web
+  metadata:
+    max-request: 12
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{cors_path}}"
+
+    headers:
+      Origin: "null"
+      Accept: "application/json, text/plain, */*"
+
+    payloads:
+      cors_path:
+        - "api"
+        - "api/"
+        - "api/v1"
+        - "v1"
+        - "graphql"
+        - "me"
+        - "user"
+        - "account"
+        - "profile"
+        - "admin"
+        - "dashboard"
+        - "config"
+
+    attack: batteringram
+    redirects: false
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 204
+
+      - type: dsl
+        dsl:
+          - "contains(tolower(header), 'access-control-allow-origin: null')"
+          - "contains(tolower(header), 'access-control-allow-credentials: true')"
+          - "len(body) > 10"
+          - "!contains(tolower(body), 'unauthorized')"
+          - "!contains(tolower(body), 'unauthenticated')"
+          - "!regex('(?i)/(login|signin|auth|register)$', path)"
+
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "(?i)access-control-allow-(origin|credentials|methods|headers):[^\\r\\n]+"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

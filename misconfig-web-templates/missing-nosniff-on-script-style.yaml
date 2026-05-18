@@ -3,7 +3,7 @@ id: missing-nosniff-on-script-style
 info:
   name: Missing X-Content-Type-Options On Script Or Style Assets
   author: p3i
-  severity: low
+  severity: info
   description: Detects JavaScript or CSS assets served without X-Content-Type-Options nosniff, useful when combined with upload, cache, or content-type confusion issues.
   tags: misconfig,nosniff,mime,headers,javascript,css,web
   metadata:

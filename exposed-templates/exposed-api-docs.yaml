@@ -122,6 +122,9 @@ http:
 
       - type: dsl
         dsl:
+          - "!contains(tolower(body), '<html') || contains(tolower(body), 'swagger') || contains(tolower(body), 'openapi') || contains(tolower(body), 'graphiql') || contains(tolower(body), 'redoc')"
+          - "!regex('(?i)(page not found|does not exist|object moved|no encontrado)', body)"
+          - "!contains(body, '<div id=\"app\">') && !contains(body, 'import-map') && !contains(body, 'GTM-') && !contains(body, 'AmazonS3')"
           - "len(body) < 20971520"
 
     extractors:

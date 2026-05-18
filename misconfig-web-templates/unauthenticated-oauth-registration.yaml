@@ -1,0 +1,75 @@
+id: unauthenticated-oauth-registration
+
+info:
+  name: Unauthenticated OAuth Client Registration Endpoint
+  author: p3i
+  severity: high
+  description: Detects OAuth Dynamic Client Registration endpoints accessible without authentication. Allows any attacker to create rogue OAuth clients and potentially abuse authorization flows.
+  reference:
+    - https://tools.ietf.org/html/rfc7591
+  tags: oauth,misconfig,bugbounty,registration,api
+  metadata:
+    max-request: 5
+
+http:
+  - method: POST
+    path:
+      - "{{BaseURL}}/v1/oauth/register"
+      - "{{BaseURL}}/oauth/register"
+      - "{{BaseURL}}/api/oauth/register"
+      - "{{BaseURL}}/oauth/clients"
+      - "{{BaseURL}}/api/v1/oauth/clients"
+
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+
+    body: '{"client_name":"nuclei-test","redirect_uris":["https://nuclei-test.example.com/callback"]}'
+
+    redirects: false
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 201
+
+      - type: word
+        part: body
+        words:
+          - "client_id"
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "redirect_uri"
+          - "redirect_uris"
+
+      - type: word
+        part: body
+        words:
+          - "error"
+          - "unauthorized"
+          - "forbidden"
+          - "Unauthorized"
+          - "Forbidden"
+        negative: true
+        condition: or
+
+      - type: word
+        part: header
+        words:
+          - "content-type: application/json"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)(client_id|client_secret|registration_access_token|registration_client_uri)[\"'\\s:]+[^\"'\\r\\n,}]+"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"
