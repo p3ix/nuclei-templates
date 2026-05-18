@@ -1,0 +1,71 @@
+id: exposed-pprof-expvar-debug
+
+info:
+  name: Exposed Go pprof And expvar Debug Endpoints
+  author: p3i
+  severity: high
+  description: Detects accessible Go runtime profiling endpoints (net/http/pprof) and exported variable endpoints (expvar). These expose heap dumps, goroutine stacks, CPU profiles, memory allocation traces, command-line arguments, and runtime metrics that reveal internal application state. Profiling endpoints can also be abused to degrade performance.
+  tags: exposure,golang,pprof,expvar,debug,profiling,web
+  metadata:
+    max-request: 14
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{pprof_path}}"
+
+    payloads:
+      pprof_path:
+        - "debug/pprof/"
+        - "debug/pprof/heap"
+        - "debug/pprof/goroutine"
+        - "debug/pprof/cmdline"
+        - "debug/pprof/threadcreate"
+        - "debug/pprof/block"
+        - "debug/pprof/mutex"
+        - "debug/pprof/allocs"
+        - "debug/vars"
+        - "debug/requests"
+        - "debug/events"
+        - "_debug/pprof/"
+        - "api/debug/pprof/"
+        - "internal/debug/pprof/"
+
+    attack: batteringram
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "goroutine profile"
+          - "heap profile"
+          - "Types of profiles available"
+          - "allocs: A sampling of all past memory allocations"
+          - "block: Stack traces that led to blocking"
+          - "goroutine:"
+          - "threadcreate:"
+          - "mutex:"
+          - "memstats"
+          - "cmdline"
+
+      - type: dsl
+        dsl:
+          - "len(body) > 20"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)(goroutine|heap|cmdline|threadcreate|block|mutex|allocs)\\s+[0-9]+"
+          - "(?im)\"(cmdline|memstats)\":\\s*[\\[{]"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

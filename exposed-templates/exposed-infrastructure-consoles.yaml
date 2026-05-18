@@ -1,0 +1,125 @@
+id: exposed-infrastructure-consoles
+
+info:
+  name: Exposed Infrastructure Management Consoles
+  author: p3i
+  severity: high
+  description: Detects exposed HashiCorp Vault, Consul, Nomad, etcd, Terraform, Portainer, and Rancher consoles. These surfaces expose secrets, service registries, job scheduling, cluster topology, and container orchestration controls.
+  tags: exposure,infrastructure,vault,consul,nomad,etcd,terraform,portainer,secrets
+  metadata:
+    max-request: 58
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{infra_path}}"
+
+    payloads:
+      infra_path:
+        - "v1/sys/health"
+        - "v1/sys/info"
+        - "v1/sys/seal-status"
+        - "v1/sys/mounts"
+        - "v1/secret/"
+        - "v1/kv/"
+        - "ui/vault/secrets"
+        - "vault/"
+        - "vault/ui/"
+        - "v1/agent/self"
+        - "v1/agent/members"
+        - "v1/catalog/services"
+        - "v1/catalog/nodes"
+        - "v1/health/service/consul"
+        - "v1/kv/?keys"
+        - "consul/"
+        - "ui/consul/"
+        - "v1/jobs"
+        - "v1/jobs?meta=true"
+        - "v1/nodes"
+        - "v1/allocations"
+        - "v1/status/leader"
+        - "nomad/"
+        - "ui/nomad/"
+        - "v2/members/list"
+        - "v2/keys/"
+        - "v2/stats/self"
+        - "v3/members/list"
+        - "etcd/"
+        - "etcdctl/"
+        - "exhibitor/v1/cluster/state"
+        - "exhibitor/v1/cluster/list"
+        - "portainer/"
+        - "portainer/api/status"
+        - "portainer/api/endpoints"
+        - "api/endpoints"
+        - "rancher/"
+        - "v3/"
+        - "v3/projects"
+        - "v3/clusters"
+        - "app/"
+        - "app/terraform/"
+        - "tfe/"
+        - "api/v2/organizations"
+        - "api/v2/runs"
+
+    attack: batteringram
+    redirects: false
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 401
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"initialized\""
+          - "\"sealed\""
+          - "\"cluster_name\""
+          - "\"cluster_id\""
+          - "\"ha_enabled\""
+          - "\"Config\""
+          - "\"datacenter\""
+          - "\"LanConfig\""
+          - "\"serf_health\""
+          - "\"ServiceName\""
+          - "\"Checks\""
+          - "\"Jobs\""
+          - "\"Allocations\""
+          - "\"ClientStatus\""
+          - "\"TaskGroups\""
+          - "\"etcdserver\""
+          - "\"etcdcluster\""
+          - "\"dbSize\""
+          - "Exhibitor"
+          - "\"ServerVersion\""
+          - "Portainer"
+          - "\"ActiveEndpointsCount\""
+          - "\"RunnerID\""
+          - "\"workspaces\""
+          - "\"organizations\""
+          - "X-Vault-Token"
+          - "vault-token"
+
+      - type: dsl
+        dsl:
+          - "len(body) < 10485760"
+          - "!contains(tolower(body), 'not found')"
+          - "!contains(tolower(body), 'permission to access')"
+          - "!contains(tolower(body), 'page does not exist')"
+          - "!contains(tolower(body), '404')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)\"(cluster_name|datacenter|cluster_id|initialized|sealed|leader_address|version|ha_enabled)\"\\s*:\\s*[^,}\\r\\n]+"
+          - "(?im)\"(Jobs|Allocations|Nodes|Projects|Clusters|Workspaces|Organizations)\"\\s*:\\s*\\[[^\\]]{0,200}\\]"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

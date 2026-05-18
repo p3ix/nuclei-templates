@@ -1,0 +1,43 @@
+id: internal-ip-disclosure-headers
+
+info:
+  name: Internal IP Address Disclosure In Response Headers
+  author: p3i
+  severity: low
+  description: Detects private RFC-1918 or loopback IP addresses leaked in HTTP response headers such as X-Backend-Server, X-Upstream-Server, Via, X-Origin-Server, X-Real-IP, and X-Forwarded-For. Exposed internal IPs reveal network topology, facilitate pivot targeting, and can be used to craft Host-header attacks against backend services.
+  tags: misconfig,information-disclosure,internal-ip,network,headers,web
+  metadata:
+    max-request: 1
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/"
+
+    redirects: false
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 301
+          - 302
+          - 400
+          - 403
+          - 404
+          - 500
+
+      - type: regex
+        part: header
+        regex:
+          - "(?i)(x-backend-server|x-upstream|x-upstream-server|x-origin-server|x-server|x-internal-ip|x-cluster-client-ip|x-envoy-internal-address|via):[^\\r\\n]*(10\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}|172\\.(1[6-9]|2[0-9]|3[01])\\.[0-9]{1,3}\\.[0-9]{1,3}|192\\.168\\.[0-9]{1,3}\\.[0-9]{1,3}|127\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})"
+
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "(?i)(x-backend-server|x-upstream[^:]*|x-origin-server|x-server|via|x-internal-ip|x-cluster-client-ip|x-envoy-internal-address):[^\\r\\n]+"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

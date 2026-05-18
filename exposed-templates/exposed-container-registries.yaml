@@ -1,0 +1,86 @@
+id: exposed-container-registries
+
+info:
+  name: Exposed Container Registry And Artifact Repository
+  author: p3i
+  severity: high
+  description: Detects unauthenticated or weakly authenticated Docker registry v2 API, Harbor, Nexus, Artifactory, JFrog, and Quay endpoints. Exposed registries leak container image names, tags, layer digests, and embedded secrets from image metadata.
+  tags: exposure,docker,registry,harbor,nexus,artifactory,jfrog,quay,containers
+  metadata:
+    max-request: 48
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{registry_path}}"
+
+    payloads:
+      registry_path:
+        - "v2/"
+        - "v2/_catalog"
+        - "v2/_catalog?n=100"
+        - "v1/search"
+        - "v1/repositories"
+        - "api/v2.0/systeminfo"
+        - "api/v2.0/projects"
+        - "api/v2.0/repositories"
+        - "harbor/"
+        - "harbor/api/v2.0/systeminfo"
+        - "nexus/"
+        - "service/rest/v1/status"
+        - "service/rest/v1/repositories"
+        - "service/rest/v1/components?repository=docker"
+        - "nexus/service/rest/v1/repositories"
+        - "nexus/service/rest/v1/status"
+        - "artifactory/"
+        - "artifactory/api/system/ping"
+        - "artifactory/api/repositories"
+        - "artifactory/api/storageinfo"
+        - "api/repositories"
+        - "ui/"
+        - "quay/"
+        - "api/v1/superuser/users/"
+        - "api/v1/user/"
+        - "registry/"
+        - "registry/v2/"
+        - "crane/"
+        - "zot/"
+        - "v2/auth"
+
+    attack: batteringram
+    redirects: false
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 401
+
+      - type: dsl
+        dsl:
+          - "contains(tolower(header), 'docker-distribution-api-version') || contains(tolower(body), '\"repositories\"') || contains(tolower(body), '\"harbor_version\"') || contains(tolower(body), 'artifactory') || contains(tolower(body), '\"repositoryType\"') || contains(tolower(body), 'nexus') || contains(tolower(body), '\"has_robots\"') || contains(tolower(body), 'jfrog') || contains(tolower(body), '\"name\"') && contains(tolower(header), 'application/json')"
+
+      - type: dsl
+        dsl:
+          - "len(body) < 10485760"
+          - "!contains(tolower(body), 'not found')"
+          - "!contains(tolower(body), 'permission to access')"
+          - "!contains(tolower(body), '<html')"
+
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "(?i)docker-distribution-api-version:[^\\r\\n]+"
+          - "(?i)www-authenticate:[^\\r\\n]+"
+      - type: regex
+        part: body
+        regex:
+          - "(?i)\"repositories\"\\s*:\\s*\\[[^\\]]{0,300}\\]"
+          - "(?im)\"(harbor_version|artifactoryVersion|version|repositoryType|name)\"\\s*:\\s*\"[^\"]{0,100}\""
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

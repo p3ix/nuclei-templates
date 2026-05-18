@@ -1,0 +1,67 @@
+id: ssti-expression-injection
+
+info:
+  name: Server-Side Template Injection Via Expression Evaluation
+  author: p3i
+  severity: high
+  description: Detects server-side template injection by injecting a math expression (558*558=311364) into common URL parameters and checking whether the result is computed rather than echoed verbatim. Covers Java EL, Freemarker, Velocity, Spring SpEL, Groovy, Ruby ERB, and Jinja2/Twig via URL-encoded payloads. Confirmed SSTI can escalate to remote code execution.
+  tags: misconfig,ssti,template-injection,rce,injection,web
+  metadata:
+    max-request: 20
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{ssti_path}}"
+
+    payloads:
+      ssti_path:
+        - "?q=${558*558}"
+        - "?q=<%= 558*558 %>"
+        - "?q=#{558*558}"
+        - "?q=*{558*558}"
+        - "?search=${558*558}"
+        - "?search=%7B%7B558*558%7D%7D"
+        - "?name=${558*558}"
+        - "?name=%7B%7B558*558%7D%7D"
+        - "?template=${558*558}"
+        - "?template=%7B%7B558*558%7D%7D"
+        - "?page=${558*558}"
+        - "?page=%7B%7B558*558%7D%7D"
+        - "?input=${558*558}"
+        - "?message=${558*558}"
+        - "?text=${558*558}"
+        - "?content=${558*558}"
+        - "?title=${558*558}"
+        - "?keyword=%7B%7B558*558%7D%7D"
+        - "?q=%7B%7B558*558%7D%7D"
+        - "?data=${558*558}"
+
+    attack: batteringram
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        words:
+          - "311364"
+
+      - type: dsl
+        dsl:
+          - "!contains(body, '558*558')"
+          - "!contains(body, '558%2A558')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "311364[^0-9]{0,30}"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

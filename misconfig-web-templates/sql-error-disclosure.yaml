@@ -1,0 +1,106 @@
+id: sql-error-disclosure
+
+info:
+  name: SQL Error Message Disclosure Via Common Parameters
+  author: p3i
+  severity: high
+  description: Detects SQL error messages leaked in HTTP responses when a single-quote or other SQL metacharacter is injected into common URL parameters. Error messages from MySQL, PostgreSQL, MSSQL, Oracle, and SQLite reveal database type, schema names, table names, and query structure that directly assist SQL injection exploitation.
+  tags: misconfig,sqli,sql-error,error-disclosure,database,injection,web
+  metadata:
+    max-request: 24
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{sqli_path}}"
+
+    payloads:
+      sqli_path:
+        - "?id=1'"
+        - "?id=1\""
+        - "?id=1`"
+        - "?q='"
+        - "?search='"
+        - "?page=1'"
+        - "?category='"
+        - "?user='"
+        - "?name='"
+        - "?item='"
+        - "?product=1'"
+        - "?order=1'"
+        - "?filter='"
+        - "?sort=1'"
+        - "?from='"
+        - "?where='"
+        - "?key='"
+        - "?tag='"
+        - "?type='"
+        - "?pid=1'"
+        - "?cid=1'"
+        - "?uid=1'"
+        - "?ref='"
+        - "?action='"
+
+    attack: batteringram
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 500
+          - 503
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "You have an error in your SQL syntax"
+          - "supplied argument is not a valid MySQL"
+          - "mysql_fetch_array() expects"
+          - "MySQL Query fail"
+          - "Warning: mysql_"
+          - "Warning: mysqli_"
+          - "MySQLSyntaxErrorException"
+          - "com.mysql.jdbc"
+          - "ERROR: unterminated quoted string"
+          - "PSQLException"
+          - "org.postgresql.util"
+          - "pg_query(): Query failed"
+          - "PostgreSQL query failed"
+          - "ERROR: syntax error at or near"
+          - "Incorrect syntax near"
+          - "Unclosed quotation mark after the character string"
+          - "OLE DB provider"
+          - "Microsoft SQL Server"
+          - "SQLServerException"
+          - "com.microsoft.sqlserver"
+          - "ORA-01756"
+          - "ORA-00907"
+          - "ORA-00933"
+          - "ORA-00936"
+          - "ORA-00942"
+          - "quoted string not properly terminated"
+          - "SQLiteException"
+          - "sqlite3.OperationalError"
+          - "SQLite3::Exception"
+          - "JdbcSQLException"
+          - "org.hibernate.exception"
+          - "java.sql.SQLException"
+          - "DB2 SQL error"
+          - "SQLSTATE"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)(You have an error in your SQL syntax|supplied argument is not a valid MySQL)[^<]{0,200}"
+          - "(?i)(ORA-[0-9]{5})[^<]{0,100}"
+          - "(?i)(Incorrect syntax near|Unclosed quotation mark)[^<]{0,150}"
+          - "(?i)(PSQLException|org\\.postgresql)[^<]{0,150}"
+          - "(?i)(SQLSTATE\\[[0-9A-Z]+\\])[^<]{0,150}"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

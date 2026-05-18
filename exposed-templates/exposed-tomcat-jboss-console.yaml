@@ -1,0 +1,73 @@
+id: exposed-tomcat-jboss-console
+
+info:
+  name: Exposed Tomcat Manager And JBoss Admin Console
+  author: p3i
+  severity: critical
+  description: Detects accessible Apache Tomcat Manager, JBoss JMX Console, WildFly Management Console, Hawtio, and Jolokia JMX-over-HTTP interfaces. These panels allow deploying WAR archives and executing JMX operations, making them direct RCE vectors if default or absent credentials are in place.
+  tags: exposure,tomcat,jboss,wildfly,hawtio,jolokia,rce,appserver,web
+  metadata:
+    max-request: 20
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{panel_path}}"
+
+    payloads:
+      panel_path:
+        - "manager/html"
+        - "manager/text"
+        - "manager/status"
+        - "host-manager/html"
+        - "jmx-console/"
+        - "jmx-console/HtmlAdaptor"
+        - "web-console/"
+        - "admin-console/"
+        - "hawtio/"
+        - "hawtio/index.html"
+        - "console/"
+        - "management/"
+        - "jolokia/version"
+        - "jolokia/list"
+        - "jolokia/"
+        - "api/jolokia/version"
+        - "actuator/jolokia/version"
+        - "jolokia/read/java.lang:type=Memory/HeapMemoryUsage"
+        - "v2/jolokia"
+        - "internal/jolokia"
+
+    attack: batteringram
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 401
+          - 403
+
+      - type: dsl
+        dsl:
+          - >
+            contains(tolower(body), 'tomcat web application manager') ||
+            contains(tolower(body), 'tomcat manager') ||
+            contains(tolower(body), 'jboss management console') ||
+            contains(tolower(body), 'wildfly management') ||
+            contains(tolower(body), 'jmx agent view') ||
+            contains(tolower(body), 'hawtio') ||
+            (contains(body, 'java.lang:type=') && contains(body, 'HeapMemoryUsage')) ||
+            (contains(body, '"request":') && contains(body, '"type":"version"') && contains(body, '"value":'))
+          - "!contains(tolower(body), 'permission to access')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)(Apache Tomcat/[0-9.]+|JBoss[^<]{0,60}|WildFly[^<]{0,60})"
+          - "(?i)\"agent\"\\s*:\\s*\"[0-9.]+\""
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

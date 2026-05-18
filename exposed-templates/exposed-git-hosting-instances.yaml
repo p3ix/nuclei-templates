@@ -1,0 +1,73 @@
+id: exposed-git-hosting-instances
+
+info:
+  name: Exposed Self-Hosted Git Service With Public Access
+  author: p3i
+  severity: medium
+  description: Detects self-hosted Git services (Gitea, Gogs, Forgejo, GitBucket) where public repository exploration or account registration is accessible. An internal Git server exposed to external access can leak proprietary source code and allow unauthorized account creation on what should be a private instance.
+  tags: exposure,gitea,gogs,forgejo,gitbucket,git,registration,source-code,web
+  metadata:
+    max-request: 14
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{git_path}}"
+
+    payloads:
+      git_path:
+        - "explore/repos"
+        - "explore/users"
+        - "explore/organizations"
+        - "user/sign_up"
+        - "user/login"
+        - "register"
+        - "admin/users"
+        - "-/admin/users"
+        - "-/admin/projects"
+        - "gitbucket/user/login"
+        - "users/sign_up"
+        - "auth/register/"
+        - "diffusion/"
+        - "-/explore"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "Gitea"
+          - "Gogs"
+          - "Forgejo"
+          - "GitBucket"
+          - "Explore Repositories"
+          - "Explore Repos"
+          - "Create Account"
+          - "Register Account"
+
+      - type: dsl
+        dsl:
+          - "contains(tolower(body), 'register') || contains(tolower(body), 'explore') || contains(tolower(body), 'repository') || contains(tolower(body), 'sign_up')"
+          - "!contains(tolower(body), 'registration is disabled')"
+          - "!contains(tolower(body), 'registration has been disabled')"
+          - "!contains(tolower(body), 'permission to access')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)(Gitea|Gogs|Forgejo|GitBucket)[^<]{0,80}"
+          - "(?i)(Explore Repos|Register Account|Create Account)[^<]{0,60}"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

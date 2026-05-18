@@ -1,0 +1,62 @@
+id: subdomain-takeover-fingerprints
+
+info:
+  name: Subdomain Takeover Via Dangling Cloud Service DNS
+  author: p3i
+  severity: high
+  description: Detects subdomain takeover candidates by identifying cloud service error pages that appear when a DNS CNAME points to a service where the subdomain is no longer registered. Covers GitHub Pages, Heroku, Shopify, Fastly, Amazon S3, Azure Web Apps, UserVoice, Zendesk, Ghost, Pantheon, Surge.sh, StatusPage.io, Readme.io, Tumblr, and Teamwork. A confirmed fingerprint allows claiming the subdomain on the respective platform.
+  tags: misconfig,subdomain-takeover,dns,cloud,github-pages,heroku,s3,netlify,web
+  metadata:
+    max-request: 1
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/"
+
+    redirects: true
+    max-redirects: 3
+    matchers-condition: or
+    matchers:
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "There isn't a GitHub Pages site here."
+          - "Sorry, this shop is currently unavailable."
+          - "Fastly error: unknown domain"
+          - "NoSuchBucket"
+          - "The specified bucket does not exist"
+          - "Error 404 - Web app not found."
+          - "This UserVoice subdomain is currently available!"
+          - "The gods are wise, but do not know of the site which you seek."
+          - "Project doesnt exist... yet!"
+          - "Oops - We didn't find your site."
+          - "StatusPage.io is the best way to create status and maintenance pages"
+          - "Whatever you were looking for doesn't live here anymore."
+          - "The thing you were looking for is no longer here, or never was"
+          - "Help Center Closed"
+          - "Building a brand?"
+          - "No settings were found for this company:"
+
+      - type: dsl
+        dsl:
+          - "contains(tolower(body), 'no such app') && contains(tolower(header), 'heroku')"
+
+      - type: dsl
+        dsl:
+          - "contains(tolower(body), 'project not found') && contains(tolower(header), 'surge')"
+
+      - type: dsl
+        dsl:
+          - "contains(tolower(header), 'x-github-request-id') && status_code == 404 && len(body) < 500"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)(GitHub Pages|Heroku|Shopify|Fastly|Azure|UserVoice|Surge|Zendesk|Pantheon|Ghost|Tumblr|StatusPage|Readme)[^<]{0,80}"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

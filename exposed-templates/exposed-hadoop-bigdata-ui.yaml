@@ -1,0 +1,96 @@
+id: exposed-hadoop-bigdata-ui
+
+info:
+  name: Exposed Hadoop And Big Data Processing UIs
+  author: p3i
+  severity: high
+  description: Detects accessible Hadoop NameNode, YARN ResourceManager, Spark History Server, Apache Flink, Presto/Trino, and HBase administrative web UIs. These expose cluster topology, job history, data node inventory, and live query execution without authentication on internal deployments.
+  tags: exposure,hadoop,spark,flink,yarn,presto,trino,hbase,bigdata,web
+  metadata:
+    max-request: 28
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{bd_path}}"
+
+    payloads:
+      bd_path:
+        - "dfshealth.html"
+        - "webhdfs/v1/?op=LISTSTATUS"
+        - "webhdfs/v1/user/?op=LISTSTATUS"
+        - "ws/v1/cluster/info"
+        - "ws/v1/cluster/apps"
+        - "ws/v1/cluster/nodes"
+        - "api/v1/applications"
+        - "api/v1/jobs"
+        - "api/v1/allexecutors"
+        - "api/v1/query?query=SHOW+SCHEMAS"
+        - "jobs"
+        - "jobs/overview"
+        - "executors"
+        - "storage"
+        - "environment"
+        - "jmx"
+        - "logLevel"
+        - "taskmanagers"
+        - "jobmanager/config"
+        - "v1/taskmanagers"
+        - "v1/jobs/overview"
+        - "v1/info"
+        - "master-status"
+        - "rs.jsp"
+        - "table.jsp"
+        - "ui/catalog"
+        - "ui/query"
+        - "ui/history"
+
+    attack: batteringram
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "NameNode"
+          - "DataNode"
+          - "HDFS"
+          - "ResourceManager"
+          - "NodeManager"
+          - "YARN"
+          - "Spark History Server"
+          - "Spark Master"
+          - "SparkUI"
+          - "Apache Flink"
+          - "Flink Dashboard"
+          - "JobManager"
+          - "TaskManager"
+          - "Apache Hive"
+          - "HiveServer2"
+          - "Presto"
+          - "Trino"
+          - "HBase Master"
+          - "HBase RegionServer"
+          - "LISTSTATUS"
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), 'permission to access')"
+          - "len(body) > 50"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)(Hadoop [0-9.]+|Spark [0-9.]+|Flink [0-9.]+|HBase [0-9.]+|Presto [0-9.]+|Trino [0-9.]+)"
+          - "(?i)(NameNode|ResourceManager|JobManager|TaskManager)[^<]{0,100}"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"
