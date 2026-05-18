@@ -121,16 +121,10 @@ http:
 
       - type: dsl
         dsl:
+          - "!contains(tolower(body), 'not found') && !contains(tolower(body), 'was not found') && !contains(tolower(body), 'requested url') && !contains(tolower(body), 'the requested resource') && !contains(tolower(body), '404') && !contains(tolower(body), 'page does not exist') && !contains(tolower(body), 'permission to access') && !contains(tolower(body), 'no encontrado') && !contains(tolower(body), 'no se ha encontrado')"
+          - "!contains(tolower(body), 'wp-content') && !contains(tolower(body), 'wp-includes') && !contains(tolower(body), 'wp-admin') && !contains(tolower(body), 'woocommerce') && !contains(tolower(body), 'wpemoji') && !contains(tolower(body), 'gravityforms') && !contains(tolower(body), 'wpml')"
+          - "!contains(tolower(body), 'data-astro-cid') && !contains(tolower(body), '_astro/') && !contains(tolower(body), '__nuxt') && !contains(tolower(body), 'ng-version') && !contains(tolower(body), 'data-reactroot') && !contains(tolower(body), 'rails-ujs')"
           - "len(body) < 52428800"
-          - "!contains(tolower(body), 'not found')"
-          - "!contains(tolower(body), 'was not found')"
-          - "!contains(tolower(body), 'requested url')"
-          - "!contains(tolower(body), 'the requested resource')"
-          - "!contains(tolower(body), '404')"
-          - "!contains(tolower(body), 'page does not exist')"
-          - "!contains(tolower(body), 'permission to access')"
-          - "!contains(tolower(body), 'no encontrado')"
-          - "!contains(tolower(body), 'no se ha encontrado')"
 
     extractors:
       - type: regex

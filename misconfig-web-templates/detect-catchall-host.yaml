@@ -1,0 +1,43 @@
+id: detect-catchall-host
+
+info:
+  name: HTTP Catch-All Host Detected
+  author: p3i
+  severity: info
+  description: Detects hosts that return HTTP 200 + text/html for a random path that should not exist. When this template fires, all exposed-file templates will produce false positives for this host and should be skipped. Common catch-all platforms: WordPress, SPAs (React/Next.js/Vue/Nuxt/Astro), Laravel, Rails, Django with wildcard routing.
+  tags: detect,catchall,info,wordpress,spa,filtering
+  metadata:
+    max-request: 1
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/nuclei-catchall-probe-{{randstr}}-notexist"
+
+    redirects: true
+    max-redirects: 2
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "text/html"
+
+      - type: dsl
+        dsl:
+          - "len(body) > 200"
+          - "!contains(tolower(body), '\"error\"') && !contains(tolower(body), 'invalid path') && !contains(tolower(body), 'bad request')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "<title>([^<]{1,160})</title>"
+      - type: dsl
+        name: catchall_platform
+        dsl:
+          - "contains(tolower(body), 'wp-content') || contains(tolower(body), 'wp-includes') ? 'wordpress' : contains(body, '__NEXT_DATA__') ? 'nextjs' : contains(tolower(body), 'data-astro-cid') || contains(tolower(body), '_astro/') ? 'astro' : contains(tolower(body), '__nuxt') ? 'nuxt' : contains(tolower(body), 'ng-version') || contains(tolower(body), 'data-reactroot') ? 'angular/react' : contains(tolower(body), 'rails-ujs') ? 'rails' : 'unknown-catchall'"

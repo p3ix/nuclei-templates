@@ -112,7 +112,9 @@ http:
 
       - type: dsl
         dsl:
-          - "status_code == 403 || len(body) < 10485760"
+          - "status_code != 200 || (!contains(tolower(header), 'content-type: text/html') && !contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype'))"
+          - "!contains(tolower(body), 'wpemoji') && !contains(tolower(body), 'gravityforms') && !contains(tolower(body), 'data-astro-cid') && !contains(tolower(body), '_astro/') && !contains(tolower(body), '__nuxt') && !contains(tolower(body), 'ng-version') && !contains(tolower(body), 'data-reactroot') && !contains(tolower(body), 'rails-ujs')"
+          - "len(body) < 10485760"
 
     extractors:
       - type: regex

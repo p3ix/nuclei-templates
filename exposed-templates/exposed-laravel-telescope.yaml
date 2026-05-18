@@ -53,6 +53,8 @@ http:
         dsl:
           - "(!contains(tolower(header), 'content-type: text/html') && (contains(body, '\"batchId\"') || contains(body, '\"familyHash\"') || contains(body, 'telescope/api/'))) || contains(tolower(body), 'laravel telescope') || contains(body, 'Illuminate\\\\')"
           - "!contains(body, '__NEXT_DATA__') && !contains(body, 'react-root') && !contains(body, 'window.__')"
+          - "!contains(tolower(body), 'wp-content') && !contains(tolower(body), 'wp-includes') && !contains(tolower(body), 'woocommerce') && !contains(tolower(body), 'wpemoji') && !contains(tolower(body), 'gravityforms') && !contains(tolower(body), 'wpml')"
+          - "!contains(tolower(body), 'data-astro-cid') && !contains(tolower(body), '_astro/') && !contains(tolower(body), '__nuxt') && !contains(tolower(body), 'ng-version') && !contains(tolower(body), 'data-reactroot')"
           - "len(body) < 52428800"
 
     extractors:
