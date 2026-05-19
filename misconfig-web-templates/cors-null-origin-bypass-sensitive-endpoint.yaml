@@ -1,3 +1,5 @@
+# Fix: added exact-match regex for ACAO:null to prevent substring collisions (e.g. "nullsite.com"),
+# expanded paths to include checkout/settings, added captcha/bot-detection exclusion.
 id: cors-null-origin-bypass-sensitive-endpoint
 
 info:
@@ -9,7 +11,9 @@ info:
     - https://portswigger.net/web-security/cors/lab-null-origin-whitelisted-with-credentials
   tags: misconfig,cors,null-origin,credentials,headers,web
   metadata:
-    max-request: 12
+    max-request: 14
+    verified: false
+    false-positives: "Servers that always echo null in ACAO for all origins without enforcing credentials — verify ACAC:true is also present."
 
 http:
   - method: GET
@@ -34,10 +38,11 @@ http:
         - "admin"
         - "dashboard"
         - "config"
+        - "checkout"
+        - "settings"
 
     attack: batteringram
     redirects: false
-    max-redirects: 2
     stop-at-first-match: true
     matchers-condition: and
     matchers:
@@ -48,11 +53,13 @@ http:
 
       - type: dsl
         dsl:
-          - "contains(tolower(header), 'access-control-allow-origin: null')"
+          # Exact-match on the ACAO value — substring 'contains' would also hit "access-control-allow-origin: nullsite.com"
+          - "regex('(?im)^access-control-allow-origin:\\s*null\\s*$', header)"
           - "contains(tolower(header), 'access-control-allow-credentials: true')"
           - "len(body) > 10"
           - "!contains(tolower(body), 'unauthorized')"
           - "!contains(tolower(body), 'unauthenticated')"
+          - "!contains(tolower(body), 'captcha') && !contains(tolower(body), 'bot detection')"
           - "!regex('(?i)/(login|signin|auth|register)$', path)"
 
     extractors:

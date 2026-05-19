@@ -1,0 +1,63 @@
+# Critical variant: CORS origin reflection + credentials on authentication/token paths.
+# Reflected ACAO + ACAC:true on /login or /token allows stealing auth tokens cross-origin from a
+# sandboxed attacker page that the victim visits while authenticated.
+id: cors-origin-reflection-sensitive-path
+
+info:
+  name: CORS Arbitrary Origin Reflection With Credentials On Auth Path
+  author: p3i
+  severity: critical
+  description: Detects CORS origin reflection with credentials on authentication-critical paths such as login, token, and OAuth callback endpoints, where cross-origin reads can capture session tokens or credentials.
+  tags: misconfig,cors,credentials,headers,owasp,auth,web
+  metadata:
+    max-request: 7
+    verified: false
+    false-positives: "SSO providers and OAuth servers that legitimately allow cross-origin auth flows for known partner origins — verify the reflected origin is truly arbitrary."
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{auth_path}}"
+
+    headers:
+      Origin: "https://{{randstr}}-cors-test.evil.com"
+      Accept: "application/json, text/plain, */*"
+
+    payloads:
+      auth_path:
+        - "login"
+        - "signin"
+        - "auth"
+        - "oauth"
+        - "callback"
+        - "token"
+        - "refresh"
+
+    attack: batteringram
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 204
+
+      - type: dsl
+        dsl:
+          # Server must reflect the randomized probe origin — pre-whitelisted origins cannot match randstr
+          - "contains(tolower(header), 'access-control-allow-origin: https://' + randstr + '-cors-test.evil.com')"
+          - "contains(tolower(header), 'access-control-allow-credentials: true')"
+          - "!contains(tolower(header), 'access-control-allow-origin: *')"
+          - "len(body) > 10"
+          - "!contains(tolower(body), 'captcha') && !contains(tolower(body), 'bot detection')"
+
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "(?i)access-control-allow-(origin|credentials|methods|headers):[^\\r\\n]+"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

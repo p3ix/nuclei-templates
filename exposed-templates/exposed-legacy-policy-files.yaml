@@ -1,13 +1,16 @@
+# Fix: restrict to wildcard domain entries only — specific-domain allow-access-from entries (e.g. Salesforce CDN) are not exploitable.
 id: exposed-legacy-policy-files
 
 info:
-  name: Exposed Legacy Cross-Domain Policy Files
+  name: Exposed Legacy Cross-Domain Policy Files With Wildcard
   author: p3i
-  severity: low
-  description: Detects exposed Flash and Silverlight cross-domain policy files that can reveal permissive legacy trust relationships.
+  severity: medium
+  description: Detects crossdomain.xml / clientaccesspolicy.xml files that allow access from wildcard origins (domain="*" or domain="*.something"). Specific single-domain entries are not reported.
   tags: exposure,legacy,flash,silverlight,crossdomain,clientaccesspolicy
   metadata:
     max-request: 20
+    verified: false
+    false-positives: "Files with only specific named domains in allow-access-from are correctly excluded. Only wildcard entries (domain='*' or domain='*.example.com') trigger this finding."
 
 http:
   - method: GET
@@ -37,13 +40,13 @@ http:
         condition: or
         words:
           - "<cross-domain-policy"
-          - "<allow-access-from"
-          - "<site-control"
           - "<access-policy"
-          - "<cross-domain-access"
-          - "<policy>"
-          - "domain=\"*\""
-          - "headers=\"*\""
+
+      - type: regex
+        part: body
+        regex:
+          # Only fire on wildcard entries: domain="*" (full wildcard) or domain="*.something" (partial wildcard)
+          - "(?i)domain=\"\\*[^\"]*\""
 
       - type: dsl
         dsl:
@@ -55,8 +58,7 @@ http:
       - type: regex
         part: body
         regex:
-          - "(?i)<allow-access-from[^>]+>"
-          - "(?i)<domain[^>]+uri=\"[^\"]+\"[^>]*>"
+          - "(?i)<allow-access-from[^>]+domain=\"[^\"]+\"[^>]*>"
       - type: dsl
         name: status
         dsl:

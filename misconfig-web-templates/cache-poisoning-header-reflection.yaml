@@ -49,9 +49,11 @@ http:
       - type: dsl
         dsl:
           - "(contains(tolower(header), 'location:') && contains(header, 'probe-' + randstr + '.bb')) || (contains(body, 'probe-' + randstr + '.bb') && (contains(tolower(body), 'href=') || contains(tolower(body), 'src=') || contains(tolower(body), 'action=') || contains(tolower(body), 'canonical') || contains(tolower(body), 'base href')))"
-          - "!contains(tolower(header), 'x-cache: error') && !contains(tolower(header), 'x-cache: miss') && !contains(tolower(header), 'cache-control: private') && !contains(tolower(header), 'cf-cache-status: dynamic') && !contains(tolower(header), 'cf-cache-status: miss') && !contains(tolower(header), 'cf-cache-status: bypass') && !contains(tolower(header), 'cache-control: no-store') && !contains(tolower(header), 'cache-control: no-cache') && !contains(tolower(header), 'must-revalidate')"
+          # Use regex for Cache-Control to catch directives mid-value (e.g. "public, no-cache" — contains 'cache-control: no-cache' would miss this)
+          - "!contains(tolower(header), 'x-cache: error') && !contains(tolower(header), 'x-cache: miss') && !contains(tolower(header), 'cf-cache-status: dynamic') && !contains(tolower(header), 'cf-cache-status: miss') && !contains(tolower(header), 'cf-cache-status: bypass') && !regex('(?i)cache-control:[^\\r\\n]*(no-store|no-cache|must-revalidate|private)', header) && !regex('(?i)via:[^\\r\\n]*redirect', header)"
           - "!contains(tolower(body), 'visit_scheme=')"
-          - "contains(tolower(header), 'x-cache: hit') || contains(tolower(header), 'cf-cache-status: hit') || contains(tolower(header), 'cf-cache-status: stale') || contains(tolower(header), 's-maxage') || contains(tolower(header), 'surrogate-control') || regex('(?im)^age:\\s*[1-9][0-9]*\\s*$', header) || regex('(?i)(?:^|[;,\\s])max-age=[1-9][0-9]*', header)"
+          # Require positive proof of active caching — no-miss, no-DYNAMIC is not enough alone
+          - "contains(tolower(header), 'x-cache: hit') || contains(tolower(header), 'cf-cache-status: hit') || contains(tolower(header), 'cf-cache-status: stale') || contains(tolower(header), 's-maxage') || contains(tolower(header), 'surrogate-control') || contains(tolower(header), 'surrogate-key') || contains(tolower(header), 'x-varnish') || regex('(?im)^age:\\s*[1-9][0-9]*\\s*$', header) || regex('(?i)(?:^|[;,\\s])max-age=[1-9][0-9]*', header)"
 
     extractors:
       - type: regex

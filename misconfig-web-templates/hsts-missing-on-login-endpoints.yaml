@@ -1,0 +1,57 @@
+# Focused HSTS check for authentication endpoints specifically.
+# Missing HSTS on /login allows a network-positioned attacker to strip HTTPS and intercept credentials.
+id: hsts-missing-on-login-endpoints
+
+info:
+  name: HSTS Missing On Authentication Endpoints
+  author: p3i
+  severity: medium
+  description: Detects HTTPS authentication pages that do not return Strict-Transport-Security, allowing potential HTTP downgrade attacks on login flows.
+  tags: misconfig,hsts,headers,tls,auth,web
+  metadata:
+    max-request: 5
+    verified: false
+    false-positives: "Servers behind CDNs (Cloudflare, Fastly, Varnish) that inject HSTS at the edge before the header reaches the browser — the origin server response will not contain HSTS."
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{auth_path}}"
+
+    payloads:
+      auth_path:
+        - "login"
+        - "signin"
+        - "account"
+        - "auth"
+        - "sso"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: dsl
+        dsl:
+          # HSTS is only meaningful on HTTPS — HTTP endpoints cannot use Strict-Transport-Security
+          - "regex('^https://', BaseURL)"
+          - "contains(tolower(header), 'content-type: text/html')"
+          - "!contains(tolower(header), 'strict-transport-security:')"
+          # Exclude CDN edges that manage HSTS upstream before the response reaches the client
+          - "!contains(tolower(header), 'cf-ray:')"
+          - "!(contains(tolower(header), 'via: 1.1 varnish') && (contains(tolower(header), 'x-served-by:') || contains(tolower(header), 'x-fastly-request-id')))"
+
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "(?im)^(server|content-type|cache-control):[^\\r\\n]+"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

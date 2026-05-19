@@ -49,9 +49,13 @@ http:
 
       - type: dsl
         dsl:
+          # Secure flag only meaningful on HTTPS — HTTP endpoints generate noise, not real risk
+          - "regex('^https://', BaseURL)"
           - "regex('(?i)set-cookie:[^\\r\\n]*samesite=none', header)"
           - "!regex('(?i)set-cookie:[^\\r\\n]*(samesite=none[^\\r\\n]*;[\\t ]*secure|;[\\t ]*secure[^\\r\\n]*samesite=none)', header)"
-          - "!regex('(?i)set-cookie:\\s*(__cf_bm|_cfuvid|__cflb|__cfduid|_ga|_gid|_gat|_fbp|_fbc|DT|rxVisitor|rxvt|_uetsid|_uetvid|OptanonConsent|CookieConsent|euconsent)=', header)"
+          # Exclude analytics/CDN cookies and Salesforce Commerce Cloud tracking cookies (dw_dnt, __cq_dnt, cquid, dwac_*)
+          # which intentionally omit Secure as they are third-party tracking, not session cookies
+          - "!regex('(?i)set-cookie:\\s*(__cf_bm|_cfuvid|__cflb|__cfduid|_ga|_gid|_gat|_fbp|_fbc|DT|rxVisitor|rxvt|_uetsid|_uetvid|OptanonConsent|CookieConsent|euconsent|dw_dnt|__cq_dnt|cquid|dwac_)=', header)"
           - "!regex('(?i)(okta\\.com|statuspage\\.io|skilljar\\.com|safebase\\.io|pathfactory\\.com|zendesk\\.com|atlassian\\.com|auth0\\.com|intercom\\.io|hubspot\\.com|segment\\.io)', host)"
 
     extractors:
