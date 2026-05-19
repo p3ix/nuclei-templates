@@ -49,6 +49,10 @@ http:
 
       - type: dsl
         dsl:
+          # Prerequisite: response must actually contain a Set-Cookie header.
+          # Without this guard the template can fire on endpoints that set no cookies at all
+          # (e.g. when 'header' is empty or stale after redirect chain evaluation).
+          - "contains(tolower(header), 'set-cookie:')"
           # Secure flag only meaningful on HTTPS — HTTP endpoints generate noise, not real risk
           - "regex('^https://', BaseURL)"
           - "regex('(?i)set-cookie:[^\\r\\n]*samesite=none', header)"

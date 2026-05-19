@@ -56,7 +56,11 @@ http:
 
       - type: dsl
         dsl:
-          - "!regex('(?i)set-cookie:[^\\r\\n]*(session|sid|sess|auth|token|jwt|remember|csrf|xsrf)[^\\r\\n;]*=[^\\r\\n]*\\bsecure\\b', header) || !regex('(?i)set-cookie:[^\\r\\n]*(session|sid|sess|auth|token|jwt|remember|csrf|xsrf)[^\\r\\n;]*=[^\\r\\n]*\\bhttponly\\b', header) || !regex('(?i)set-cookie:[^\\r\\n]*(session|sid|sess|auth|token|jwt|remember|csrf|xsrf)[^\\r\\n;]*=[^\\r\\n]*samesite', header)"
+          # Prerequisite: response must contain a Set-Cookie header before evaluating flag presence.
+          - "contains(tolower(header), 'set-cookie:')"
+          # Fire if ANY security flag is missing on a session-named cookie.
+          # RE2 note: \b is backspace in RE2, not a word boundary — use ;[\t ]* to match cookie attribute separators.
+          - "!regex('(?i)set-cookie:[^\\r\\n]*(session|sid|sess|auth|token|jwt|remember|csrf|xsrf)[^\\r\\n;]*=[^\\r\\n]*;[\\t ]*secure(?:;|[\\r\\n]|$)', header) || !regex('(?i)set-cookie:[^\\r\\n]*(session|sid|sess|auth|token|jwt|remember|csrf|xsrf)[^\\r\\n;]*=[^\\r\\n]*;[\\t ]*httponly(?:;|[\\r\\n]|$)', header) || !regex('(?i)set-cookie:[^\\r\\n]*(session|sid|sess|auth|token|jwt|remember|csrf|xsrf)[^\\r\\n;]*=[^\\r\\n]*samesite=', header)"
           # Exclude analytics/CDN cookies + Salesforce Commerce Cloud tracking cookies (dw_dnt, __cq_dnt, cquid, dwac_*)
           # + DataDome bot-protection cookie which intentionally lacks HttpOnly by design
           - "!regex('(?i)set-cookie:\\s*(__cf_bm|_cfuvid|__cflb|__cfduid|_ga|_gid|_gat|_fbp|_fbc|DT|rxVisitor|rxvt|_uetsid|_uetvid|OptanonConsent|CookieConsent|euconsent|dw_dnt|__cq_dnt|cquid|dwac_|datadome)=', header)"
