@@ -1,0 +1,55 @@
+id: internal-title-disclosure
+
+info:
+  name: SFCC Internal Site ID Exposed In Page Title
+  author: p3i
+  severity: info
+  description: Detects Salesforce Commerce Cloud / Demandware sites that expose their internal site identifier (e.g. Sites-HK-AMERICA-NCOM-Site) in the HTML response of error or unauthenticated pages. This reveals multi-site architecture, naming conventions, and platform internals to unauthenticated visitors.
+  tags: info-disclosure,sfcc,demandware,fingerprint,web
+  metadata:
+    max-request: 6
+    verified: false
+    false-positives: "Only fires on responses that contain the SFCC site-ID pattern (Sites-XX-REGION-TYPE-Site). Unlikely to produce FPs on non-SFCC platforms."
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{sfcc_path}}"
+
+    payloads:
+      sfcc_path:
+        - ""
+        - "register"
+        - "signin"
+        - "login"
+        - "404"
+        - "error"
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 404
+          - 500
+
+      - type: regex
+        part: body
+        # Matches SFCC internal site identifiers: Sites-{code}-{region}-{type}-Site
+        # Example: Sites-HK-AMERICA-NCOM-Site, Sites-DE-EUROPE-Site, Sites-US-DIRECT-Site
+        regex:
+          - "Sites-[A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+-Site"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "Sites-[A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+-Site"
+      - type: regex
+        part: body
+        regex:
+          - "(?i)<title>[^<]{0,200}</title>"
