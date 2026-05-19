@@ -78,11 +78,18 @@ http:
           - "HBase Master"
           - "HBase RegionServer"
           - "LISTSTATUS"
+          - "FileStatuses"
+          - "RemoteException"
+          - "clusterInfo"
 
       - type: dsl
         dsl:
           - "!contains(tolower(body), 'permission to access')"
           - "len(body) > 50"
+          # Exclude SPA shells that redirect to login — the word match hit a bundle that includes cluster keywords
+          - "!contains(tolower(body), 'window.location')"
+          # Exclude generic HTML pages that don't actually contain cluster/data-platform content
+          - "!(contains(tolower(body), '<html') && !regex('(?i)(namenode|datanode|hdfs|resourcemanager|yarn|hadoop|spark|flink|hbase|presto|trino)', body))"
 
     extractors:
       - type: regex
@@ -90,6 +97,7 @@ http:
         regex:
           - "(?i)(Hadoop [0-9.]+|Spark [0-9.]+|Flink [0-9.]+|HBase [0-9.]+|Presto [0-9.]+|Trino [0-9.]+)"
           - "(?i)(NameNode|ResourceManager|JobManager|TaskManager)[^<]{0,100}"
+          - "[\\s\\S]{1,200}"
       - type: dsl
         name: status
         dsl:

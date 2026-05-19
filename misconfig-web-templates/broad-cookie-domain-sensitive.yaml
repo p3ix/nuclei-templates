@@ -53,6 +53,11 @@ http:
           - "(?im)^set-cookie:\\s*(session|sid|sess|auth|token|jwt|remember|csrf|xsrf)[^\\r\\n]*;\\s*domain=\\.[a-z0-9.-]+"
           - "(?im)^set-cookie:[^\\r\\n]*(session|sid|sess|auth|token|jwt|remember)[^\\r\\n]*;\\s*domain=\\.[a-z0-9.-]+"
 
+      - type: dsl
+        dsl:
+          # Exclude WAF/CDN infrastructure cookies — these are third-party security cookies, not app cookies
+          - "!regex('(?i)set-cookie:\\s*(visid_incap_|incap_ses_|__cfduid|cf_clearance|_abck|ak_bmsc|bm_sz)=', header)"
+
     extractors:
       - type: regex
         part: header

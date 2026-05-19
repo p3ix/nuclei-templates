@@ -44,7 +44,10 @@ http:
           - "regex('^https://', BaseURL)"
           - "!contains(tolower(header), 'strict-transport-security:')"
           - "contains(tolower(header), 'content-type: text/html')"
+          # Exclude Cloudflare edge nodes — they manage HSTS at the CDN layer
           - "!contains(tolower(header), 'cf-ray:')"
+          # Exclude Varnish/Fastly CDN edge responses — HSTS is typically managed upstream
+          - "!(contains(tolower(header), 'via: 1.1 varnish') && (contains(tolower(header), 'x-served-by:') || contains(tolower(header), 'fastly-restarts') || contains(tolower(header), 'x-fastly-request-id')))"
 
     extractors:
       - type: regex

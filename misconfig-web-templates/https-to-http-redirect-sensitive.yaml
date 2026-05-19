@@ -42,6 +42,11 @@ http:
           - 307
           - 308
 
+      - type: dsl
+        dsl:
+          # Only a downgrade if the original request was HTTPS — HTTP→HTTP is not a protocol downgrade
+          - "regex('^https://', BaseURL)"
+
       - type: regex
         part: header
         regex:
