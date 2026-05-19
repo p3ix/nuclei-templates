@@ -41,6 +41,7 @@ http:
 
       - type: dsl
         dsl:
+          - "regex('^https://', BaseURL)"
           - "!contains(tolower(header), 'strict-transport-security:')"
           - "contains(tolower(header), 'content-type: text/html')"
           - "!contains(tolower(header), 'cf-ray:')"

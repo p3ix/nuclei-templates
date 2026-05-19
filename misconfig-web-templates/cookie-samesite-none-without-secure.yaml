@@ -50,7 +50,7 @@ http:
       - type: dsl
         dsl:
           - "regex('(?i)set-cookie:[^\\r\\n]*samesite=none', header)"
-          - "!regex('(?i)set-cookie:[^\\r\\n]*(samesite=none[^\\r\\n]*\\bsecure\\b|\\bsecure\\b[^\\r\\n]*samesite=none)', header)"
+          - "!regex('(?i)set-cookie:[^\\r\\n]*(samesite=none[^\\r\\n]*;[\\t ]*secure|;[\\t ]*secure[^\\r\\n]*samesite=none)', header)"
           - "!regex('(?i)set-cookie:\\s*(__cf_bm|_cfuvid|__cflb|__cfduid|_ga|_gid|_gat|_fbp|_fbc|DT|rxVisitor|rxvt|_uetsid|_uetvid|OptanonConsent|CookieConsent|euconsent)=', header)"
           - "!regex('(?i)(okta\\.com|statuspage\\.io|skilljar\\.com|safebase\\.io|pathfactory\\.com|zendesk\\.com|atlassian\\.com|auth0\\.com|intercom\\.io|hubspot\\.com|segment\\.io)', host)"
 

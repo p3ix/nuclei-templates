@@ -49,10 +49,12 @@ http:
 
       - type: dsl
         dsl:
-          - "contains(tolower(header), 'content-type: text/html') || contains(tolower(body), '<html') || contains(tolower(body), '<!doctype')"
+          # text/html responses are not a deception risk — CDNs rarely cache them for static-looking paths
+          - "!contains(tolower(header), 'content-type: text/html')"
+          # server must return a static asset content-type OR there must be explicit CDN HIT/Age evidence
+          - "contains(tolower(header), 'content-type: text/css') || contains(tolower(header), 'content-type: application/javascript') || contains(tolower(header), 'content-type: text/javascript') || regex('(?i)content-type: image/', header) || regex('(?i)content-type: font/', header) || contains(tolower(header), 'x-cache: hit') || contains(tolower(header), 'cf-cache-status: hit') || contains(tolower(header), 'cf-cache-status: stale') || contains(tolower(header), 's-maxage') || contains(tolower(header), 'surrogate-control') || regex('(?im)^age:\\s*[1-9][0-9]*\\s*$', header)"
           - "!contains(tolower(header), 'x-cache: error') && !contains(tolower(header), 'x-cache: miss') && !contains(tolower(header), 'cache-control: no-cache') && !contains(tolower(header), 'cache-control: private') && !contains(tolower(header), 'cf-cache-status: miss') && !contains(tolower(header), 'cf-cache-status: dynamic') && !contains(tolower(header), 'cf-cache-status: bypass') && !contains(tolower(header), 'cache-control: no-store')"
-          - "contains(tolower(header), 'x-cache: hit') || contains(tolower(header), 'cf-cache-status: hit') || contains(tolower(header), 'cf-cache-status: stale') || contains(tolower(header), 's-maxage') || contains(tolower(header), 'surrogate-control') || regex('(?im)^age:\\s*[1-9][0-9]*\\s*$', header)"
-          - "contains(tolower(body), '<form') || contains(tolower(body), 'password') || contains(tolower(body), 'csrf') || contains(tolower(body), 'csrftoken') || contains(tolower(body), 'invoice') || contains(tolower(body), 'balance') || contains(tolower(body), 'transaction') || contains(tolower(body), 'credit card') || contains(tolower(body), 'bearer') || contains(tolower(body), 'access_token')"
+          - "contains(tolower(body), '<form') || contains(tolower(body), 'password') || contains(tolower(body), 'csrf') || contains(tolower(body), 'invoice') || contains(tolower(body), 'balance') || contains(tolower(body), 'transaction') || contains(tolower(body), 'bearer') || contains(tolower(body), 'access_token') || regex('(?i)\"email\":|\"token\":|\"session\":|\"currentuser\":', body)"
 
     extractors:
       - type: regex
