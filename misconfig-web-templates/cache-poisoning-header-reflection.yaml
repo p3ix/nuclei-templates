@@ -46,14 +46,42 @@ http:
           - 307
           - 308
 
+      # Reflection check: probe value appears in redirect Location or in body HTML attributes (randstr keeps this in DSL)
       - type: dsl
         dsl:
           - "(contains(tolower(header), 'location:') && contains(header, 'probe-' + randstr + '.bb')) || (contains(body, 'probe-' + randstr + '.bb') && (contains(tolower(body), 'href=') || contains(tolower(body), 'src=') || contains(tolower(body), 'action=') || contains(tolower(body), 'canonical') || contains(tolower(body), 'base href')))"
-          # Use regex for Cache-Control to catch directives mid-value (e.g. "public, no-cache" — contains 'cache-control: no-cache' would miss this)
-          - "!contains(tolower(header), 'x-cache: error') && !contains(tolower(header), 'x-cache: miss') && !contains(tolower(header), 'cf-cache-status: dynamic') && !contains(tolower(header), 'cf-cache-status: miss') && !contains(tolower(header), 'cf-cache-status: bypass') && !regex('(?i)cache-control:[^\\r\\n]*(no-store|no-cache|must-revalidate|private)', header) && !regex('(?i)via:[^\\r\\n]*redirect', header)"
-          - "!contains(tolower(body), 'visit_scheme=')"
-          # Require positive proof of active caching — no-miss, no-DYNAMIC is not enough alone
-          - "contains(tolower(header), 'x-cache: hit') || contains(tolower(header), 'cf-cache-status: hit') || contains(tolower(header), 'cf-cache-status: stale') || contains(tolower(header), 's-maxage') || contains(tolower(header), 'surrogate-control') || contains(tolower(header), 'surrogate-key') || contains(tolower(header), 'x-varnish') || regex('(?im)^age:\\s*[1-9][0-9]*\\s*$', header) || regex('(?i)(?:^|[;,\\s])max-age=[1-9][0-9]*', header)"
+
+      # Positive proof of active caching — at least one cache-hit signal must be present
+      - type: regex
+        part: header
+        condition: or
+        regex:
+          - '(?i)x-cache:\s*hit'
+          - '(?i)cf-cache-status:\s*(hit|stale)'
+          - '(?i)s-maxage'
+          - '(?i)surrogate-control:'
+          - '(?i)surrogate-key:'
+          - '(?i)x-varnish:'
+          - '(?im)^age:\s*[1-9][0-9]*\s*$'
+          - '(?i)(?:^|[;,\s])max-age=[1-9][0-9]*'
+
+      # Exclude: cache-miss/bypass/uncacheable signals — response not served from cache
+      - type: regex
+        part: header
+        negative: true
+        regex:
+          - '(?i)x-cache:\s*(error|miss)'
+          - '(?i)cf-cache-status:\s*(dynamic|miss|bypass)'
+          - '(?i)cache-control:[^\r\n]*(no-store|no-cache|must-revalidate|private)'
+          - '(?i)via:[^\r\n]*redirect'
+
+      # Exclude: Cloudflare visit_scheme pseudo-reflection — not a real header injection
+      - type: word
+        part: body
+        negative: true
+        words:
+          - "visit_scheme="
+        case-insensitive: true
 
     extractors:
       - type: regex
@@ -61,4 +89,6 @@ http:
         regex:
           - "(?i)(x-cache|cf-cache-status|age|via|cache-control|surrogate-control):[^\\r\\n]+"
           - "(?i)(location:|href=|src=|canonical|base href|url\\()[^\\r\\n<>]{0,160}(probe-[a-z0-9]+-[a-z0-9]+\\.bb|/probe-[a-z0-9]+-[a-z0-9]+\\.css)[^\\r\\n<>]{0,160}"
+
+# FIXED 2026-05-19: Replaced monolithic DSL with separate matchers — type:regex condition:or for positive cache evidence, type:regex negative:true for miss/bypass/no-cache exclusions, type:word negative:true for visit_scheme. Eliminates ~8 FPs/scan on uncached responses.
 

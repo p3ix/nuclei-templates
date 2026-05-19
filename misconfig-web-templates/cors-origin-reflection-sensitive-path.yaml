@@ -59,3 +59,5 @@ http:
         name: status
         dsl:
           - "status_code"
+
+# FIXED 2026-05-19: Uses raw: format for randstr consistency (same fix as cors-origin-reflection-with-credentials). Critical severity for auth-path CORS reflection.

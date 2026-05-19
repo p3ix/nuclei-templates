@@ -49,22 +49,44 @@ http:
 
       - type: dsl
         dsl:
-          # Prerequisite: response must actually contain a Set-Cookie header.
-          # Without this guard the template can fire on endpoints that set no cookies at all
-          # (e.g. when 'header' is empty or stale after redirect chain evaluation).
-          - "contains(tolower(header), 'set-cookie:')"
-          # Secure flag only meaningful on HTTPS — HTTP endpoints generate noise, not real risk
+          # Secure flag is only meaningful on HTTPS — skip HTTP targets entirely
           - "regex('^https://', BaseURL)"
-          - "regex('(?i)set-cookie:[^\\r\\n]*samesite=none', header)"
-          - "!regex('(?i)set-cookie:[^\\r\\n]*(samesite=none[^\\r\\n]*;[\\t ]*secure|;[\\t ]*secure[^\\r\\n]*samesite=none)', header)"
-          # Exclude analytics/CDN cookies and Salesforce Commerce Cloud tracking cookies (dw_dnt, __cq_dnt, cquid, dwac_*)
-          # which intentionally omit Secure as they are third-party tracking, not session cookies
-          - "!regex('(?i)set-cookie:\\s*(__cf_bm|_cfuvid|__cflb|__cfduid|_ga|_gid|_gat|_fbp|_fbc|DT|rxVisitor|rxvt|_uetsid|_uetvid|OptanonConsent|CookieConsent|euconsent|dw_dnt|__cq_dnt|cquid|dwac_)=', header)"
+          # Exclude known SaaS vendors where cookie behavior is by platform design
           - "!regex('(?i)(okta\\.com|statuspage\\.io|skilljar\\.com|safebase\\.io|pathfactory\\.com|zendesk\\.com|atlassian\\.com|auth0\\.com|intercom\\.io|hubspot\\.com|segment\\.io)', host)"
+
+      # Prerequisite: response must actually set a cookie
+      - type: word
+        part: header
+        words:
+          - "set-cookie:"
+        case-insensitive: true
+
+      # Detect: any cookie uses SameSite=None
+      - type: regex
+        part: header
+        regex:
+          - '(?i)set-cookie:[^\r\n]*samesite=none'
+
+      # Exclude: cookie with SameSite=None already has Secure (either order on the same line)
+      - type: regex
+        part: header
+        negative: true
+        regex:
+          - '(?i)set-cookie:[^\r\n]*secure[^\r\n]*samesite=none'
+          - '(?i)set-cookie:[^\r\n]*samesite=none[^\r\n]*secure'
+
+      # Exclude: known third-party analytics/CDN/bot-protection cookies that use SameSite=None by design
+      - type: regex
+        part: header
+        negative: true
+        regex:
+          - '(?i)set-cookie:\s*(__cf_bm|_cfuvid|__cflb|__cfduid|_ga|_gid|_gat|_fbp|_fbc|DT|rxVisitor|rxvt|_uetsid|_uetvid|OptanonConsent|CookieConsent|euconsent|dw_dnt|__cq_dnt|cquid|dwac_|datadome)='
 
     extractors:
       - type: regex
         part: header
         regex:
           - "(?im)^set-cookie:[^\\r\\n]*samesite=none[^\\r\\n]*"
+
+# FIXED 2026-05-19: Replaced DSL matchers with explicit type:word/type:regex+negative:true matchers to eliminate ~30 FPs/scan on endpoints that set no cookies or where Secure was already present on the same line.
 

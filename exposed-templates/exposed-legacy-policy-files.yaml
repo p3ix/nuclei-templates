@@ -48,10 +48,23 @@ http:
           # Only fire on wildcard entries: domain="*" (full wildcard) or domain="*.something" (partial wildcard)
           - "(?i)domain=\"\\*[^\"]*\""
 
+      # Exclude: HTML error pages — a real policy file should be XML, not HTML
+      - type: word
+        part: body
+        negative: true
+        words:
+          - "<html"
+        case-insensitive: true
+
+      - type: word
+        part: header
+        negative: true
+        words:
+          - "content-type: text/html"
+        case-insensitive: true
+
       - type: dsl
         dsl:
-          - "!contains(tolower(body), '<html')"
-          - "!contains(tolower(header), 'content-type: text/html')"
           - "len(body) < 1048576"
 
     extractors:
@@ -63,3 +76,5 @@ http:
         name: status
         dsl:
           - "status_code"
+
+# FIXED 2026-05-19: Converted HTML content-type and <html body exclusions from DSL to type:word negative:true matchers; severity raised low→medium; wildcard-only matching added in previous session.

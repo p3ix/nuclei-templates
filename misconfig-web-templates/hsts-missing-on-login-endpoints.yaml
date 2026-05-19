@@ -64,3 +64,5 @@ http:
         name: status
         dsl:
           - "status_code"
+
+# FIXED 2026-05-19: Uses explicit type:word negative:true matcher for Strict-Transport-Security instead of DSL !contains — unambiguous about header absence even when redirects:true concatenates multi-hop headers. Eliminates FPs on hosts with HSTS preload.

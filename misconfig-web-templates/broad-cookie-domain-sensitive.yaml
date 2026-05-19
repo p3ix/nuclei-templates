@@ -58,15 +58,19 @@ http:
           # value is never scanned (prevents FP when value contains 'session', e.g. datadome=xxxsessionxxx)
           - "(?im)^set-cookie:\\s*[^=\\r\\n]*(session|sid|sess|auth|token|jwt|remember|user|account)[^=\\r\\n]*=[^\\r\\n]*;\\s*domain=\\.[a-z0-9.-]+"
 
-      - type: dsl
-        dsl:
-          # Exclude WAF/CDN security cookies and all common third-party analytics/tracking cookies.
-          # These services require broad Domain scope by design and are not application session cookies.
-          - "!regex('(?i)set-cookie:\\s*(visid_incap_|incap_ses_|__cfduid|cf_clearance|_abck|ak_bmsc|bm_sz|datadome|_ga|_gid|_gat|_fbp|_fbc|__utm|_hj|ajs_|intercom-|intercom_|amplitude_|drift_|mixpanel|crisp-|_ym_)=', header)"
+      # Exclude: WAF/CDN security cookies and common third-party analytics/tracking cookies.
+      # These services require broad Domain scope by design and are not application session cookies.
+      - type: regex
+        part: header
+        negative: true
+        regex:
+          - '(?i)set-cookie:\s*(visid_incap_|incap_ses_|__cfduid|cf_clearance|_abck|ak_bmsc|bm_sz|datadome|_ga|_gid|_gat|_fbp|_fbc|__utm|_hj|ajs_|intercom-|intercom_|amplitude_|drift_|mixpanel|crisp-|_ym_)='
 
     extractors:
       - type: regex
         part: header
         regex:
           - "(?im)^set-cookie:[^\\r\\n]*;\\s*domain=\\.[^;\\r\\n]+[^\\r\\n]*"
+
+# FIXED 2026-05-19: Converted third-party cookie exclusion from DSL to type:regex negative:true matcher. Also fixed [^\r\n]* → [^=\r\n]* in previous session to prevent keyword matching inside cookie values.
 
