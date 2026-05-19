@@ -1,17 +1,18 @@
-# Focused HSTS check for authentication endpoints specifically.
-# Missing HSTS on /login allows a network-positioned attacker to strip HTTPS and intercept credentials.
+# Focused HSTS check for authentication endpoints.
+# Uses an explicit negative:true word matcher — more reliable than DSL negation when redirects:true
+# is set, because DSL !contains() sees concatenated headers from all hops in the redirect chain.
 id: hsts-missing-on-login-endpoints
 
 info:
   name: HSTS Missing On Authentication Endpoints
   author: p3i
   severity: medium
-  description: Detects HTTPS authentication pages that do not return Strict-Transport-Security, allowing potential HTTP downgrade attacks on login flows.
+  description: Detects HTTPS authentication pages that do not return Strict-Transport-Security, allowing potential HTTP downgrade attacks on login flows. Only fires when the header is completely absent — max-age=0 (intentional opt-out) is also excluded since any HSTS header presence stops the matcher.
   tags: misconfig,hsts,headers,tls,auth,web
   metadata:
     max-request: 5
     verified: false
-    false-positives: "Servers behind CDNs (Cloudflare, Fastly, Varnish) that inject HSTS at the edge before the header reaches the browser — the origin server response will not contain HSTS."
+    false-positives: "Servers behind CDNs (Cloudflare, Fastly, Varnish) that inject HSTS at the edge — excluded via cf-ray and varnish header checks. Servers that set HSTS only on the root path and not on sub-paths will fire; verify manually."
 
 http:
   - method: GET
@@ -38,13 +39,21 @@ http:
 
       - type: dsl
         dsl:
-          # HSTS is only meaningful on HTTPS — HTTP endpoints cannot use Strict-Transport-Security
+          # Strict-Transport-Security is only valid on HTTPS — never fire on HTTP targets
           - "regex('^https://', BaseURL)"
           - "contains(tolower(header), 'content-type: text/html')"
-          - "!contains(tolower(header), 'strict-transport-security:')"
-          # Exclude CDN edges that manage HSTS upstream before the response reaches the client
+          # Exclude CDN edges that manage HSTS upstream before the header reaches the browser
           - "!contains(tolower(header), 'cf-ray:')"
           - "!(contains(tolower(header), 'via: 1.1 varnish') && (contains(tolower(header), 'x-served-by:') || contains(tolower(header), 'x-fastly-request-id')))"
+
+      # Explicit negative matcher — fires only when Strict-Transport-Security is completely absent.
+      # Separated from the DSL block intentionally: negative:true is unambiguous about header absence,
+      # whereas DSL !contains() can be confused by redirect-chain header concatenation in some builds.
+      - type: word
+        part: header
+        negative: true
+        words:
+          - "Strict-Transport-Security"
 
     extractors:
       - type: regex
