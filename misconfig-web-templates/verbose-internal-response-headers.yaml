@@ -41,6 +41,11 @@ http:
           - 401
           - 403
 
+      - type: dsl
+        dsl:
+          # Exclude autodiscover.* hostnames that return IIS/ASP.NET headers by design (Exchange protocol)
+          - "!(contains(tolower(Host), 'autodiscover') && contains(tolower(header), 'microsoft-iis') && (contains(tolower(header), 'x-powered-by: asp.net') || contains(tolower(body), '<?xml') || contains(tolower(body), 'autodiscover') || regex('(?i)microsoftonline\\.com|autodiscover\\.outlook\\.com|outlook\\.office365\\.com', header)))"
+
       - type: regex
         part: header
         condition: or
