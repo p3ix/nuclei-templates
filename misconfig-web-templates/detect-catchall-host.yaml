@@ -4,7 +4,7 @@ info:
   name: HTTP Catch-All Host Detected
   author: p3i
   severity: info
-  description: Detects hosts that return HTTP 200 + text/html for a random path that should not exist. When this template fires, all exposed-file templates will produce false positives for this host and should be skipped. Common catch-all platforms: WordPress, SPAs (React/Next.js/Vue/Nuxt/Astro), Laravel, Rails, Django with wildcard routing.
+  description: "Detects hosts that return HTTP 200 + text/html for a random path that should not exist. When this template fires, all exposed-file templates will produce false positives for this host and should be skipped. Common catch-all platforms: WordPress, SPAs (React/Next.js/Vue/Nuxt/Astro), Laravel, Rails, Django with wildcard routing."
   tags: detect,catchall,info,wordpress,spa,filtering
   metadata:
     max-request: 1
@@ -30,7 +30,7 @@ http:
       - type: dsl
         dsl:
           - "len(body) > 200"
-          - "!contains(tolower(body), '\"error\"') && !contains(tolower(body), 'invalid path') && !contains(tolower(body), 'bad request')"
+          - "!contains(tolower(body), 'invalid path') && !contains(tolower(body), 'bad request')"
 
     extractors:
       - type: regex

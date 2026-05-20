@@ -60,7 +60,7 @@ http:
 
       - type: dsl
         dsl:
-          - "contains(tolower(header), 'docker-distribution-api-version') || contains(tolower(body), '\"repositories\"') || contains(tolower(body), '\"harbor_version\"') || contains(tolower(body), 'artifactory') || contains(tolower(body), '\"repositoryType\"') || contains(tolower(body), 'nexus') || contains(tolower(body), '\"has_robots\"') || contains(tolower(body), 'jfrog') || contains(tolower(body), '\"name\"') && contains(tolower(header), 'application/json')"
+          - "contains(tolower(header), 'docker-distribution-api-version') || contains(tolower(body), 'harbor_version') || contains(tolower(body), 'artifactory') || contains(tolower(body), 'repositorytype') || contains(tolower(body), 'nexus') || contains(tolower(body), 'has_robots') || contains(tolower(body), 'jfrog') || (contains(tolower(body), 'repositories') && contains(tolower(header), 'application/json'))"
 
       - type: dsl
         dsl:

@@ -61,7 +61,7 @@ http:
       - type: dsl
         dsl:
           - "!regex('(?i)(page not found|does not exist|object moved|no encontrado)', body)"
-          - "!contains(body, '<div id=\"app\">') && !contains(body, 'import-map') && !contains(body, 'GTM-') && !contains(body, 'AmazonS3')"
+          - "!contains(body, 'import-map') && !contains(body, 'GTM-') && !contains(body, 'AmazonS3')"
           - "len(body) < 10485760"
 
     extractors:

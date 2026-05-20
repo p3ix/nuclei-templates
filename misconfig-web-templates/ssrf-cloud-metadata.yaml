@@ -83,7 +83,7 @@ http:
 
       - type: dsl
         dsl:
-          - >
+          - >-
             (contains(body, 'ami-id') && contains(body, 'instance-id')) ||
             contains(body, 'ami-launch-index') ||
             contains(body, 'AWSAccessKeyId') ||
@@ -91,9 +91,9 @@ http:
             contains(body, 'iam/security-credentials') ||
             contains(body, 'computeMetadata') ||
             (contains(body, 'serviceAccounts') && contains(body, 'numeric-project-id')) ||
-            (contains(body, '"subscriptionId"') && contains(body, '"resourceGroupName"')) ||
+            (contains(body, 'subscriptionId') && contains(body, 'resourceGroupName')) ||
             contains(body, 'droplet_id') ||
-            contains(body, '"tenancyId"')
+            contains(body, 'tenancyId')
           - "!contains(tolower(header), 'content-type: text/html')"
           - "len(body) > 20"
 

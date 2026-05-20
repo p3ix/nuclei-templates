@@ -41,17 +41,18 @@ http:
         dsl:
           - "contains(tolower(header), 'content-security-policy:')"
 
-      - type: dsl
+      - type: regex
+        part: header
         condition: or
-        dsl:
+        regex:
           # unsafe-eval in script-src or default-src — nonce does not mitigate eval
-          - "regex(\"(?i)content-security-policy:[^\\r\\n]*(script-src|default-src)[^;\\r\\n]*'unsafe-eval'\", header)"
-          # unsafe-inline in script-src with no nonce — uncontrolled inline execution
-          - "regex(\"(?i)content-security-policy:[^\\r\\n]*script-src[^;\\r\\n]*'unsafe-inline'\", header) && !regex(\"(?i)content-security-policy:[^\\r\\n]*script-src[^;\\r\\n]*'nonce-\", header)"
+          - "(?i)content-security-policy:[^\\r\\n]*(script-src|default-src)[^;\\r\\n]*'unsafe-eval'"
+          # unsafe-inline in script-src (without nonce override)
+          - "(?i)content-security-policy:[^\\r\\n]*script-src[^;\\r\\n]*'unsafe-inline'"
           # bare * wildcard as source in script-src or default-src (not *.domain.com)
-          - "regex(\"(?i)content-security-policy:[^\\r\\n]*(script-src|default-src)[^;\\r\\n]* \\*(?:[ \\t;]|$)\", header)"
+          - "(?i)content-security-policy:[^\\r\\n]*(script-src|default-src)[^;\\r\\n]* \\*(?:[ \\t;]|$)"
           # object-src wildcard allows embedding arbitrary plugins/objects
-          - "regex(\"(?i)content-security-policy:[^\\r\\n]*object-src[ \\t]+\\*(?:[ \\t;]|$)\", header)"
+          - "(?i)content-security-policy:[^\\r\\n]*object-src[ \\t]+\\*(?:[ \\t;]|$)"
 
     extractors:
       - type: regex

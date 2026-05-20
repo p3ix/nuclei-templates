@@ -49,7 +49,7 @@ http:
           - "\"REACT_APP_[^\"]*(?:KEY|SECRET|TOKEN|PASSKEY|PASSWORD)\"\\s*:\\s*\"([^\"]{8,})\""
           - "\"VUE_APP_[^\"]*(?:KEY|SECRET|TOKEN)\"\\s*:\\s*\"([^\"]{8,})\""
           - "\"NEXT_PUBLIC_[^\"]*(?:KEY|SECRET|TOKEN)\"\\s*:\\s*\"([^\"]{8,})\""
-          - "(?i)(var\\s+\\$_ENV|window\\.__ENV)\\s*=\\s*(\\{[^}]{0,2000}\\})"
+          - "(?i)(var\\s+\\$_ENV|window\\.__ENV)\\s*=\\s*(\\{[^}]*\\})"
       - type: dsl
         name: status
         dsl:

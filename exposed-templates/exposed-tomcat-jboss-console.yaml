@@ -48,18 +48,27 @@ http:
           - 401
           - 403
 
-      - type: dsl
-        dsl:
-          - >
-            contains(tolower(body), 'tomcat web application manager') ||
-            contains(tolower(body), 'tomcat manager') ||
-            contains(tolower(body), 'jboss management console') ||
-            contains(tolower(body), 'wildfly management') ||
-            contains(tolower(body), 'jmx agent view') ||
-            contains(tolower(body), 'hawtio') ||
-            (contains(body, 'java.lang:type=') && contains(body, 'HeapMemoryUsage')) ||
-            (contains(body, '"request":') && contains(body, '"type":"version"') && contains(body, '"value":'))
-          - "!contains(tolower(body), 'permission to access')"
+      - type: word
+        part: body
+        condition: or
+        case-insensitive: true
+        words:
+          - "tomcat web application manager"
+          - "tomcat manager"
+          - "jboss management console"
+          - "wildfly management"
+          - "jmx agent view"
+          - "hawtio"
+          - "java.lang:type="
+          - "HeapMemoryUsage"
+          - '"type":"version"'
+
+      - type: word
+        part: body
+        negative: true
+        case-insensitive: true
+        words:
+          - "permission to access"
 
     extractors:
       - type: regex
