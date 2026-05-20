@@ -1,0 +1,64 @@
+id: trace-method-functional
+
+info:
+  name: HTTP TRACE Method Functional (XST Verified)
+  author: p3i
+  severity: low
+  description: Verifies that the HTTP TRACE method is actually functional by sending a TRACE request with a probe header and confirming the request headers are reflected in the response body. Servers that advertise TRACE in Allow/OPTIONS but return 405 on actual use are correctly excluded.
+  tags: misconfig,trace,xst,http-methods,web
+  metadata:
+    max-request: 4
+    verified: false
+    false-positives: |
+      Servers listing TRACE in the Allow header or OPTIONS response but returning
+      405 when TRACE is actually sent. This template only fires when TRACE is
+      functionally enabled (status 200 + request headers reflected in body),
+      confirming real XST risk.
+
+http:
+  - raw:
+      - |
+        TRACE / HTTP/1.1
+        Host: {{Hostname}}
+        X-Nuclei-Trace: nuclei-xst-functional
+        Connection: close
+
+      - |
+        TRACE /api HTTP/1.1
+        Host: {{Hostname}}
+        X-Nuclei-Trace: nuclei-xst-functional
+        Connection: close
+
+      - |
+        TRACE /admin HTTP/1.1
+        Host: {{Hostname}}
+        X-Nuclei-Trace: nuclei-xst-functional
+        Connection: close
+
+      - |
+        TRACE /login HTTP/1.1
+        Host: {{Hostname}}
+        X-Nuclei-Trace: nuclei-xst-functional
+        Connection: close
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      # TRACE must return 200, not 405 — this is the functional verification
+      - type: status
+        status:
+          - 200
+
+      # Request headers must be echoed in the body — confirms real XST behavior
+      - type: word
+        part: body
+        words:
+          - "X-Nuclei-Trace: nuclei-xst-functional"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)TRACE\\s+/[^\\r\\n]*"
+          - "(?i)X-Nuclei-Trace:[^\\r\\n]+"

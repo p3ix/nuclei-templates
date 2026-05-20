@@ -31,7 +31,7 @@ http:
 
     attack: batteringram
     redirects: true
-    max-redirects: 2
+    max-redirects: 5
     stop-at-first-match: true
     matchers-condition: and
     matchers:
@@ -42,12 +42,19 @@ http:
       - type: dsl
         dsl:
           - "regex('^https://', BaseURL)"
-          - "!contains(tolower(header), 'strict-transport-security:')"
           - "contains(tolower(header), 'content-type: text/html')"
           # Exclude Cloudflare edge nodes — they manage HSTS at the CDN layer
           - "!contains(tolower(header), 'cf-ray:')"
           # Exclude Varnish/Fastly CDN edge responses — HSTS is typically managed upstream
           - "!(contains(tolower(header), 'via: 1.1 varnish') && (contains(tolower(header), 'x-served-by:') || contains(tolower(header), 'fastly-restarts') || contains(tolower(header), 'x-fastly-request-id')))"
+
+      # Explicit negative matcher — more reliable than DSL !contains() with redirect chains
+      - type: word
+        part: header
+        negative: true
+        words:
+          - "strict-transport-security"
+        case-insensitive: true
 
     extractors:
       - type: regex

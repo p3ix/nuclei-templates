@@ -1,5 +1,5 @@
-# Fix: switched from method:GET to raw format — same randstr consistency fix as
-# cors-origin-reflection-with-credentials.yaml. See that template for root cause explanation.
+# FIXED 2026-05-20: Replaced randstr-based origin probe with fixed canary string.
+# Same root cause as cors-origin-reflection-with-credentials.yaml — see that file for full explanation.
 id: cors-origin-reflection-sensitive-path
 
 info:
@@ -11,14 +11,14 @@ info:
   metadata:
     max-request: 7
     verified: false
-    false-positives: "SSO providers and OAuth servers that legitimately allow cross-origin auth flows for known partner origins — verify the reflected origin is truly arbitrary and not from a registered OAuth client."
+    false-positives: "Servers returning fixed ACAO values (e.g. tv-unmatched-block, own domain) without reflecting the sent origin. SSO providers with known partner origin whitelists — verify the reflected value is the canary, not a pre-registered partner domain."
 
 http:
   - raw:
       - |
         GET {{auth_path}} HTTP/1.1
         Host: {{Hostname}}
-        Origin: https://nuclei-cors-test-{{randstr}}.evil.com
+        Origin: https://nucleicors-canary.evil
         Accept: application/json, text/plain, */*
         Connection: close
 
@@ -42,11 +42,30 @@ http:
           - 200
           - 204
 
+      # Server must echo back the exact canary — fixed-value ACAO responses will not match
+      - type: word
+        part: header
+        words:
+          - "Access-Control-Allow-Origin: https://nucleicors-canary.evil"
+        case-insensitive: true
+
+      # Credentials must be explicitly allowed
+      - type: word
+        part: header
+        words:
+          - "Access-Control-Allow-Credentials: true"
+        case-insensitive: true
+
+      # Wildcard cannot combine with credentials per spec
+      - type: word
+        part: header
+        negative: true
+        words:
+          - "access-control-allow-origin: *"
+        case-insensitive: true
+
       - type: dsl
         dsl:
-          - "contains(tolower(header), 'access-control-allow-origin: https://nuclei-cors-test-' + randstr + '.evil.com')"
-          - "contains(tolower(header), 'access-control-allow-credentials: true')"
-          - "!contains(tolower(header), 'access-control-allow-origin: *')"
           - "len(body) > 10"
           - "!contains(tolower(body), 'captcha') && !contains(tolower(body), 'bot detection')"
 
@@ -59,5 +78,3 @@ http:
         name: status
         dsl:
           - "status_code"
-
-# FIXED 2026-05-19: Uses raw: format for randstr consistency (same fix as cors-origin-reflection-with-credentials). Critical severity for auth-path CORS reflection.

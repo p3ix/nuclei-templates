@@ -1,0 +1,58 @@
+id: cors-reflection-verified
+
+info:
+  name: CORS Origin Reflection With Credentials Verified
+  author: p3i
+  severity: high
+  description: Verifies CORS origin reflection by sending a fixed canary origin and confirming the response reflects it exactly in ACAO combined with ACAC:true. Covers the most commonly vulnerable paths (token, account, api, root).
+  tags: misconfig,cors,credentials,headers,owasp,web
+  metadata:
+    max-request: 4
+    verified: false
+    false-positives: |
+      Servers returning fixed ACAO values (tv-unmatched-block, own domain, null)
+      without reflecting the sent origin. Verify that ACAO equals exactly
+      "https://nucleicors-canary.evil" in the response before reporting.
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/token"
+      - "{{BaseURL}}/account"
+      - "{{BaseURL}}/api/"
+      - "{{BaseURL}}/"
+
+    headers:
+      Origin: "https://nucleicors-canary.evil"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      # Server must echo back the exact canary origin — any fixed/blocked value will not match
+      - type: word
+        part: header
+        words:
+          - "Access-Control-Allow-Origin: https://nucleicors-canary.evil"
+        case-insensitive: true
+
+      # Credentials must be explicitly allowed — ACAO reflection without ACAC:true is unexploitable
+      - type: word
+        part: header
+        words:
+          - "Access-Control-Allow-Credentials: true"
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "(?i)access-control-allow-(origin|credentials|methods|headers):[^\\r\\n]+"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

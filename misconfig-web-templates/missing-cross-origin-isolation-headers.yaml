@@ -33,7 +33,7 @@ http:
 
     attack: batteringram
     redirects: true
-    max-redirects: 2
+    max-redirects: 5
     stop-at-first-match: true
     matchers-condition: and
     matchers:
@@ -41,15 +41,50 @@ http:
         status:
           - 200
 
+      # Response must be HTML
+      - type: word
+        part: header
+        words:
+          - "content-type: text/html"
+        case-insensitive: true
+
+      # COOP must be absent — presence indicates cross-origin isolation is in place
+      - type: word
+        part: header
+        negative: true
+        words:
+          - "cross-origin-opener-policy"
+        case-insensitive: true
+
+      # COEP must be absent — both COOP+COEP are required for full cross-origin isolation
+      - type: word
+        part: header
+        negative: true
+        words:
+          - "cross-origin-embedder-policy"
+        case-insensitive: true
+
+      # CORP must be absent — all three headers absent = no cross-origin isolation at all
+      - type: word
+        part: header
+        negative: true
+        words:
+          - "cross-origin-resource-policy"
+        case-insensitive: true
+
+      # Require sensitive-page body signals to reduce noise on generic pages
       - type: dsl
         dsl:
-          - "contains(tolower(header), 'content-type: text/html')"
-          - "!contains(tolower(header), 'cross-origin-opener-policy:')"
-          - "!contains(tolower(header), 'cross-origin-embedder-policy:')"
-          - "!contains(tolower(header), 'cross-origin-resource-policy:')"
           - "contains(tolower(body), '<form') || contains(tolower(body), 'password') || contains(tolower(body), 'input type') || contains(tolower(body), 'sharedarraybuffer') || contains(tolower(body), 'crossoriginisolated') || contains(tolower(body), 'authentication') || contains(tolower(body), 'sign in') || contains(tolower(body), 'dashboard')"
-          - "!contains(tolower(body), 'access denied')"
-          - "!contains(tolower(body), 'permission to access')"
+
+      # Exclude error/access-denied pages
+      - type: word
+        part: body
+        negative: true
+        words:
+          - "access denied"
+          - "permission to access"
+        case-insensitive: true
 
     extractors:
       - type: regex

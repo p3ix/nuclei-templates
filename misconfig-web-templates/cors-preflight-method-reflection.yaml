@@ -1,0 +1,57 @@
+id: cors-preflight-method-reflection
+
+info:
+  name: CORS Preflight Reflects Arbitrary Methods
+  author: p3i
+  severity: medium
+  description: Detects CORS preflight responses that echo back an invented Access-Control-Request-Method value (FOOBAR) in Access-Control-Allow-Methods, indicating the server reflects any requested method without validation. REST APIs allowing DELETE/PATCH/PUT are normal and excluded by design.
+  tags: misconfig,cors,options,headers,web
+  metadata:
+    max-request: 3
+    verified: false
+    false-positives: |
+      REST APIs that explicitly allow DELETE/PATCH/PUT are normal behavior.
+      This template uses an invented method "FOOBAR" — only servers that blindly
+      echo any Access-Control-Request-Method will match, not servers with explicit
+      method allowlists. Verify the reflected method is "FOOBAR", not a standard REST verb.
+
+http:
+  - method: OPTIONS
+    path:
+      - "{{BaseURL}}/api/"
+      - "{{BaseURL}}/api/v1"
+      - "{{BaseURL}}/"
+
+    headers:
+      Origin: "https://nucleicors-canary.evil"
+      Access-Control-Request-Method: "FOOBAR"
+      Access-Control-Request-Headers: "Content-Type"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 204
+
+      # The invented method must be reflected — any fixed allowlist would not include FOOBAR
+      - type: word
+        part: header
+        words:
+          - "FOOBAR"
+        case-insensitive: true
+
+      # ACAO must also be present — confirms this is a real CORS preflight response
+      - type: word
+        part: header
+        words:
+          - "Access-Control-Allow-Origin"
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "(?i)access-control-allow-(methods|origin|headers):[^\\r\\n]+"
