@@ -9,7 +9,19 @@ info:
   metadata:
     max-request: 96
 
+flow: http(1) && http(2)
+
 http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/nuclei-fp-check-{{randstr}}-notexist"
+    redirects: false
+    matchers:
+      - type: dsl
+        internal: true
+        dsl:
+          - "status_code != 200"
+
   - method: GET
     path:
       - "{{BaseURL}}/{{backup_file}}"
@@ -129,6 +141,9 @@ http:
 
       - type: dsl
         dsl:
+          - "!contains(tolower(header), 'content-type: text/html')"
+          - "!contains(tolower(body), '<html')"
+          - "!contains(tolower(body), '<!doctype')"
           - "len(body) > 128"
           - "len(body) < 104857600"
 

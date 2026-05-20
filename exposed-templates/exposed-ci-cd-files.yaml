@@ -9,7 +9,19 @@ info:
   metadata:
     max-request: 52
 
+flow: http(1) && http(2)
+
 http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/nuclei-fp-check-{{randstr}}-notexist"
+    redirects: false
+    matchers:
+      - type: dsl
+        internal: true
+        dsl:
+          - "status_code != 200"
+
   - method: GET
     path:
       - "{{BaseURL}}/{{cicd_file}}"
@@ -102,6 +114,7 @@ http:
           - "!contains(tolower(body), 'data-astro-cid') && !contains(tolower(body), '_astro/') && !contains(tolower(body), '__nuxt') && !contains(tolower(body), 'ng-version') && !contains(tolower(body), 'data-reactroot') && !contains(tolower(body), 'rails-ujs')"
           - "!regex('(?i)(page not found|does not exist|object moved|no encontrado)', body)"
           - "!contains(body, 'import-map') && !contains(body, 'GTM-') && !contains(body, 'AmazonS3')"
+          - "!contains(tolower(cicd_file), 'compose') || (contains(tolower(body), 'services:') && contains(tolower(body), 'version:'))"
           - "len(body) < 1048576"
 
     extractors:

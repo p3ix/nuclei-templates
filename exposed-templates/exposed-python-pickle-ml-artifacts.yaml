@@ -9,7 +9,19 @@ info:
   metadata:
     max-request: 110
 
+flow: http(1) && http(2)
+
 http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/nuclei-fp-check-{{randstr}}-notexist"
+    redirects: false
+    matchers:
+      - type: dsl
+        internal: true
+        dsl:
+          - "status_code != 200"
+
   - method: GET
     path:
       - "{{BaseURL}}/{{pickle_file}}"
@@ -116,8 +128,20 @@ http:
 
       - type: dsl
         dsl:
+          - "!contains(tolower(header), 'content-type: text/html')"
+          - "!contains(tolower(body), '<html')"
+          - "!contains(tolower(body), '<!doctype')"
           - "len(body) > 32"
           - "len(body) < 209715200"
+
+      - type: binary
+        part: body
+        condition: or
+        binary:
+          - "8002"
+          - "8003"
+          - "8004"
+          - "8005"
 
     extractors:
       - type: regex

@@ -36,7 +36,7 @@ http:
         - "register"
 
     attack: batteringram
-    redirects: true
+    redirects: false
     max-redirects: 2
     stop-at-first-match: true
     matchers-condition: and
@@ -73,4 +73,3 @@ http:
           - "(?im)^set-cookie:[^\\r\\n]*;\\s*domain=\\.[^;\\r\\n]+[^\\r\\n]*"
 
 # FIXED 2026-05-19: Converted third-party cookie exclusion from DSL to type:regex negative:true matcher. Also fixed [^\r\n]* → [^=\r\n]* in previous session to prevent keyword matching inside cookie values.
-

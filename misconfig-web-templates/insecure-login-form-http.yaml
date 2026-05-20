@@ -28,7 +28,7 @@ http:
         - "portal/login"
 
     attack: batteringram
-    redirects: true
+    redirects: false
     max-redirects: 1
     stop-at-first-match: true
     matchers-condition: and
@@ -53,4 +53,3 @@ http:
         part: body
         regex:
           - "(?is)<form[^>]{0,400}(login|signin|password|user|email)[^>]{0,400}>"
-

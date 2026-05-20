@@ -4,12 +4,24 @@ info:
   name: Clickjacking Protection Missing On Sensitive Pages
   author: p3i
   severity: medium
-  description: Detects sensitive-looking pages that do not set X-Frame-Options or CSP frame-ancestors, making them candidates for clickjacking impact review.
+  description: Detects sensitive-looking pages that do not set X-Frame-Options or CSP frame-ancestors, making them candidates for clickjacking impact review. Uses a catchall pre-check and path-specific page signals to avoid homepage soft-404 false positives.
   tags: misconfig,clickjacking,headers,csp,web
   metadata:
-    max-request: 18
+    max-request: 36
+
+flow: http(1) && http(2)
 
 http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/nuclei-fp-check-{{randstr}}-notexist"
+    redirects: false
+    matchers:
+      - type: dsl
+        internal: true
+        dsl:
+          - "status_code != 200"
+
   - method: GET
     path:
       - "{{BaseURL}}/{{panel_path}}"
@@ -36,8 +48,7 @@ http:
         - "password-reset"
 
     attack: batteringram
-    redirects: true
-    max-redirects: 2
+    redirects: false
     stop-at-first-match: true
     matchers-condition: and
     matchers:
@@ -71,7 +82,15 @@ http:
       # Require sensitive-page signals in body to reduce noise on generic HTML pages
       - type: dsl
         dsl:
-          - "contains(tolower(body), 'password') || (contains(tolower(body), '<form') && (contains(tolower(body), 'csrf') || contains(tolower(body), 'token') || contains(tolower(body), 'billing') || contains(tolower(body), 'payment') || contains(tolower(body), 'account') || contains(tolower(body), 'dashboard') || contains(tolower(body), 'settings')))"
+          - >-
+            ((panel_path == 'admin' || panel_path == 'administrator' || panel_path == 'manage' || panel_path == 'console') &&
+            regex('(?i)\\b(admin|dashboard|panel|management|administrator|console)\\b', body)) ||
+            ((panel_path == 'account' || panel_path == 'profile' || panel_path == 'settings') &&
+            regex('(?i)\\b(account|profile|settings|my account|user settings)\\b', body)) ||
+            ((panel_path == 'cart' || panel_path == 'checkout' || panel_path == 'payment' || panel_path == 'billing') &&
+            regex('(?i)\\b(cart|checkout|order|payment|billing)\\b', body)) ||
+            ((panel_path == 'login' || panel_path == 'signin' || panel_path == 'auth' || panel_path == 'portal' || panel_path == 'dashboard' || panel_path == 'reset-password' || panel_path == 'password-reset') &&
+            (contains(tolower(body), 'password') || (contains(tolower(body), '<form') && regex('(?i)\\b(csrf|token|login|sign in|dashboard|portal|reset password)\\b', body))))
 
       # Exclude: error/access-denied pages
       - type: word
@@ -89,4 +108,3 @@ http:
           - "(?i)<title>[^<]{0,160}(login|sign in|account|dashboard|settings|billing|checkout|admin)[^<]{0,160}</title>"
 
 # FIXED 2026-05-19: Replaced DSL negations for X-Frame-Options and frame-ancestors with explicit type:word negative:true matchers; content-type check moved to type:word matcher. Eliminates ~7 FPs/scan on pages that already have clickjacking protection.
-

@@ -35,7 +35,7 @@ http:
         - "settings"
 
     attack: batteringram
-    redirects: true
+    redirects: false
     max-redirects: 2
     stop-at-first-match: true
     matchers-condition: and
@@ -89,4 +89,3 @@ http:
           - "(?im)^set-cookie:[^\\r\\n]*samesite=none[^\\r\\n]*"
 
 # FIXED 2026-05-19: Replaced DSL matchers with explicit type:word/type:regex+negative:true matchers to eliminate ~30 FPs/scan on endpoints that set no cookies or where Secure was already present on the same line.
-

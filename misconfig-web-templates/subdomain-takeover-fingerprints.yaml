@@ -14,7 +14,7 @@ http:
     path:
       - "{{BaseURL}}/"
 
-    redirects: true
+    redirects: false
     max-redirects: 3
     matchers-condition: or
     matchers:

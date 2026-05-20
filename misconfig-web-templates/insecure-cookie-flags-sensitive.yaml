@@ -35,7 +35,7 @@ http:
         - "reset-password"
 
     attack: batteringram
-    redirects: true
+    redirects: false
     max-redirects: 2
     stop-at-first-match: true
     matchers-condition: and
@@ -82,4 +82,3 @@ http:
           - "(?i)set-cookie:[^\\r\\n]+"
 
 # FIXED 2026-05-19: Added explicit type:word prerequisite for set-cookie; converted third-party cookie exclusion from DSL to type:regex negative:true; kept complex OR flag-check in DSL (required for RE2 compatibility). Also fixed \b→;[\t ]* in previous session.
-
