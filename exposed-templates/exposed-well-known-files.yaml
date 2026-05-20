@@ -41,8 +41,6 @@ http:
         - ".well-known/apple-app-site-association"
         - ".well-known/acme-challenge/"
         - "robots.txt"
-        - "sitemap.xml"
-        - "sitemap_index.xml"
         - "crossdomain.xml"
         - "clientaccesspolicy.xml"
         - "humans.txt"

@@ -64,7 +64,7 @@ http:
         part: header
         negative: true
         regex:
-          - '(?i)set-cookie:\s*(visid_incap_|incap_ses_|__cfduid|cf_clearance|_abck|ak_bmsc|bm_sz|datadome|_ga|_gid|_gat|_fbp|_fbc|__utm|_hj|ajs_|intercom-|intercom_|amplitude_|drift_|mixpanel|crisp-|_ym_)='
+          - '(?i)set-cookie:\s*(visid_incap_|incap_ses_|__cfduid|cf_clearance|_abck|ak_bmsc|bm_sz|datadome|ssid_|sssc_|ssrt_|_ga|_gid|_gat|_fbp|_fbc|__utm|_hj|ajs_|intercom-|intercom_|amplitude_|drift_|mixpanel|crisp-|_ym_)='
 
     extractors:
       - type: regex

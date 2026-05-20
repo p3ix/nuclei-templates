@@ -150,6 +150,7 @@ http:
           - 200
 
       - type: dsl
+        condition: and
         dsl:
           - >-
             (contains(body, 'ami-id') && contains(body, 'instance-id')) ||
