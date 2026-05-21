@@ -60,6 +60,14 @@ http:
           - "strict-transport-security"
         case-insensitive: true
 
+      # Exclude Akamai/WAF block pages returned as HTML. Missing HSTS on a denial page is not useful signal.
+      - type: word
+        part: body
+        negative: true
+        words:
+          - "Sorry! Access denied"
+        case-insensitive: true
+
     extractors:
       - type: regex
         part: header

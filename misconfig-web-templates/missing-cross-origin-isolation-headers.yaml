@@ -84,6 +84,7 @@ http:
         part: body
         negative: true
         words:
+          - "Sorry! Access denied"
           - "access denied"
           - "permission to access"
         case-insensitive: true

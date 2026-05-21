@@ -41,6 +41,14 @@ http:
         dsl:
           - "contains(tolower(header), 'content-security-policy:')"
 
+      # Exclude Akamai/WAF block pages. A CSP on an access-denied page is not representative of app content.
+      - type: word
+        part: body
+        negative: true
+        words:
+          - "Sorry! Access denied"
+        case-insensitive: true
+
       - type: regex
         part: header
         condition: or

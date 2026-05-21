@@ -39,6 +39,14 @@ http:
           - 401
           - 403
 
+      # Exclude Akamai/WAF block pages. Permissions-Policy on a denial page is low-value noise.
+      - type: word
+        part: body
+        negative: true
+        words:
+          - "Sorry! Access denied"
+        case-insensitive: true
+
       - type: regex
         part: header
         condition: or
