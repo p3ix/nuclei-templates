@@ -1,0 +1,69 @@
+id: request-smuggling-tecl-desync-candidate
+
+info:
+  name: HTTP Request Smuggling TE.CL Desync Candidate
+  author: p3i
+  severity: info
+  description: Sends a minimal TE.CL ambiguity probe with a harmless one-byte trailer and reports parser errors, gateway failures, or suspicious proxy handling. This is a low-noise candidate template for prioritizing manual TE.CL testing; it does not prove exploitability by itself.
+  tags: misconfig,request-smuggling,desync,tecl,http,candidate
+  metadata:
+    max-request: 4
+
+http:
+  - raw:
+      - |
+        POST {{smuggle_path}} HTTP/1.1
+        Host: {{Hostname}}
+        User-Agent: nuclei-tecl-candidate
+        Content-Type: application/x-www-form-urlencoded
+        Content-Length: 6
+        Transfer-Encoding: chunked
+        Connection: keep-alive
+
+        0
+
+        X
+
+    payloads:
+      smuggle_path:
+        - "/"
+        - "/api"
+        - "/login"
+        - "/health"
+
+    attack: batteringram
+    unsafe: true
+    redirects: false
+    max-redirects: 0
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 400
+          - 408
+          - 411
+          - 413
+          - 421
+          - 502
+          - 503
+          - 504
+
+      - type: regex
+        part: all
+        condition: or
+        regex:
+          - "(?i)(bad request|invalid request|malformed|chunk|content-length|transfer-encoding|gateway|upstream|request timeout)"
+          - "(?i)^(server|via|x-cache|cf-ray|x-amz-cf-|x-envoy|x-varnish|x-served-by|x-akamai):"
+          - "(?i)(cloudflare|akamai|fastly|cloudfront|varnish|envoy|nginx|haproxy|awselb|alb|waf)"
+
+    extractors:
+      - type: regex
+        part: all
+        regex:
+          - "(?im)^(server|via|x-cache|cf-ray|x-amz-cf-[^:]+|x-envoy[^:]*|x-varnish|x-served-by|x-akamai[^:]*):[^\\r\\n]+"
+          - "(?i)(bad request|invalid request|malformed|chunk|content-length|transfer-encoding|gateway|upstream|request timeout).{0,120}"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

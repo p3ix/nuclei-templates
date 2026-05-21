@@ -1,0 +1,78 @@
+id: request-smuggling-tete-obfuscation-oracle
+
+info:
+  name: HTTP Request Smuggling TE.TE Obfuscation Timing Oracle
+  author: p3i
+  severity: medium
+  description: Tests Transfer-Encoding obfuscation variants that may be parsed differently by frontend and backend servers. Slow responses on these probes are candidates for TE.TE request smuggling and require manual confirmation.
+  tags: misconfig,request-smuggling,desync,tete,transfer-encoding,timing,http
+  metadata:
+    max-request: 36
+
+http:
+  - raw:
+      - |
+        POST {{smuggle_path}} HTTP/1.1
+        Host: {{Hostname}}
+        User-Agent: nuclei-tete-oracle
+        Content-Type: application/x-www-form-urlencoded
+        Content-Length: 4
+        {{te_header}}
+        Connection: keep-alive
+
+        1
+        Z
+        Q
+
+    payloads:
+      smuggle_path:
+        - "/"
+        - "/api"
+        - "/login"
+        - "/health"
+      te_header:
+        - "Transfer-Encoding: chunked"
+        - "Transfer-Encoding: xchunked"
+        - "Transfer-Encoding: chunked, x"
+        - "Transfer-Encoding: chunked; x=y"
+        - "Transfer-Encoding: chunKed"
+        - "Transfer-Encoding:\tchunked"
+        - "Transfer-Encoding : chunked"
+        - "X-Transfer-Encoding: chunked"
+        - "Transfer_Encoding: chunked"
+
+    attack: clusterbomb
+    unsafe: true
+    redirects: false
+    max-redirects: 0
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - "duration >= 6"
+
+      - type: regex
+        part: header
+        condition: or
+        regex:
+          - "(?i)^(server|via|x-cache|cf-ray|x-amz-cf-|x-envoy|x-varnish|x-served-by|x-akamai|x-request-id|x-correlation-id):"
+          - "(?i)(cloudflare|akamai|fastly|cloudfront|varnish|envoy|nginx|haproxy|awselb|alb|waf)"
+
+    extractors:
+      - type: dsl
+        name: te_variant
+        dsl:
+          - "te_header"
+      - type: regex
+        part: header
+        regex:
+          - "(?im)^(server|via|x-cache|cf-ray|x-amz-cf-[^:]+|x-envoy[^:]*|x-varnish|x-served-by|x-akamai[^:]*|x-request-id|x-correlation-id):[^\\r\\n]+"
+      - type: dsl
+        name: duration
+        dsl:
+          - "duration"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

@@ -1,0 +1,55 @@
+id: h2c-upgrade-enabled-candidate
+
+info:
+  name: H2C Upgrade Enabled Candidate
+  author: p3i
+  severity: medium
+  description: Detects cleartext HTTP/2 upgrade support (h2c) through HTTP/1.1 Upgrade headers. Exposed h2c support can be relevant for H2C smuggling and proxy bypass research, especially behind reverse proxies that do not expect backend HTTP/2 cleartext upgrades.
+  tags: misconfig,request-smuggling,h2c,http2,upgrade,desync
+  metadata:
+    max-request: 4
+
+http:
+  - raw:
+      - |
+        GET {{h2c_path}} HTTP/1.1
+        Host: {{Hostname}}
+        User-Agent: nuclei-h2c-upgrade-candidate
+        Connection: Upgrade, HTTP2-Settings
+        Upgrade: h2c
+        HTTP2-Settings: AAMAAABkAAQAAP__
+
+    payloads:
+      h2c_path:
+        - "/"
+        - "/api"
+        - "/health"
+        - "/grpc"
+
+    attack: batteringram
+    unsafe: true
+    redirects: false
+    max-redirects: 0
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 101
+
+      - type: regex
+        part: header
+        condition: and
+        regex:
+          - "(?im)^connection:\\s*upgrade"
+          - "(?im)^upgrade:\\s*h2c\\s*$"
+
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "(?im)^(server|connection|upgrade|http2-settings|via|x-cache|cf-ray|x-envoy[^:]*|x-request-id):[^\\r\\n]+"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

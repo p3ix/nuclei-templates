@@ -1,0 +1,53 @@
+id: h2-downgrade-desync-candidate-fingerprint
+
+info:
+  name: HTTP/2 Downgrade Desync Candidate Fingerprint
+  author: p3i
+  severity: info
+  description: Fingerprints targets that advertise HTTP/2 or sit behind common H2-capable CDN/LB/WAF frontends, then extracts proxy/cache headers useful for prioritizing H2.CL, H2.TE, and H2 to H1 downgrade desync testing. Run with nuclei -fh2 when you want the client side forced to HTTP/2.
+  tags: misconfig,request-smuggling,desync,http2,h2,h2cl,h2te,fingerprint
+  metadata:
+    max-request: 5
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/"
+      - "{{BaseURL}}/api"
+      - "{{BaseURL}}/login"
+      - "{{BaseURL}}/health"
+      - "{{BaseURL}}/static/"
+
+    redirects: false
+    max-redirects: 0
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: regex
+        part: header
+        condition: or
+        regex:
+          - "(?im)^alt-svc:\\s*[^\\r\\n]*\\bh2\\b"
+          - "(?im)^server:\\s*(cloudflare|envoy|nginx|akamai|awselb|istio|traefik|caddy)"
+          - "(?im)^(cf-ray|x-amz-cf-id|x-amz-cf-pop|x-envoy-upstream-service-time|x-served-by|x-cache|x-varnish|via):"
+
+      - type: regex
+        part: header
+        condition: or
+        regex:
+          - "(?i)(cloudflare|akamai|fastly|cloudfront|varnish|envoy|nginx|haproxy|awselb|alb|istio|traefik|caddy|waf)"
+          - "(?im)^(via|x-cache|x-forwarded-|x-request-id|x-correlation-id|x-envoy|cf-cache-status|server-timing):"
+
+      - type: dsl
+        dsl:
+          - "status_code >= 200 && status_code < 500"
+
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "(?im)^(server|alt-svc|via|x-cache|cf-cache-status|cf-ray|x-amz-cf-[^:]+|x-envoy[^:]*|x-served-by|x-varnish|x-forwarded-[^:]+|server-timing|x-request-id|x-correlation-id):[^\\r\\n]+"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

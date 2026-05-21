@@ -1,0 +1,64 @@
+id: request-smuggling-clte-timing-oracle
+
+info:
+  name: HTTP Request Smuggling CL.TE Timing Oracle
+  author: p3i
+  severity: medium
+  description: Sends a conservative CL.TE ambiguity probe and reports unusually slow responses that may indicate a frontend using Content-Length while the backend waits on Transfer-Encoding chunk parsing. This is a candidate/oracle only; confirm manually with Burp HTTP Request Smuggler or Turbo Intruder before reporting.
+  tags: misconfig,request-smuggling,desync,clte,timing,http
+  metadata:
+    max-request: 4
+
+http:
+  - raw:
+      - |
+        POST {{smuggle_path}} HTTP/1.1
+        Host: {{Hostname}}
+        User-Agent: nuclei-clte-oracle
+        Content-Type: application/x-www-form-urlencoded
+        Content-Length: 4
+        Transfer-Encoding: chunked
+        Connection: keep-alive
+
+        1
+        Z
+        Q
+
+    payloads:
+      smuggle_path:
+        - "/"
+        - "/api"
+        - "/login"
+        - "/health"
+
+    attack: batteringram
+    unsafe: true
+    redirects: false
+    max-redirects: 0
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - "duration >= 6"
+
+      - type: regex
+        part: header
+        condition: or
+        regex:
+          - "(?i)^(server|via|x-cache|cf-ray|x-amz-cf-|x-envoy|x-varnish|x-served-by|x-akamai|x-request-id|x-correlation-id):"
+          - "(?i)(cloudflare|akamai|fastly|cloudfront|varnish|envoy|nginx|haproxy|awselb|alb|waf)"
+
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "(?im)^(server|via|x-cache|cf-ray|x-amz-cf-[^:]+|x-envoy[^:]*|x-varnish|x-served-by|x-akamai[^:]*|x-request-id|x-correlation-id):[^\\r\\n]+"
+      - type: dsl
+        name: duration
+        dsl:
+          - "duration"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

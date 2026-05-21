@@ -1,0 +1,71 @@
+id: request-smuggling-duplicate-cl-candidate
+
+info:
+  name: HTTP Request Smuggling Duplicate Content-Length Candidate
+  author: p3i
+  severity: info
+  description: Sends duplicate Content-Length variants and reports differential parser rejection signals. Duplicate CL handling is often a useful precursor for CL.CL or downstream parser inconsistency testing, but this template is only a prioritization signal.
+  tags: misconfig,request-smuggling,desync,content-length,clcl,http,candidate
+  metadata:
+    max-request: 12
+
+http:
+  - raw:
+      - |
+        POST {{smuggle_path}} HTTP/1.1
+        Host: {{Hostname}}
+        User-Agent: nuclei-duplicate-cl-candidate
+        Content-Type: application/x-www-form-urlencoded
+        Content-Length: {{first_cl}}
+        Content-Length: {{second_cl}}
+        Connection: close
+
+        x=1
+
+    payloads:
+      smuggle_path:
+        - "/"
+        - "/api"
+        - "/login"
+      first_cl:
+        - "3"
+        - "4"
+      second_cl:
+        - "4"
+        - "3"
+
+    attack: clusterbomb
+    unsafe: true
+    redirects: false
+    max-redirects: 0
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 400
+          - 408
+          - 411
+          - 413
+          - 421
+          - 502
+          - 503
+          - 504
+
+      - type: regex
+        part: all
+        condition: or
+        regex:
+          - "(?i)(duplicate|multiple|conflicting|invalid|bad request|content-length|malformed)"
+          - "(?i)^(server|via|x-cache|cf-ray|x-amz-cf-|x-envoy|x-varnish|x-served-by|x-akamai):"
+
+    extractors:
+      - type: regex
+        part: all
+        regex:
+          - "(?im)^(server|via|x-cache|cf-ray|x-amz-cf-[^:]+|x-envoy[^:]*|x-varnish|x-served-by|x-akamai[^:]*):[^\\r\\n]+"
+          - "(?i)(duplicate|multiple|conflicting|invalid|bad request|content-length|malformed).{0,120}"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"
