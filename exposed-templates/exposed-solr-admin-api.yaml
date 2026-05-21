@@ -1,0 +1,80 @@
+id: exposed-solr-admin-api
+
+info:
+  name: Exposed Apache Solr Admin API
+  author: p3i
+  severity: high
+  description: Detects exposed Apache Solr admin endpoints that disclose collections, cores, schema fields, plugins, request handlers, config overlays, system properties, and version details.
+  tags: exposure,solr,apache,search,admin,api
+  metadata:
+    max-request: 42
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{solr_path}}"
+
+    payloads:
+      solr_path:
+        - "solr/"
+        - "solr/admin/info/system?wt=json"
+        - "solr/admin/cores?action=STATUS&wt=json"
+        - "solr/admin/collections?action=LIST&wt=json"
+        - "solr/admin/collections?action=CLUSTERSTATUS&wt=json"
+        - "solr/admin/info/properties?wt=json"
+        - "solr/admin/info/threads?wt=json"
+        - "solr/admin/metrics?wt=json"
+        - "solr/gettingstarted/admin/ping?wt=json"
+        - "solr/gettingstarted/schema?wt=json"
+        - "solr/collection1/admin/ping?wt=json"
+        - "solr/collection1/schema?wt=json"
+        - "solr/collection1/config?wt=json"
+        - "api/cluster"
+        - "api/collections"
+        - "api/cores"
+
+    attack: batteringram
+    redirects: false
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 401
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - "\"(?:solr_home|lucene|jvm|system|core|status|responseHeader)\"\\s*:"
+          - "\"(?:collections|cluster|live_nodes|aliases|configSets|cores)\"\\s*:"
+          - "\"(?:schema|fields|dynamicFields|fieldTypes|copyFields)\"\\s*:"
+          - "(?i)<title>\\s*Solr Admin"
+          - "(?i)SolrCore|Apache Solr"
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - "\"QTime\"\\s*:\\s*[0-9]+"
+          - "\"status\"\\s*:\\s*(0|\"OK\")"
+          - "\"(?:name|instanceDir|dataDir|config|schema|version)\"\\s*:"
+          - "(?i)(solrconfig\\.xml|managed-schema|collection1|gettingstarted)"
+
+      - type: dsl
+        dsl:
+          - "!regex('(?i)(page not found|does not exist|no encontrado)', body)"
+          - "len(body) < 52428800"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "\"(?:name|instanceDir|dataDir|config|schema|solr_home|lucene|version)\"\\s*:\\s*\"[^\"]+\""
+          - "(?i)(Apache Solr|SolrCore|solrconfig\\.xml|managed-schema)[^\\r\\n<]{0,160}"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

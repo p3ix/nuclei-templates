@@ -1,0 +1,75 @@
+id: exposed-eureka-service-registry
+
+info:
+  name: Exposed Eureka Service Registry
+  author: p3i
+  severity: medium
+  description: Detects exposed Netflix Eureka service registry endpoints that disclose internal service names, instance IDs, private IPs, ports, health URLs, metadata, and microservice topology.
+  tags: exposure,eureka,service-discovery,microservices,spring
+  metadata:
+    max-request: 26
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{eureka_path}}"
+
+    payloads:
+      eureka_path:
+        - "eureka/"
+        - "eureka/apps"
+        - "eureka/apps/"
+        - "eureka/apps?regions=default"
+        - "eureka/v2/apps"
+        - "api/eureka/apps"
+        - "registry/eureka/apps"
+        - "service-registry/eureka/apps"
+        - "discovery/eureka/apps"
+        - "actuator/eureka"
+        - "manage/eureka/apps"
+
+    attack: batteringram
+    redirects: false
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 401
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - "(?i)<applications>\\s*<versions__delta>"
+          - "(?i)<application>\\s*<name>[^<]+</name>"
+          - "\"applications\"\\s*:\\s*\\{"
+          - "\"application\"\\s*:\\s*\\["
+          - "(?i)Eureka|DS Replicas|Instances currently registered with Eureka"
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - "(?i)<instanceId>|<hostName>|<ipAddr>|<statusPageUrl>|<healthCheckUrl>"
+          - "\"(?:instanceId|hostName|ipAddr|statusPageUrl|healthCheckUrl|vipAddress)\"\\s*:"
+          - "(?i)(UP|DOWN|STARTING|OUT_OF_SERVICE)"
+
+      - type: dsl
+        dsl:
+          - "!regex('(?i)(page not found|does not exist|no encontrado)', body)"
+          - "len(body) < 52428800"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)<name>[^<]{1,160}</name>"
+          - "(?i)<(?:instanceId|hostName|ipAddr|statusPageUrl|healthCheckUrl)>[^<]{1,300}</(?:instanceId|hostName|ipAddr|statusPageUrl|healthCheckUrl)>"
+          - "\"(?:name|instanceId|hostName|ipAddr|statusPageUrl|healthCheckUrl)\"\\s*:\\s*\"[^\"]+\""
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

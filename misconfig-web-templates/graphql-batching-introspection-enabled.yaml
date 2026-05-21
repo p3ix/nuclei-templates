@@ -1,0 +1,76 @@
+id: graphql-batching-introspection-enabled
+
+info:
+  name: GraphQL Batched Introspection Enabled
+  author: p3i
+  severity: medium
+  description: Detects GraphQL endpoints that accept batched POST requests and return introspection data. Batch support can amplify brute force, authorization probing, and denial-of-wallet style request amplification when exposed in production.
+  tags: misconfig,graphql,batching,introspection,api,web
+  metadata:
+    max-request: 16
+
+http:
+  - raw:
+      - |
+        POST /{{graphql_path}} HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json
+        Accept: application/json
+        Connection: close
+
+        [{"query":"query IntrospectionQuery{__schema{queryType{name} mutationType{name} types{name kind}}}"},{"query":"query TypeNameProbe{__typename}"}]
+
+    payloads:
+      graphql_path:
+        - "graphql"
+        - "graphql/"
+        - "api/graphql"
+        - "api/graphql/"
+        - "v1/graphql"
+        - "v2/graphql"
+        - "api/v1/graphql"
+        - "api/v2/graphql"
+
+    attack: batteringram
+    redirects: false
+    max-redirects: 1
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        condition: or
+        words:
+          - "content-type: application/json"
+          - "content-type: application/graphql"
+        case-insensitive: true
+
+      - type: regex
+        part: body
+        condition: and
+        regex:
+          - "^\\s*\\["
+          - "\"__schema\"\\s*:"
+          - "\"types\"\\s*:\\s*\\["
+          - "\"__typename\"\\s*:"
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), '<html')"
+          - "!regex('(?i)(introspection is not allowed|cannot query field|validation error|persistedquerynotfound)', body)"
+          - "len(body) < 20971520"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "\"(?:queryType|mutationType|subscriptionType)\"\\s*:\\s*\\{[^}]{0,160}\\}"
+          - "\"name\"\\s*:\\s*\"[A-Za-z_][A-Za-z0-9_]*\"\\s*,\\s*\"kind\"\\s*:\\s*\"[A-Z_]+\""
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

@@ -1,0 +1,106 @@
+id: exposed-prestashop-symfony-dev-artifacts
+
+info:
+  name: Exposed PrestaShop Symfony Development Artifacts
+  author: p3i
+  severity: medium
+  description: Detects exposed PrestaShop/Symfony development and static-analysis files such as Makefile, phpstan.neon, psalm.xml, rector.php, and composer metadata that reveal build commands, internal paths, modules, webservice directories, CI paths, and framework structure.
+  tags: exposure,prestashop,symfony,phpstan,makefile,developer,metadata
+  metadata:
+    max-request: 58
+
+flow: http(1) && http(2)
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/nuclei-fp-check-{{randstr}}-notexist"
+    redirects: false
+    matchers:
+      - type: dsl
+        internal: true
+        dsl:
+          - "status_code != 200"
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{dev_file}}"
+
+    payloads:
+      dev_file:
+        - "Makefile"
+        - "makefile"
+        - "GNUmakefile"
+        - "phpstan.neon"
+        - "phpstan.neon.dist"
+        - "phpstan-baseline.neon"
+        - "phpstan-baseline.neon.dist"
+        - "psalm.xml"
+        - "psalm.xml.dist"
+        - "rector.php"
+        - "ecs.php"
+        - ".php-cs-fixer.php"
+        - ".php-cs-fixer.dist.php"
+        - "composer.json"
+        - "composer.lock"
+        - "symfony.lock"
+        - ".github/workflows/phpstan/autoload.php"
+        - ".github/workflows/phpstan/phpstan.neon"
+        - ".github/workflows/phpstan/phpstan.neon.dist"
+        - "tools/assets/build.sh"
+        - "tools/assets/"
+        - "app/config/config.yml"
+        - "app/config/config_prod.yml"
+        - "config/services.yml"
+        - "config/services.yaml"
+        - "config/packages/framework.yaml"
+        - "src/PrestaShopBundle/Resources/config/services.yml"
+
+    attack: batteringram
+    redirects: false
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - "(?im)^\\s*(install|build|assets|composer|phpstan|psalm|rector|deploy|test)\\s*:"
+          - "(?im)^\\s*(parameters|includes|paths|excludePaths|level|autoload_files)\\s*:"
+          - "(?i)(phpstan\\.neon|phpstan-baseline|PHPStan|Psalm|Rector\\\\Config|PhpCsFixer)"
+          - "\"(?:prestashop/prestashop|symfony/[^\"/]+|phpstan/phpstan|prestashop/module-lib)\""
+          - "(?im)^\\s*(services|imports|framework|parameters):\\s*$"
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - "(?i)(PrestaShop|PrestaShopBundle|prestashop)"
+          - "(?i)(Symfony|symfony)"
+          - "(?i)(src|classes|controllers|modules|override|themes|webservice|\\.github/workflows|tools/assets|composer\\s+install|composer\\s+assets)"
+          - "(?i)(Admin[A-Za-z]+Controller|ModuleAdminController|FrontController|WebserviceRequest)"
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), '<html')"
+          - "!contains(tolower(header), 'content-type: text/html')"
+          - "!contains(tolower(body), '<!doctype')"
+          - "!regex('(?i)(page not found|does not exist|object moved|no encontrado)', body)"
+          - "len(body) < 10485760"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)^\\s*-\\s*(src|classes|controllers|modules|override|themes|webservice|\\.github/workflows|tools/assets)[^\\r\\n]*"
+          - "(?im)^\\s*(install|build|assets|composer|phpstan|psalm|rector|deploy|test)\\s*:[^\\r\\n]*"
+          - "\"(?:prestashop/prestashop|symfony/[^\"]+|phpstan/phpstan|prestashop/module-lib)\"\\s*:\\s*\"[^\"]+\""
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

@@ -1,0 +1,107 @@
+id: exposed-prestashop-module-configs
+
+info:
+  name: Exposed PrestaShop Module Configuration XML
+  author: p3i
+  severity: medium
+  description: Detects exposed PrestaShop module config.xml metadata, including custom marketplace or backoffice modules. These files can reveal custom module names, authors, versions, tabs, controllers, compatibility ranges, and proprietary business logic entrypoints.
+  tags: exposure,prestashop,module,config,xml,cms
+  metadata:
+    max-request: 70
+
+flow: http(1) && http(2)
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/nuclei-fp-check-{{randstr}}-notexist"
+    redirects: false
+    matchers:
+      - type: dsl
+        internal: true
+        dsl:
+          - "status_code != 200"
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{module_config}}"
+
+    payloads:
+      module_config:
+        - "modules/idmmarketplace/config.xml"
+        - "modules/marketplace/config.xml"
+        - "modules/marketplacepro/config.xml"
+        - "modules/seller/config.xml"
+        - "modules/vendor/config.xml"
+        - "modules/custommarketplace/config.xml"
+        - "modules/custom/config.xml"
+        - "modules/backoffice/config.xml"
+        - "modules/webservice/config.xml"
+        - "modules/api/config.xml"
+        - "modules/payment/config.xml"
+        - "modules/checkout/config.xml"
+        - "modules/ps_checkout/config.xml"
+        - "modules/ps_accounts/config.xml"
+        - "modules/ps_facetedsearch/config.xml"
+        - "modules/ps_emailsubscription/config.xml"
+        - "modules/ps_shoppingcart/config.xml"
+        - "modules/ps_mainmenu/config.xml"
+        - "modules/ps_contactinfo/config.xml"
+        - "modules/ps_customeraccountlinks/config.xml"
+        - "modules/ps_linklist/config.xml"
+        - "modules/ps_categorytree/config.xml"
+        - "modules/blockreassurance/config.xml"
+        - "modules/blockwishlist/config.xml"
+        - "modules/gamification/config.xml"
+        - "modules/autoupgrade/config.xml"
+        - "modules/paypal/config.xml"
+        - "modules/stripe_official/config.xml"
+        - "modules/klarnapayment/config.xml"
+        - "modules/amazonpay/config.xml"
+
+    attack: batteringram
+    redirects: false
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: regex
+        part: body
+        condition: and
+        regex:
+          - "(?i)<\\?xml|<module>"
+          - "(?i)<(name|displayName|version|author|description)>"
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - "(?i)<module>\\s*<name>[^<]+</name>"
+          - "(?i)<tab>\\s*<className>[^<]+</className>"
+          - "(?i)<is_configurable>[01]</is_configurable>"
+          - "(?i)<need_instance>[01]</need_instance>"
+          - "(?i)<ps_versions_compliancy>"
+          - "(?i)(marketplace|seller|vendor|payment|checkout|webservice|Admin[A-Za-z]+|controller)"
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), '<html')"
+          - "!contains(tolower(header), 'content-type: text/html')"
+          - "!regex('(?i)(page not found|does not exist|object moved|no encontrado)', body)"
+          - "len(body) < 1048576"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)<(name|displayName|version|author)>[^<]{1,200}</(name|displayName|version|author)>"
+          - "(?i)<className>[^<]{1,200}</className>"
+          - "(?i)<description>[^<]{1,300}</description>"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

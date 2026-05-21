@@ -1,0 +1,123 @@
+id: prestashop-backoffice-login-header-anomaly
+
+info:
+  name: PrestaShop Backoffice Login Header Anomaly
+  author: p3i
+  severity: high
+  description: Probes common PrestaShop backoffice login paths with random token-shaped values and reports anomalous responses that expose a login:true header or login JSON state. This detects misconfigured/auth-bypass-like behavior without relying on a leaked real token.
+  tags: misconfig,prestashop,backoffice,auth,token,headers
+  metadata:
+    max-request: 40
+
+http:
+  - method: HEAD
+    path:
+      - "{{BaseURL}}/{{bo_path}}/index.php?controller=AdminLogin&token={{token_probe}}"
+
+    payloads:
+      bo_path:
+        - "Backoffice"
+        - "backoffice"
+        - "admin"
+        - "admin-dev"
+        - "administration"
+        - "backend"
+        - "bo"
+        - "manage"
+      token_probe:
+        - "00000000000000000000000000000000"
+        - "11111111111111111111111111111111"
+        - "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        - "{{randstr}}"
+        - "{{randstr}}{{randstr}}{{randstr}}{{randstr}}"
+
+    attack: pitchfork
+    redirects: false
+    max-redirects: 1
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 302
+          - 303
+          - 401
+          - 403
+
+      - type: regex
+        part: header
+        condition: or
+        regex:
+          - "(?im)^login:\\s*true\\s*$"
+          - "(?im)^x-login:\\s*true\\s*$"
+          - "(?im)^x-authenticated:\\s*true\\s*$"
+          - "(?im)^x-prestashop-login:\\s*true\\s*$"
+
+      - type: regex
+        part: header
+        condition: or
+        regex:
+          - "(?i)(prestashop|AdminLogin|Backoffice|PHPSESSID|PrestaShop-)"
+          - "(?i)location:\\s*[^\\r\\n]*(AdminLogin|controller=Admin|Backoffice|admin)"
+
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "(?im)^(login|x-login|x-authenticated|x-prestashop-login):\\s*true\\s*$"
+          - "(?im)^(set-cookie|location|x-powered-by):[^\\r\\n]+"
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{bo_path}}/index.php?controller=AdminLogin&token={{token_probe}}&ajax=1"
+
+    payloads:
+      bo_path:
+        - "Backoffice"
+        - "backoffice"
+        - "admin"
+        - "admin-dev"
+        - "administration"
+        - "backend"
+        - "bo"
+        - "manage"
+      token_probe:
+        - "00000000000000000000000000000000"
+        - "11111111111111111111111111111111"
+        - "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        - "{{randstr}}"
+        - "{{randstr}}{{randstr}}{{randstr}}{{randstr}}"
+
+    attack: pitchfork
+    redirects: false
+    max-redirects: 1
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 302
+          - 303
+          - 401
+          - 403
+
+      - type: dsl
+        dsl:
+          - "regex('(?im)^login:\\s*true\\s*$', header) || regex('(?i)\"login\"\\s*:\\s*true', body) || regex('(?i)\"logged\"\\s*:\\s*true', body) || regex('(?i)\"authenticated\"\\s*:\\s*true', body)"
+          - "contains(tolower(header), 'prestashop') || contains(tolower(body), 'prestashop') || contains(tolower(body), 'adminlogin') || contains(tolower(header), 'phpsessid') || contains(tolower(header), 'location:')"
+          - "!regex('(?i)(page not found|does not exist|no encontrado)', body)"
+          - "len(body) < 5242880"
+
+    extractors:
+      - type: regex
+        part: all
+        regex:
+          - "(?im)^(login|x-login|x-authenticated|x-prestashop-login):\\s*true\\s*$"
+          - "(?i)\"(?:login|logged|authenticated)\"\\s*:\\s*true"
+          - "(?im)^(set-cookie|location|x-powered-by):[^\\r\\n]+"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

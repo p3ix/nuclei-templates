@@ -1,0 +1,84 @@
+id: exposed-spring-cloud-config-server
+
+info:
+  name: Exposed Spring Cloud Config Server
+  author: p3i
+  severity: high
+  description: Detects exposed Spring Cloud Config Server endpoints that disclose application configuration, active profiles, repository labels, property sources, credentials, URLs, and environment-specific secrets.
+  tags: exposure,spring,cloud-config,config,secrets,java
+  metadata:
+    max-request: 46
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{config_path}}"
+
+    payloads:
+      config_path:
+        - "application/default"
+        - "application/default/main"
+        - "application/dev"
+        - "application/prod"
+        - "application/production"
+        - "application/staging"
+        - "application.yml"
+        - "application.yaml"
+        - "application.properties"
+        - "config/application/default"
+        - "config/application/dev"
+        - "config/application/prod"
+        - "admin/default"
+        - "api/default"
+        - "gateway/default"
+        - "backend/default"
+        - "frontend/default"
+        - "service/default"
+        - "default/default"
+        - "master/default"
+        - "main/default"
+
+    attack: batteringram
+    redirects: false
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - "\"(?:name|profiles|label|version|state)\"\\s*:\\s*"
+          - "\"propertySources\"\\s*:\\s*\\["
+          - "(?im)^spring\\.(application|profiles|cloud)\\."
+          - "(?im)^(server|management|eureka|spring|datasource)\\.[a-z0-9_.-]+\\s*[:=]"
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - "(?i)(password|secret|token|api[_-]?key|client[_-]?secret|jdbc:|database_url|redis://|mongodb://)"
+          - "\"source\"\\s*:\\s*\\{"
+          - "(?i)(spring.datasource|spring.redis|spring.security|oauth2|eureka.client.serviceUrl)"
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), '<html')"
+          - "!contains(tolower(header), 'content-type: text/html')"
+          - "!regex('(?i)(page not found|does not exist|no encontrado)', body)"
+          - "len(body) < 10485760"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)(password|secret|token|api[_-]?key|client[_-]?secret|jdbc:|database_url|redis://|mongodb://).{0,160}"
+          - "\"(?:name|profiles|label|version)\"\\s*:\\s*[^,}\\r\\n]+"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

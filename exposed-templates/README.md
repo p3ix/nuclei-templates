@@ -61,6 +61,15 @@ Esta primera tanda cubre:
 - PHP-FPM status/ping expuesto con métricas de pools, procesos y colas.
 - Configuración de feature flags, experiments y remote config: LaunchDarkly, Unleash, Flagsmith, Split, GrowthBook, Optimizely, Statsig, PostHog y ConfigCat.
 - Configuración de pagos y webhooks: Stripe, PayPal, Adyen, Braintree, Square, ngrok y secretos de firma.
+- WebDAV real mediante `PROPFIND` con listados `207 Multi-Status`.
+- Spring Cloud Config Server expuesto con `propertySources`, perfiles, labels y secretos de configuración.
+- APIs Nacos expuestas para config/service discovery, namespaces, servicios y configs.
+- Eureka service registry expuesto con servicios, instancias, IPs internas y health/status URLs.
+- Apache Solr Admin API con cores, collections, schema, config, métricas y propiedades.
+- Patrones cliente `postMessage` con wildcard `*` y señales de tokens/DOM sinks para revisión manual.
+- Artefactos PrestaShop/Symfony de desarrollo: `Makefile`, `phpstan.neon`, Psalm, Rector, composer, paths `src`, `webservice`, `.github/workflows` y scripts de build.
+- Configuración XML de módulos PrestaShop, incluyendo módulos custom de marketplace, payment, checkout y backoffice.
+- Paths sensibles PrestaShop: `webservice`, `admin-dev`, `Backoffice`, `install`, logs, cache, configs y metadata de versión/módulos.
 
 ## Uso
 

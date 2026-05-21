@@ -1,0 +1,81 @@
+id: exposed-client-postmessage-wildcard
+
+info:
+  name: Client-Side PostMessage Wildcard Patterns
+  author: p3i
+  severity: low
+  description: Detects client-side JavaScript that combines postMessage usage with wildcard targets or permissive message listeners. This is a recon signal for DOM XSS, token leakage, and cross-origin trust review, not a standalone vulnerability.
+  tags: exposure,javascript,postmessage,domxss,recon,frontend
+  metadata:
+    max-request: 34
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{js_path}}"
+
+    payloads:
+      js_path:
+        - ""
+        - "/"
+        - "index.html"
+        - "app.js"
+        - "main.js"
+        - "bundle.js"
+        - "runtime.js"
+        - "static/js/main.js"
+        - "static/js/app.js"
+        - "static/js/bundle.js"
+        - "assets/js/main.js"
+        - "assets/js/app.js"
+        - "assets/app.js"
+        - "assets/main.js"
+        - "dist/app.js"
+        - "dist/main.js"
+        - "_next/static/chunks/main.js"
+        - "_next/static/chunks/pages/_app.js"
+        - "_nuxt/app.js"
+        - "_nuxt/entry.js"
+        - "js/app.js"
+        - "js/main.js"
+
+    attack: batteringram
+    redirects: false
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: regex
+        part: body
+        condition: and
+        regex:
+          - "(?i)(addEventListener\\s*\\(\\s*['\"]message['\"]|\\.onmessage\\s*=|postMessage\\s*\\()"
+          - "(?i)(postMessage\\s*\\([^\\)]{0,500}['\"]\\*['\"]|targetOrigin\\s*[:=]\\s*['\"]\\*['\"]|origin\\s*[:=]\\s*['\"]\\*['\"])"
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - "(?i)(localStorage|sessionStorage|document\\.cookie|Authorization|access[_-]?token|id[_-]?token|jwt|oauth|sso|iframe|parent\\.postMessage|window\\.parent)"
+          - "(?i)(event\\.data|message\\.data|JSON\\.parse\\s*\\([^\\)]*(event|message)\\.data)"
+          - "(?i)(innerHTML|eval\\s*\\(|Function\\s*\\(|location\\s*=)"
+
+      - type: dsl
+        dsl:
+          - "len(body) < 20971520"
+          - "!regex('(?i)(page not found|does not exist|no encontrado)', body)"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i).{0,120}(addEventListener\\s*\\(\\s*['\"]message['\"]|postMessage\\s*\\([^\\)]{0,300}['\"]\\*['\"]).{0,180}"
+          - "(?i).{0,120}(localStorage|sessionStorage|document\\.cookie|access[_-]?token|id[_-]?token|innerHTML|eval\\s*\\().{0,180}"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

@@ -1,0 +1,104 @@
+id: exposed-prestashop-sensitive-paths
+
+info:
+  name: Exposed PrestaShop Sensitive Paths And Metadata
+  author: p3i
+  severity: medium
+  description: Detects PrestaShop-specific sensitive paths and metadata that can disclose version, install state, webservice exposure, upgrade artifacts, logs, caches, admin paths, or module structure. Uses PrestaShop content signals to avoid generic SPA soft-404s.
+  tags: exposure,prestashop,cms,metadata,webservice,modules
+  metadata:
+    max-request: 86
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{ps_path}}"
+
+    payloads:
+      ps_path:
+        - "README.md"
+        - "INSTALL.txt"
+        - "CHANGELOG.txt"
+        - "CONTRIBUTING.md"
+        - "composer.json"
+        - "app/config/parameters.php"
+        - "app/config/parameters.yml"
+        - "app/config/config.inc.php"
+        - "config/settings.inc.php"
+        - "config/defines.inc.php"
+        - "config/xml/default_country_modules_list.xml"
+        - "config/xml/modules_native_addons.xml"
+        - "config/xml/must_have_modules_list.xml"
+        - "admin-dev/"
+        - "admin-dev/index.php"
+        - "Backoffice/"
+        - "Backoffice/index.php"
+        - "install/"
+        - "install-dev/"
+        - "install/index.php"
+        - "webservice/"
+        - "webservice/dispatcher.php"
+        - "api/"
+        - "modules/"
+        - "modules/autoupgrade/"
+        - "modules/autoupgrade/backup/"
+        - "modules/autoupgrade/tmp/"
+        - "var/logs/"
+        - "var/logs/prod.log"
+        - "var/logs/dev.log"
+        - "var/cache/"
+        - "app/logs/"
+        - "app/logs/prod.log"
+        - "app/logs/dev.log"
+        - "themes/classic/config/theme.yml"
+        - "themes/classic/config/theme.yaml"
+
+    attack: batteringram
+    redirects: false
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 401
+          - 403
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - "(?i)PrestaShop(?:\\s+1\\.[0-9.]+)?"
+          - "(?i)prestashop/prestashop"
+          - "(?i)PrestaShopBundle|PrestaShop\\\\PrestaShop"
+          - "(?i)_DB_PASSWD_|_DB_NAME_|_PS_VERSION_|__PS_BASE_URI__"
+          - "(?i)<prestashop\\b|<prestashop xmlns:xlink="
+          - "(?i)AdminLogin|AdminController|ModuleAdminController|webservice"
+          - "(?i)Index of /(modules|var/logs|app/logs|webservice|install)"
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - "(?i)(install_date|ps_versions_compliancy|displayName|config.xml|settings.inc.php)"
+          - "(?i)(password|passwd|cookie_key|new_cookie_key|secret|token|database_host|database_user)"
+          - "(?i)(Fatal error|PHP Warning|Uncaught Exception|Stack trace|Symfony\\\\Component)"
+          - "(?i)(Back Office|Backoffice|admin-dev|modules/|themes/classic)"
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), 'data-astro-cid') && !contains(tolower(body), '_astro/') && !contains(tolower(body), '__nuxt') && !contains(tolower(body), 'ng-version') && !contains(tolower(body), 'data-reactroot')"
+          - "!regex('(?i)(page not found|does not exist|object moved|no encontrado)', body)"
+          - "len(body) < 20971520"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)(PrestaShop(?:\\s+1\\.[0-9.]+)?|_PS_VERSION_|PrestaShopBundle|PrestaShop\\\\PrestaShop)[^\\r\\n<]{0,160}"
+          - "(?im)(_DB_PASSWD_|_DB_NAME_|cookie_key|new_cookie_key|secret|token|database_(host|user|password))[\"'\\s:=(),]+[^\\r\\n,;<>]+"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

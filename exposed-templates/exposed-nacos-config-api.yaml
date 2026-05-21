@@ -1,0 +1,81 @@
+id: exposed-nacos-config-api
+
+info:
+  name: Exposed Nacos Configuration API
+  author: p3i
+  severity: high
+  description: Detects exposed Nacos console and API endpoints that can disclose service discovery data, namespaces, configuration lists, users, and sometimes application secrets.
+  tags: exposure,nacos,config,service-discovery,java,secrets
+  metadata:
+    max-request: 44
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{nacos_path}}"
+
+    payloads:
+      nacos_path:
+        - "nacos/"
+        - "nacos/index.html"
+        - "nacos/v1/console/server/state"
+        - "nacos/v1/console/namespaces"
+        - "nacos/v1/ns/operator/servers"
+        - "nacos/v1/ns/catalog/services"
+        - "nacos/v1/ns/instance/list?serviceName=DEFAULT_GROUP@@nacos"
+        - "nacos/v1/cs/configs?dataId=application.yml&group=DEFAULT_GROUP"
+        - "nacos/v1/cs/configs?dataId=application.yaml&group=DEFAULT_GROUP"
+        - "nacos/v1/cs/configs?dataId=application.properties&group=DEFAULT_GROUP"
+        - "nacos/v1/cs/configs?dataId=bootstrap.yml&group=DEFAULT_GROUP"
+        - "nacos/v1/cs/configs?dataId=bootstrap.properties&group=DEFAULT_GROUP"
+        - "nacos/v1/cs/configs?search=blur&dataId=&group=&pageNo=1&pageSize=10"
+        - "nacos/v1/auth/users?pageNo=1&pageSize=10"
+        - "v1/console/server/state"
+        - "v1/console/namespaces"
+        - "v1/ns/catalog/services"
+        - "v1/cs/configs?search=blur&dataId=&group=&pageNo=1&pageSize=10"
+
+    attack: batteringram
+    redirects: false
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 401
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - "(?i)<title>\\s*Nacos"
+          - "\"(?:version|standalone_mode|functionMode|serverPort|started)\"\\s*:"
+          - "\"(?:namespace|namespaceShowName|configCount|serviceName|clusterName)\"\\s*:"
+          - "\"(?:pageItems|totalCount|pageNumber|pagesAvailable)\"\\s*:"
+          - "(?i)Nacos\\s+Console|nacos-ui|nacos.naming"
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - "(?i)(DEFAULT_GROUP|public|application\\.(yml|yaml|properties)|bootstrap\\.(yml|yaml|properties))"
+          - "(?i)(password|secret|token|jdbc:|datasource|spring\\.cloud|nacos\\.config|nacos\\.discovery)"
+          - "\"serviceName\"\\s*:"
+
+      - type: dsl
+        dsl:
+          - "!regex('(?i)(page not found|does not exist|no encontrado)', body)"
+          - "len(body) < 20971520"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)(password|secret|token|jdbc:|datasource|spring\\.cloud|nacos\\.(config|discovery)).{0,160}"
+          - "\"(?:serviceName|namespace|dataId|group|tenant)\"\\s*:\\s*\"[^\"]+\""
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

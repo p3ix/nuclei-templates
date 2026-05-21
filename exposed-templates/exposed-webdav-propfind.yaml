@@ -1,0 +1,84 @@
+id: exposed-webdav-propfind
+
+info:
+  name: Exposed WebDAV PROPFIND Listing
+  author: p3i
+  severity: medium
+  description: Detects WebDAV endpoints that respond to PROPFIND with a directory-style multistatus listing, exposing files, collections, timestamps, content lengths, and sometimes writable upload surfaces.
+  tags: exposure,webdav,propfind,files,listing
+  metadata:
+    max-request: 28
+
+http:
+  - raw:
+      - |
+        PROPFIND {{webdav_path}} HTTP/1.1
+        Host: {{Hostname}}
+        Depth: 1
+        Content-Type: application/xml
+        Connection: close
+
+        <?xml version="1.0" encoding="utf-8" ?><D:propfind xmlns:D="DAV:"><D:allprop/></D:propfind>
+
+    payloads:
+      webdav_path:
+        - "/"
+        - "/webdav/"
+        - "/dav/"
+        - "/files/"
+        - "/uploads/"
+        - "/upload/"
+        - "/documents/"
+        - "/remote.php/dav/"
+        - "/owncloud/remote.php/dav/"
+        - "/nextcloud/remote.php/dav/"
+        - "/public/"
+        - "/shared/"
+        - "/data/"
+        - "/backup/"
+
+    attack: batteringram
+    redirects: false
+    max-redirects: 1
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 207
+          - 200
+
+      - type: regex
+        part: body
+        condition: and
+        regex:
+          - "(?i)<(?:d:)?multistatus\\b"
+          - "(?i)<(?:d:)?response\\b"
+          - "(?i)<(?:d:)?href>"
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - "(?i)<(?:d:)?getlastmodified>"
+          - "(?i)<(?:d:)?getcontentlength>"
+          - "(?i)<(?:d:)?resourcetype>"
+          - "(?i)<(?:d:)?collection\\s*/?>"
+          - "(?i)<(?:d:)?getcontenttype>"
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), '<html')"
+          - "!regex('(?i)(page not found|does not exist|no encontrado)', body)"
+          - "len(body) < 10485760"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)<(?:d:)?href>[^<]{1,300}</(?:d:)?href>"
+          - "(?i)<(?:d:)?getcontent(?:length|type)>[^<]{0,160}</(?:d:)?getcontent(?:length|type)>"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"
