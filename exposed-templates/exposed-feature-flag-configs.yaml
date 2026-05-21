@@ -1,0 +1,96 @@
+id: exposed-feature-flag-configs
+
+info:
+  name: Exposed Feature Flag And Experiment Configs
+  author: p3i
+  severity: medium
+  description: Detects exposed feature flag, experimentation, and remote configuration files that can reveal unreleased features, entitlement logic, internal environments, targeting rules, and SDK keys.
+  tags: exposure,feature-flags,experiments,launchdarkly,unleash,flagsmith,config
+  metadata:
+    max-request: 72
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{flags_file}}"
+
+    payloads:
+      flags_file:
+        - "features.json"
+        - "feature-flags.json"
+        - "feature_flags.json"
+        - "flags.json"
+        - "experiments.json"
+        - "remote-config.json"
+        - "remote_config.json"
+        - "config/features.json"
+        - "config/feature-flags.json"
+        - "config/flags.json"
+        - "config/experiments.json"
+        - "public/features.json"
+        - "public/feature-flags.json"
+        - "public/flags.json"
+        - "assets/features.json"
+        - "assets/feature-flags.json"
+        - "assets/flags.json"
+        - "static/features.json"
+        - "static/feature-flags.json"
+        - "static/flags.json"
+        - "launchdarkly.json"
+        - "launch-darkly.json"
+        - "ld-flags.json"
+        - "unleash.json"
+        - "unleash-proxy.json"
+        - "flagsmith.json"
+        - "splitio.json"
+        - "split-io.json"
+        - "growthbook.json"
+        - "optimizely.json"
+        - "statsig.json"
+        - "posthog.json"
+        - "configcat.json"
+        - "firebase-remote-config.json"
+
+    attack: batteringram
+    redirects: false
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - "\"(?:featureFlags|feature_flags|features|flags|experiments|toggles)\"\\s*:\\s*[\\[{]"
+          - "\"(?:flagKey|variation|variations|rules|targets|segments|rollout|percentage)\"\\s*:"
+          - "(?i)(launchdarkly|ldclient|unleash|flagsmith|split\\.io|growthbook|optimizely|statsig|posthog|configcat)"
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - "(?i)(admin|beta|internal|entitlement|premium|billing|checkout|payment|experiment|rollout|kill[_-]?switch)"
+          - "\"(?:sdkKey|clientSideID|environmentID|apiKey|projectKey|proxyUrl|appName)\"\\s*:\\s*\"[^\"]+\""
+          - "(?i)(clientSideID|sdkKey|environmentID|posthog_api_key|statsigClientKey)"
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), '<html')"
+          - "!contains(tolower(header), 'content-type: text/html')"
+          - "!contains(tolower(body), '<!doctype')"
+          - "len(body) < 10485760"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "\"(?:flagKey|key|name|sdkKey|clientSideID|environmentID|apiKey|projectKey)\"\\s*:\\s*\"[^\"]+\""
+          - "(?i)(admin|beta|internal|entitlement|premium|billing|checkout|payment|experiment|rollout|kill[_-]?switch).{0,120}"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

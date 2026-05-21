@@ -1,0 +1,78 @@
+id: exposed-php-fpm-status
+
+info:
+  name: Exposed PHP-FPM Status And Ping
+  author: p3i
+  severity: medium
+  description: Detects exposed PHP-FPM status or ping endpoints that can disclose pool names, active processes, request metrics, queue state, process IDs, and operational internals.
+  tags: exposure,php,php-fpm,status,monitoring
+  metadata:
+    max-request: 30
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{fpm_path}}"
+
+    payloads:
+      fpm_path:
+        - "fpm-status"
+        - "fpm_status"
+        - "php-fpm-status"
+        - "php_fpm_status"
+        - "status"
+        - "status?full"
+        - "status?json"
+        - "status?html"
+        - "ping"
+        - "php-fpm-ping"
+        - "_fpm/status"
+        - "_fpm/status?full"
+        - "_fpm/ping"
+        - "server-status?full"
+        - "php/status"
+        - "php/status?full"
+
+    attack: batteringram
+    redirects: false
+    max-redirects: 1
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - "(?im)^pool:\\s+[^\\r\\n]+"
+          - "(?im)^process manager:\\s+(static|dynamic|ondemand)"
+          - "(?im)^start time:\\s+[^\\r\\n]+"
+          - "(?im)^accepted conn:\\s+[0-9]+"
+          - "\"pool\"\\s*:\\s*\"[^\"]+\""
+          - "\"process manager\"\\s*:\\s*\"(?:static|dynamic|ondemand)\""
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - "(?im)^(active processes|idle processes|total processes|max children reached|listen queue):\\s+[0-9]+"
+          - "\"(?:active processes|idle processes|total processes|max children reached|listen queue)\"\\s*:\\s*[0-9]+"
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), '<html') || contains(tolower(body), '<table') && contains(tolower(body), 'accepted conn')"
+          - "!regex('(?i)(page not found|does not exist|no encontrado)', body)"
+          - "len(body) < 1048576"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)^(pool|process manager|accepted conn|listen queue|active processes|idle processes|total processes|max children reached):\\s+[^\\r\\n]+"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

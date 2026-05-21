@@ -1,0 +1,110 @@
+id: exposed-payment-webhook-configs
+
+info:
+  name: Exposed Payment And Webhook Configuration Files
+  author: p3i
+  severity: high
+  description: Detects exposed payment provider, webhook, and local tunnel configuration files that may leak webhook signing secrets, checkout configuration, API tokens, callback URLs, and integration internals.
+  tags: exposure,payment,webhook,stripe,paypal,checkout,secrets
+  metadata:
+    max-request: 72
+
+flow: http(1) && http(2)
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/nuclei-fp-check-{{randstr}}-notexist"
+    redirects: false
+    matchers:
+      - type: dsl
+        internal: true
+        dsl:
+          - "status_code != 200"
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{payment_file}}"
+
+    payloads:
+      payment_file:
+        - "stripe.json"
+        - "stripe-config.json"
+        - "stripe.config.json"
+        - "stripe-webhooks.json"
+        - "stripe-webhook.json"
+        - ".stripe/config.toml"
+        - ".stripe/config.json"
+        - "config/stripe.json"
+        - "config/stripe.php"
+        - "config/stripe.yml"
+        - "config/stripe.yaml"
+        - "paypal.json"
+        - "paypal-config.json"
+        - "config/paypal.json"
+        - "config/paypal.php"
+        - "adyen.json"
+        - "adyen-config.json"
+        - "config/adyen.json"
+        - "braintree.json"
+        - "braintree-config.json"
+        - "config/braintree.json"
+        - "square.json"
+        - "checkout.json"
+        - "payment-config.json"
+        - "payments.json"
+        - "webhooks.json"
+        - "webhook.json"
+        - "webhook-config.json"
+        - "webhooks/config.json"
+        - "config/webhooks.json"
+        - "config/webhook.json"
+        - "ngrok.yml"
+        - "ngrok.yaml"
+        - ".ngrok2/ngrok.yml"
+        - ".ngrok2/ngrok.yaml"
+
+    attack: batteringram
+    redirects: false
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - "(?i)(stripe|paypal|adyen|braintree|square|checkout|webhook)"
+          - "(?i)(STRIPE_|PAYPAL_|ADYEN_|BRAINTREE_|SQUARE_)"
+          - "(?i)(webhook[_-]?secret|signing[_-]?secret|endpoint[_-]?secret)"
+          - "(?i)whsec_[A-Za-z0-9_]+"
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - "(?i)(secret[_-]?key|publishable[_-]?key|client[_-]?secret|access[_-]?token|api[_-]?key|merchant[_-]?id|private[_-]?key)"
+          - "(?i)(checkout\\.session|payment_intent|setup_intent|webhook_signing|return_url|success_url|cancel_url)"
+          - "(?i)(sk_live_|sk_test_|pk_live_|pk_test_|whsec_|rk_live_|access_token)"
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), '<html')"
+          - "!contains(tolower(header), 'content-type: text/html')"
+          - "!contains(tolower(body), '<!doctype')"
+          - "len(body) < 5242880"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)(whsec_[A-Za-z0-9_]+|sk_(?:live|test)_[A-Za-z0-9_]+|pk_(?:live|test)_[A-Za-z0-9_]+|rk_live_[A-Za-z0-9_]+)"
+          - "(?im)(webhook[_-]?secret|signing[_-]?secret|secret[_-]?key|client[_-]?secret|access[_-]?token|merchant[_-]?id)[\"'\\s:=]+[^\\r\\n,;<>]+"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

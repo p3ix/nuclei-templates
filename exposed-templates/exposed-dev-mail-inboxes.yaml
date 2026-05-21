@@ -1,0 +1,83 @@
+id: exposed-dev-mail-inboxes
+
+info:
+  name: Exposed Development Mail Inboxes
+  author: p3i
+  severity: high
+  description: Detects exposed development mail inboxes such as MailHog, Mailpit, MailCatcher, MailDev, Papercut, and smtp4dev, which can leak password reset links, magic links, OTPs, invites, and email verification tokens.
+  tags: exposure,mailhog,mailpit,mailcatcher,maildev,smtp4dev,email,tokens
+  metadata:
+    max-request: 52
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{mail_path}}"
+
+    payloads:
+      mail_path:
+        - "mailhog/"
+        - "mailhog/api/v2/messages"
+        - "mailhog/api/v1/messages"
+        - "mailpit/"
+        - "mailpit/api/v1/messages"
+        - "api/v1/messages"
+        - "mailcatcher/"
+        - "messages"
+        - "messages/"
+        - "maildev/"
+        - "email/"
+        - "emails/"
+        - "inbox/"
+        - "mail/"
+        - "smtp4dev/"
+        - "api/messages"
+        - "api/Messages"
+        - "papercut/"
+        - "papercut/api/messages"
+
+    attack: batteringram
+    redirects: false
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 401
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - "(?i)<title>\\s*(MailHog|Mailpit|MailCatcher|MailDev|smtp4dev|Papercut)"
+          - "(?i)MailHog|Mailpit|MailCatcher|MailDev|smtp4dev|Papercut"
+          - "\"(?:total|messages|items)\"\\s*:\\s*[0-9]+"
+          - "\"(?:To|From|Subject|Created|Raw|MIME|Content)\"\\s*:"
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - "(?i)(password reset|reset password|verify your email|verification code|magic link|one-time|otp|invite)"
+          - "(?i)(mailhog|mailpit|mailcatcher|maildev|smtp4dev|papercut)"
+          - "\"Subject\"\\s*:"
+          - "\"Recipients\"\\s*:"
+
+      - type: dsl
+        dsl:
+          - "!regex('(?i)(page not found|does not exist|no encontrado)', body)"
+          - "len(body) < 52428800"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)<title>[^<]{0,160}(MailHog|Mailpit|MailCatcher|MailDev|smtp4dev|Papercut)[^<]{0,160}</title>"
+          - "(?i)(password reset|verify your email|verification code|magic link|one-time|otp|invite).{0,160}"
+          - "\"Subject\"\\s*:\\s*\"[^\"]+\""
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

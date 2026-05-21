@@ -34,6 +34,7 @@ Esta primera tanda cubre:
 - Downgrade de HTTPS a HTTP en rutas sensibles.
 - Fuzzing de parámetros que reflejan un marcador aleatorio en HTML, JSON, redirects o cabeceras para priorizar XSS, redirect, cache poisoning e inyecciones.
 - Parámetros `debug`, `trace`, `verbose`, `show_errors` y similares que activan errores verbosos con reflejo del marcador de prueba.
+- Fuzzing de JSONP/callbacks legacy con marcador JavaScript aleatorio y verificación de envoltorio JSON-like.
 
 ## Targets recomendados
 
@@ -67,6 +68,7 @@ Estas plantillas se lanzan contra hosts HTTP/HTTPS vivos, no contra IPs a ciegas
 - `https-to-http-redirect-sensitive.yaml`: solo `https://` targets sensibles; login, account, checkout, admin, SSO.
 - `fuzzing-reflected-input-candidates.yaml`: barridos amplios de recon para encontrar parámetros con reflexión real antes de profundizar con payloads manuales.
 - `debug-parameter-error-disclosure.yaml`: apps custom, staging/dev, APIs y endpoints donde el scope permita fuzzing benigno de parámetros de debug.
+- `jsonp-callback-reflection-candidates.yaml`: APIs legacy, endpoints de búsqueda/sugerencias/configuración y rutas antiguas que todavía podrían soportar callbacks JSONP.
 
 ## Uso
 
@@ -109,4 +111,10 @@ Para recon de parámetros reflejados y debug:
 
 ```bash
 nuclei -l targets.txt -t misconfig-web-templates/fuzzing-reflected-input-candidates.yaml -t misconfig-web-templates/debug-parameter-error-disclosure.yaml -rl 20 -c 10
+```
+
+Para callbacks JSONP legacy:
+
+```bash
+nuclei -l targets.txt -t misconfig-web-templates/jsonp-callback-reflection-candidates.yaml -rl 20 -c 10
 ```

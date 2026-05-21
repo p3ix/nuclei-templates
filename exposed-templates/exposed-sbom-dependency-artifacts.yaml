@@ -1,0 +1,104 @@
+id: exposed-sbom-dependency-artifacts
+
+info:
+  name: Exposed SBOM And Dependency Inventory Artifacts
+  author: p3i
+  severity: medium
+  description: Detects exposed SBOM, SPDX, CycloneDX, dependency inventory, and license report artifacts that can reveal exact package versions, internal component names, repositories, and vulnerable dependency surface.
+  tags: exposure,sbom,spdx,cyclonedx,dependencies,supply-chain
+  metadata:
+    max-request: 70
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{sbom_file}}"
+
+    payloads:
+      sbom_file:
+        - "sbom.json"
+        - "sbom.xml"
+        - "sbom.spdx"
+        - "sbom.spdx.json"
+        - "bom.json"
+        - "bom.xml"
+        - "cyclonedx.json"
+        - "cyclonedx.xml"
+        - "spdx.json"
+        - "spdx.rdf"
+        - "spdx.yaml"
+        - "dependency-track-bom.json"
+        - "dependency-check-report.json"
+        - "dependency-check-report.xml"
+        - "dependency-check-report.html"
+        - "dependencies.json"
+        - "dependencies.csv"
+        - "licenses.json"
+        - "license-report.json"
+        - "third-party-licenses.json"
+        - "third-party-notices.json"
+        - "reports/sbom.json"
+        - "reports/bom.json"
+        - "reports/cyclonedx.json"
+        - "reports/spdx.json"
+        - "reports/dependency-check-report.json"
+        - "security/sbom.json"
+        - "security/bom.json"
+        - "security/dependency-check-report.json"
+        - "build/reports/dependency-check-report.json"
+        - "build/reports/dependency-check-report.html"
+        - "target/bom.json"
+        - "target/site/dependency-check-report.html"
+        - "dist/sbom.json"
+        - "dist/bom.json"
+        - "public/sbom.json"
+        - "public/bom.json"
+
+    attack: batteringram
+    redirects: false
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - "\"bomFormat\"\\s*:\\s*\"CycloneDX\""
+          - "\"spdxVersion\"\\s*:\\s*\"SPDX-"
+          - "<bom\\s+xmlns=\"http://cyclonedx.org/schema/bom/"
+          - "SPDXVersion:\\s*SPDX-"
+          - "(?i)dependency-check report|org\\.owasp\\.dependencycheck"
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - "\"components\"\\s*:\\s*\\["
+          - "\"packages\"\\s*:\\s*\\["
+          - "\"dependencies\"\\s*:\\s*\\["
+          - "\"vulnerabilities\"\\s*:\\s*\\["
+          - "(?i)pkg:(npm|maven|pypi|gem|golang|nuget|composer|cargo)/"
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), '<html') || contains(tolower(body), 'dependency-check report')"
+          - "!contains(tolower(body), '<!doctype') || contains(tolower(body), 'dependency-check report')"
+          - "len(body) > 100"
+          - "len(body) < 52428800"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)pkg:(npm|maven|pypi|gem|golang|nuget|composer|cargo)/[^\\s\"'<>]+"
+          - "\"(?:bomFormat|spdxVersion|serialNumber|version)\"\\s*:\\s*\"[^\"]+\""
+          - "(?i)(CVE-[0-9]{4}-[0-9]{4,7}|GHSA-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4})"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

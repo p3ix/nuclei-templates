@@ -55,6 +55,12 @@ Esta primera tanda cubre:
 - Tokens y ficheros de service account de Kubernetes expuestos desde rutas de secretos montados.
 - Migraciones y esquemas de base de datos: Prisma, Rails, Django, Alembic, Liquibase, Flyway, Knex, TypeORM y Sequelize.
 - Consolas de administración Adobe ColdFusion, Lucee y Railo.
+- SBOMs e inventarios de dependencias: CycloneDX, SPDX, Dependency-Check, licencias y paquetes exactos.
+- Backstage catalog metadata y APIs de catálogo con owners, sistemas, servicios, repositorios y relaciones internas.
+- Buzones de desarrollo expuestos: MailHog, Mailpit, MailCatcher, MailDev, Papercut y smtp4dev.
+- PHP-FPM status/ping expuesto con métricas de pools, procesos y colas.
+- Configuración de feature flags, experiments y remote config: LaunchDarkly, Unleash, Flagsmith, Split, GrowthBook, Optimizely, Statsig, PostHog y ConfigCat.
+- Configuración de pagos y webhooks: Stripe, PayPal, Adyen, Braintree, Square, ngrok y secretos de firma.
 
 ## Uso
 

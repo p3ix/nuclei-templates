@@ -1,0 +1,67 @@
+id: jsonp-callback-reflection-candidates
+
+info:
+  name: JSONP Callback Reflection Candidates
+  author: p3i
+  severity: info
+  description: Fuzzes common JSONP callback parameters with a random JavaScript function marker and reports endpoints that wrap JSON-like data in the supplied callback. Useful recon for legacy callback injection and sensitive JSONP review.
+  tags: fuzzing,recon,jsonp,callback,reflection,web
+  metadata:
+    max-request: 84
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{jsonp_probe}}"
+
+    payloads:
+      jsonp_probe:
+        - "?callback=bbJsonp{{randstr}}"
+        - "?jsonp=bbJsonp{{randstr}}"
+        - "?cb=bbJsonp{{randstr}}"
+        - "?jsoncallback=bbJsonp{{randstr}}"
+        - "?json_callback=bbJsonp{{randstr}}"
+        - "?callback=?&cb=bbJsonp{{randstr}}"
+        - "api?callback=bbJsonp{{randstr}}"
+        - "api/v1?callback=bbJsonp{{randstr}}"
+        - "api/v2?callback=bbJsonp{{randstr}}"
+        - "api/search?q=test&callback=bbJsonp{{randstr}}"
+        - "search?q=test&callback=bbJsonp{{randstr}}"
+        - "suggest?q=test&callback=bbJsonp{{randstr}}"
+        - "autocomplete?q=test&callback=bbJsonp{{randstr}}"
+        - "users?callback=bbJsonp{{randstr}}"
+        - "profile?callback=bbJsonp{{randstr}}"
+        - "account?callback=bbJsonp{{randstr}}"
+        - "settings?callback=bbJsonp{{randstr}}"
+        - "me?callback=bbJsonp{{randstr}}"
+        - "status?callback=bbJsonp{{randstr}}"
+        - "config?callback=bbJsonp{{randstr}}"
+        - "feed?callback=bbJsonp{{randstr}}"
+
+    attack: batteringram
+    redirects: false
+    max-redirects: 1
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: dsl
+        dsl:
+          - "contains(body, 'bbJsonp' + randstr)"
+          - "regex('(?s)^\\s*bbJsonp' + randstr + '\\s*\\(\\s*(\\{|\\[|null|true|false|\"|[0-9-])', body)"
+          - "!contains(tolower(header), 'content-type: text/html')"
+          - "!contains(tolower(body), '<html')"
+          - "len(body) < 5242880"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "bbJsonp[a-z0-9-]+\\s*\\([^\\r\\n]{0,240}"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

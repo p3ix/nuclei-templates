@@ -1,0 +1,81 @@
+id: exposed-backstage-catalog-metadata
+
+info:
+  name: Exposed Backstage Catalog Metadata
+  author: p3i
+  severity: medium
+  description: Detects exposed Backstage catalog metadata and API responses that can disclose internal services, owners, repositories, system boundaries, documentation links, and operational endpoints.
+  tags: exposure,backstage,catalog,developer-portal,metadata
+  metadata:
+    max-request: 38
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{backstage_path}}"
+
+    payloads:
+      backstage_path:
+        - "catalog-info.yaml"
+        - "catalog-info.yml"
+        - "backstage/catalog-info.yaml"
+        - "backstage/catalog-info.yml"
+        - ".backstage/catalog-info.yaml"
+        - ".backstage/catalog-info.yml"
+        - "api/catalog/entities"
+        - "api/catalog/entities/by-query"
+        - "api/catalog/entity-facets"
+        - "catalog/default/component"
+        - "catalog/default/system"
+        - "catalog/default/api"
+        - "backstage/"
+        - "catalog/"
+        - "developer-portal/"
+
+    attack: batteringram
+    redirects: false
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 401
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - "(?im)^apiVersion:\\s*backstage\\.io/v1"
+          - "(?im)^kind:\\s*(Component|API|System|Resource|Group|User|Location)\\s*$"
+          - "\"apiVersion\"\\s*:\\s*\"backstage\\.io/v1"
+          - "\"kind\"\\s*:\\s*\"(?:Component|API|System|Resource|Group|User|Location)\""
+          - "(?i)Backstage\\s+Software\\s+Catalog|backstage-plugin-catalog|app-config\\.production\\.yaml"
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - "(?im)^\\s*(metadata|spec):\\s*$"
+          - "(?im)^\\s*(owner|system|lifecycle|type):\\s*[^\\r\\n]+"
+          - "\"metadata\"\\s*:\\s*\\{"
+          - "\"relations\"\\s*:\\s*\\["
+          - "\"ownedBy\"|\"partOf\"|\"dependsOn\""
+
+      - type: dsl
+        dsl:
+          - "len(body) < 20971520"
+          - "!regex('(?i)(page not found|does not exist|no encontrado)', body)"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)^\\s*(name|owner|system|lifecycle|type):\\s*[^\\r\\n]+"
+          - "\"(?:name|namespace|kind|owner|system|lifecycle|type)\"\\s*:\\s*\"[^\"]+\""
+          - "(?i)https?://[^\\s\"'<>]+(?:github|gitlab|bitbucket|docs|grafana|jenkins|argo|jira)[^\\s\"'<>]*"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"
