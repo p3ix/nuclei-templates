@@ -36,7 +36,6 @@ Esta primera tanda cubre:
 - Parámetros `debug`, `trace`, `verbose`, `show_errors` y similares que activan errores verbosos con reflejo del marcador de prueba.
 - Fuzzing de JSONP/callbacks legacy con marcador JavaScript aleatorio y verificación de envoltorio JSON-like.
 - GraphQL batching habilitado con introspección en respuestas batched JSON.
-- Anomalía de Backoffice PrestaShop que devuelve cabeceras o estados `login: true` ante tokens aleatorios o token-shaped.
 - Candidatos de HTTP request smuggling/desync: CL.TE timing oracle, TE.CL parser anomalies, TE.TE obfuscation, duplicate Content-Length, H2 downgrade fingerprint y h2c upgrade.
 
 ## Targets recomendados
@@ -73,7 +72,6 @@ Estas plantillas se lanzan contra hosts HTTP/HTTPS vivos, no contra IPs a ciegas
 - `debug-parameter-error-disclosure.yaml`: apps custom, staging/dev, APIs y endpoints donde el scope permita fuzzing benigno de parámetros de debug.
 - `jsonp-callback-reflection-candidates.yaml`: APIs legacy, endpoints de búsqueda/sugerencias/configuración y rutas antiguas que todavía podrían soportar callbacks JSONP.
 - `graphql-batching-introspection-enabled.yaml`: endpoints GraphQL públicos donde interesa revisar batching, introspection y amplificación de consultas.
-- `prestashop-backoffice-login-header-anomaly.yaml`: PrestaShop/Backoffice cuando hay sospecha de token administrativo filtrado o estados de login anómalos en cabeceras.
 - `request-smuggling-clte-timing-oracle.yaml`: candidatos CL.TE por timing; requiere confirmación manual.
 - `request-smuggling-tecl-desync-candidate.yaml`: candidatos TE.CL por errores de parser/proxy; señal de priorización, no prueba final.
 - `request-smuggling-tete-obfuscation-oracle.yaml`: variantes TE.TE con obfuscation y timing.
@@ -134,12 +132,6 @@ Para GraphQL:
 
 ```bash
 nuclei -l targets.txt -t misconfig-web-templates/graphql-introspection-enabled.yaml -t misconfig-web-templates/graphql-batching-introspection-enabled.yaml -rl 20 -c 10
-```
-
-Para PrestaShop Backoffice:
-
-```bash
-nuclei -l targets.txt -t misconfig-web-templates/prestashop-backoffice-login-header-anomaly.yaml -rl 10 -c 5
 ```
 
 Para request smuggling/desync, usa baja concurrencia y confirma manualmente cualquier hallazgo:

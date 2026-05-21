@@ -4,8 +4,8 @@ info:
   name: Exposed CMS Sensitive Files
   author: p3i
   severity: medium
-  description: Detects exposed CMS-specific files from WordPress, Drupal, Joomla, Magento, PrestaShop, and common plugins that can leak versions, backups, configs, logs, or install state.
-  tags: exposure,cms,wordpress,drupal,joomla,magento,prestashop
+  description: Detects exposed CMS-specific files from WordPress, Drupal, Joomla, Magento, and common plugins that can leak versions, backups, configs, logs, or install state.
+  tags: exposure,cms,wordpress,drupal,joomla,magento
   metadata:
     max-request: 90
 
@@ -67,8 +67,6 @@ http:
         - "app/config/parameters.php"
         - "app/config/parameters.yml"
         - "app/config/config.inc.php"
-        - "config/settings.inc.php"
-        - "config/settings.old.php"
         - "var/logs/"
         - "var/cache/"
         - "install/"
@@ -102,8 +100,6 @@ http:
           - "Mage::"
           - "<crypt>"
           - "install_date"
-          - "PrestaShop"
-          - "_DB_PASSWD_"
           - "Index of /"
           - "Directory listing"
           - "Fatal error"
@@ -121,8 +117,8 @@ http:
       - type: regex
         part: body
         regex:
-          - "(?im)(DB_NAME|DB_USER|DB_PASSWORD|_DB_NAME_|_DB_USER_|_DB_PASSWD_|password|crypt|secret|key)[\"'\\s:=(),]+[^\\r\\n,;<>]+"
-          - "(?i)(WordPress|Drupal|Joomla!|Magento|PrestaShop)[^\\r\\n<]{0,120}"
+          - "(?im)(DB_NAME|DB_USER|DB_PASSWORD|password|crypt|secret|key)[\"'\\s:=(),]+[^\\r\\n,;<>]+"
+          - "(?i)(WordPress|Drupal|Joomla!|Magento)[^\\r\\n<]{0,120}"
       - type: dsl
         name: status
         dsl:

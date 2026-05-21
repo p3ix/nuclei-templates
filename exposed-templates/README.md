@@ -67,9 +67,6 @@ Esta primera tanda cubre:
 - Eureka service registry expuesto con servicios, instancias, IPs internas y health/status URLs.
 - Apache Solr Admin API con cores, collections, schema, config, métricas y propiedades.
 - Patrones cliente `postMessage` con wildcard `*` y señales de tokens/DOM sinks para revisión manual.
-- Artefactos PrestaShop/Symfony de desarrollo: `Makefile`, `phpstan.neon`, Psalm, Rector, composer, paths `src`, `webservice`, `.github/workflows` y scripts de build.
-- Configuración XML de módulos PrestaShop, incluyendo módulos custom de marketplace, payment, checkout y backoffice.
-- Paths sensibles PrestaShop: `webservice`, `admin-dev`, `Backoffice`, `install`, logs, cache, configs y metadata de versión/módulos.
 
 ## Uso
 

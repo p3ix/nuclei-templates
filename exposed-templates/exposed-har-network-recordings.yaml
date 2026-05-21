@@ -83,9 +83,9 @@ http:
         part: body
         condition: or
         regex:
-          - "\"headers\"\\s*:\\s*\\[[\\s\\S]{0,2000}\"name\"\\s*:\\s*\"(?:Authorization|Cookie|Set-Cookie|X-Api-Key|X-CSRF-Token)\""
-          - "\"cookies\"\\s*:\\s*\\[[\\s\\S]{0,2000}\"name\"\\s*:"
-          - "\"postData\"\\s*:\\s*\\{[\\s\\S]{0,3000}\"(?:text|params)\""
+          - "\"headers\"\\s*:\\s*\\[[\\s\\S]{0,1000}\"name\"\\s*:\\s*\"(?:Authorization|Cookie|Set-Cookie|X-Api-Key|X-CSRF-Token)\""
+          - "\"cookies\"\\s*:\\s*\\[[\\s\\S]{0,1000}\"name\"\\s*:"
+          - "\"postData\"\\s*:\\s*\\{[\\s\\S]{0,1000}\"(?:text|params)\""
           - "(?i)(bearer\\s+[a-z0-9._~+/-]+=*|api[_-]?key|access[_-]?token|refresh[_-]?token|sessionid|csrf)"
 
       - type: dsl
