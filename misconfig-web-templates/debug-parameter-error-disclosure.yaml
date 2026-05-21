@@ -67,9 +67,9 @@ http:
     matchers:
       - type: dsl
         dsl:
-          - "status_code_1 != status_code_2 || (body_1 != body_2 && regex('(?i)(stack trace|traceback \\(most recent call last\\)|exception|error at line|undefined variable|syntax error|warning:|fatal error|notice:|xdebug|whoops|symfony profiler|laravel debugbar|django debug|rails application trace|express error|java\\.lang\\.|at com\\.|nullpointerexception|sqlexception|pdoexception|queryexception|sql syntax|server variables|request headers|environment variables|APP_DEBUG|DEBUG\\s*=\\s*true|/var/www|/usr/local|/home/[a-z0-9_.-]+|C:\\\\\\\\[A-Za-z0-9_. -]+|Django/[0-9]|Laravel Framework|Symfony/[0-9]|Ruby on Rails|Express/[0-9]|PHP/[0-9]|Node\\.js)', body_2))"
+          - "body_1 != body_2 || status_code_1 != status_code_2"
           - >-
-            regex('(?i)(stack trace|traceback \\(most recent call last\\)|exception|error at line|undefined variable|syntax error|warning:|fatal error|notice:|xdebug|whoops|symfony profiler|laravel debugbar|django debug|rails application trace|express error|java\\.lang\\.|at com\\.|nullpointerexception|sqlexception|pdoexception|queryexception|sql syntax|server variables|request headers|environment variables|APP_DEBUG|DEBUG\\s*=\\s*true|/var/www|/usr/local|/home/[a-z0-9_.-]+|C:\\\\\\\\[A-Za-z0-9_. -]+|Django/[0-9]|Laravel Framework|Symfony/[0-9]|Ruby on Rails|Express/[0-9]|PHP/[0-9]|Node\\.js)', body_2)
+            regex('(?i)(stack trace|traceback \\(most recent call last\\)|exception|error at line|undefined variable|syntax error|warning:|fatal error|notice:|xdebug|whoops|symfony profiler|laravel debugbar|django debug|rails application trace|express error|java\\.lang\\.|at com\\.|at org\\.|nullpointerexception|sqlexception|pdoexception|queryexception|sql syntax|server variables|request headers|environment variables|APP_DEBUG|DEBUG\\s*=\\s*true|debug mode|verbose mode|internal server error.{0,120}(trace|exception|file|line|path)|/var/www|/usr/local|/home/[a-z0-9_.-]+|C:\\\\\\\\Users|C:\\\\\\\\inetpub|Django/[0-9]|Laravel Framework|Symfony/[0-9]|Ruby on Rails|Express/[0-9]|PHP/[0-9]|Node\\.js)', body_2)
           - "!contains(tolower(body_2), '<title>404')"
           - "!contains(tolower(body_2), 'page not found')"
           - "len(body_2) < 20971520"
@@ -78,7 +78,7 @@ http:
       - type: regex
         part: body_2
         regex:
-          - "(?im)(stack trace|traceback \\(most recent call last\\)|exception|error at line|undefined variable|syntax error|warning:|fatal error|notice:|xdebug|whoops|symfony profiler|laravel debugbar|django debug|rails application trace|express error|java\\.lang\\.|at com\\.|nullpointerexception|sqlexception|pdoexception|queryexception|sql syntax|/var/www|/usr/local|/home/[a-z0-9_.-]+|C:\\\\[A-Za-z0-9_. -]+|Django/[0-9]|Laravel Framework|Symfony/[0-9]|Ruby on Rails|Express/[0-9]|PHP/[0-9]|Node\\.js).{0,160}"
+          - "(?im)(stack trace|traceback \\(most recent call last\\)|exception|error at line|undefined variable|syntax error|warning:|fatal error|notice:|xdebug|whoops|symfony profiler|laravel debugbar|django debug|rails application trace|express error|java\\.lang\\.|at com\\.|at org\\.|nullpointerexception|sqlexception|pdoexception|queryexception|sql syntax|debug mode|verbose mode|internal server error|/var/www|/usr/local|/home/[a-z0-9_.-]+|C:\\\\Users|C:\\\\inetpub|Django/[0-9]|Laravel Framework|Symfony/[0-9]|Ruby on Rails|Express/[0-9]|PHP/[0-9]|Node\\.js).{0,160}"
           - "(?im)(password|token|secret|api[_-]?key|database_url|jdbc:|mongodb://|redis://).{0,160}"
       - type: dsl
         name: baseline_status

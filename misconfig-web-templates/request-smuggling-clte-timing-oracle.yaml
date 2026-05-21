@@ -7,10 +7,16 @@ info:
   description: Sends the same conservative CL.TE ambiguity probe twice and reports only when both attempts are slow, reducing one-off network latency false positives. This is a candidate/oracle only; confirm manually with Burp HTTP Request Smuggler or Turbo Intruder before reporting.
   tags: misconfig,request-smuggling,desync,clte,timing,http
   metadata:
-    max-request: 8
+    max-request: 12
+    manual-vectors: "Cloudflare -> H2.CL first; Envoy -> single-packet H2 desync; HAProxy -> CL.TE classic; nginx upstream/proxy_pass -> TE.CL and downgrade parser review"
 
 http:
   - raw:
+      - |
+        GET {{smuggle_path}} HTTP/1.1
+        Host: {{Hostname}}
+        User-Agent: nuclei-clte-baseline
+        Connection: close
       - |
         POST {{smuggle_path}} HTTP/1.1
         Host: {{Hostname}}
@@ -53,7 +59,8 @@ http:
     matchers:
       - type: dsl
         dsl:
-          - "duration_1 >= 6 && duration_2 >= 6"
+          - "duration_2 >= 6 && duration_3 >= 6"
+          - "duration_2 >= duration_1 + 4 && duration_3 >= duration_1 + 4"
 
       - type: regex
         part: all
@@ -66,20 +73,32 @@ http:
       - type: regex
         part: all
         regex:
-          - "(?im)^(server|via|x-cache|cf-ray|x-amz-cf-[^:]+|x-envoy[^:]*|x-varnish|x-served-by|x-akamai[^:]*|x-request-id|x-correlation-id):[^\\r\\n]+"
+          - "(?im)^(server|via|x-cache|cf-ray|x-amz-cf-[^:]+|x-envoy[^:]*|x-envoy-upstream-service-time|x-varnish|x-served-by|x-akamai[^:]*|x-request-id|x-correlation-id):[^\\r\\n]+"
       - type: dsl
-        name: duration_first
+        name: inferred_stack
+        dsl:
+          - "contains(tolower(header_1 + header_2 + header_3), 'cf-ray:') || contains(tolower(header_1 + header_2 + header_3), 'cloudflare') ? 'Cloudflare: prioritize H2.CL in Burp HTTP Request Smuggler' : contains(tolower(header_1 + header_2 + header_3), 'envoy') ? 'Envoy: prioritize single-packet H2 desync and H2.TE' : contains(tolower(header_1 + header_2 + header_3), 'haproxy') ? 'HAProxy: prioritize CL.TE classic' : contains(tolower(header_1 + header_2 + header_3), 'nginx') ? 'Nginx upstream: prioritize TE.CL and H2.CL downgrade review' : 'Unknown/mixed proxy stack: confirm with Burp HTTP Request Smuggler'"
+      - type: dsl
+        name: duration_baseline
         dsl:
           - "duration_1"
       - type: dsl
-        name: duration_second
+        name: duration_first_probe
         dsl:
           - "duration_2"
       - type: dsl
-        name: status_first
+        name: duration_second_probe
+        dsl:
+          - "duration_3"
+      - type: dsl
+        name: status_baseline
         dsl:
           - "status_code_1"
       - type: dsl
-        name: status_second
+        name: status_first_probe
         dsl:
           - "status_code_2"
+      - type: dsl
+        name: status_second_probe
+        dsl:
+          - "status_code_3"

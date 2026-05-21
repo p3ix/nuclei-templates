@@ -38,23 +38,21 @@ http:
     stop-at-first-match: true
     matchers-condition: and
     matchers:
-      - type: status
-        status:
-          - 400
-          - 408
-          - 411
-          - 413
-          - 421
-          - 502
-          - 503
-          - 504
+      - type: dsl
+        dsl:
+          - "status_code == 408 || status_code == 411 || status_code == 413 || status_code == 421 || status_code == 502 || status_code == 503 || status_code == 504 || (status_code == 400 && regex('(?i)(chunk|content-length|transfer-encoding|malformed|gateway|upstream|invalid chunk|bad request.{0,80}(chunk|content-length|transfer-encoding))', body))"
+
+      - type: regex
+        part: header
+        condition: or
+        regex:
+          - "(?im)^(server|via|x-cache|cf-ray|x-amz-cf-|x-envoy|x-envoy-upstream-service-time|x-varnish|x-served-by|x-akamai):"
 
       - type: regex
         part: all
         condition: or
         regex:
           - "(?i)(bad request|invalid request|malformed|chunk|content-length|transfer-encoding|gateway|upstream|request timeout)"
-          - "(?i)^(server|via|x-cache|cf-ray|x-amz-cf-|x-envoy|x-varnish|x-served-by|x-akamai):"
           - "(?i)(cloudflare|akamai|fastly|cloudfront|varnish|envoy|nginx|haproxy|awselb|alb|waf)"
 
     extractors:
@@ -67,3 +65,8 @@ http:
         name: status
         dsl:
           - "status_code"
+      - type: regex
+        name: body_snippet
+        part: body
+        regex:
+          - "(?s)^.{0,200}"

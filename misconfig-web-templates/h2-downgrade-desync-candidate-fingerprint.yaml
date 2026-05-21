@@ -29,7 +29,6 @@ http:
         condition: or
         regex:
           - "(?im)^alt-svc:\\s*[^\\r\\n]*(?:h2=\":443\"|h2=|\\bh2\\b)"
-          - "(?im)^server:\\s*(cloudflare|envoy|nginx|akamai|awselb|istio|traefik|caddy)"
           - "(?im)^(cf-ray|x-amz-cf-id|x-amz-cf-pop|x-envoy-upstream-service-time|x-served-by|x-cache|x-varnish|via):"
 
       - type: regex
@@ -42,6 +41,7 @@ http:
       - type: dsl
         dsl:
           - "status_code >= 200 && status_code < 500"
+          - "(contains(tolower(header), 'alt-svc:') && contains(tolower(header), 'h2')) || contains(tolower(header), 'cf-ray:') || contains(tolower(header), 'cloudflare') || contains(tolower(header), 'x-amz-cf-') || contains(tolower(header), 'cloudfront') || contains(tolower(header), 'x-envoy') || contains(tolower(header), 'istio') || contains(tolower(header), 'x-served-by:') || contains(tolower(header), 'x-varnish') || contains(tolower(header), 'via:')"
 
     extractors:
       - type: regex
@@ -52,6 +52,10 @@ http:
         name: recommended_manual_vector
         dsl:
           - "contains(tolower(header), 'cloudflare') || contains(tolower(header), 'cf-ray:') ? 'Cloudflare/CDN: prioritize H2.CL and single-packet H2 desync manual testing' : contains(tolower(header), 'envoy') || contains(tolower(header), 'istio') ? 'Envoy/Istio: prioritize H2.TE, H2.CL and single-packet H2 desync manual testing' : contains(tolower(header), 'cloudfront') || contains(tolower(header), 'x-amz-cf-') ? 'CloudFront: prioritize H2.CL downgrade and cache poisoning follow-up' : contains(tolower(header), 'akamai') ? 'Akamai: prioritize H2.CL/H2.TE downgrade parser review' : contains(tolower(header), 'fastly') || contains(tolower(header), 'x-served-by:') ? 'Fastly/Varnish-style edge: prioritize H2.CL and cache interaction review' : contains(tolower(header), 'nginx') || contains(tolower(header), 'haproxy') || contains(tolower(header), 'awselb') ? 'nginx/HAProxy/ALB: prioritize H2.CL/H2.TE downgrade parser review' : 'Generic H2-capable proxy/CDN: prioritize H2.CL then H2.TE manual testing'"
+      - type: dsl
+        name: h2_desync_priority
+        dsl:
+          - "(contains(tolower(header), 'alt-svc:') && contains(tolower(header), 'h2') && (contains(tolower(header), 'cf-ray:') || contains(tolower(header), 'cloudflare') || contains(tolower(header), 'x-amz-cf-') || contains(tolower(header), 'x-envoy') || contains(tolower(header), 'x-served-by:') || contains(tolower(header), 'via:'))) ? 'HIGH: H2 advertised plus CDN/LB/proxy headers' : (contains(tolower(header), 'alt-svc:') && contains(tolower(header), 'h2')) ? 'MEDIUM: H2 advertised without obvious CDN/LB' : 'LOW: no Alt-Svc h2, but CDN/LB/proxy headers present'"
       - type: dsl
         name: h2_advertised
         dsl:

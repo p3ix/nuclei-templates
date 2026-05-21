@@ -105,7 +105,7 @@ http:
 
       - type: dsl
         dsl:
-          - "regex('(?im)^login:\\s*true\\s*$', header) || regex('(?i)\"login\"\\s*:\\s*true', body) || regex('(?i)\"logged\"\\s*:\\s*true', body) || regex('(?i)\"authenticated\"\\s*:\\s*true', body)"
+          - "regex('(?im)^login:\\s*true\\s*$', header) || (contains(tolower(body), 'login') && contains(tolower(body), 'true')) || (contains(tolower(body), 'logged') && contains(tolower(body), 'true')) || (contains(tolower(body), 'authenticated') && contains(tolower(body), 'true'))"
           - "contains(tolower(header), 'prestashop') || contains(tolower(body), 'prestashop') || contains(tolower(body), 'adminlogin') || contains(tolower(header), 'phpsessid') || contains(tolower(header), 'location:')"
           - "!regex('(?i)(page not found|does not exist|no encontrado)', body)"
           - "len(body) < 5242880"

@@ -51,7 +51,7 @@ http:
       - type: dsl
         dsl:
           - "contains(body, 'bbJsonp' + randstr)"
-          - "regex('(?s)^\\s*bbJsonp' + randstr + '\\s*\\(\\s*(\\{|\\[|null|true|false|\"|[0-9-])', body)"
+          - "regex('(?s)^\\s*bbJsonp' + randstr + '\\s*\\(\\s*(\\{|\\[|null|true|false|[0-9-])', body)"
           - "!contains(tolower(header), 'content-type: text/html')"
           - "!contains(tolower(body), '<html')"
           - "len(body) < 5242880"

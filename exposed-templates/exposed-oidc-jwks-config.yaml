@@ -93,6 +93,8 @@ http:
           - "!contains(tolower(body), '<html')"
           - "!contains(tolower(header), 'content-type: text/html')"
           - "!contains(tolower(body), '<!doctype')"
+          - "!contains(tolower(body), '<!doctype html')"
+          - "((contains(auth_config, 'openid') || contains(auth_config, 'oauth-authorization-server')) && contains(tolower(header), 'content-type: application/json') && contains(body, 'issuer') && (contains(body, 'authorization_endpoint') || contains(body, 'token_endpoint') || contains(body, 'jwks_uri') || contains(body, 'grant_types_supported') || contains(body, 'response_types_supported'))) || ((contains(auth_config, 'jw') || contains(auth_config, 'keys') || contains(auth_config, 'certs')) && contains(tolower(header), 'content-type: application/json') && contains(body, 'keys') && (contains(body, 'kty') || contains(body, 'kid') || contains(body, 'x5c'))) || (contains(auth_config, 'saml') || contains(auth_config, 'FederationMetadata'))"
           - "!regex('(?i)(page not found|does not exist|object moved|no encontrado)', body)"
           - "!contains(body, 'import-map') && !contains(body, 'GTM-') && !contains(body, 'AmazonS3')"
           - "len(body) < 10485760"
@@ -101,7 +103,8 @@ http:
       - type: regex
         part: body
         regex:
-          - "(?i)(issuer|authorization_endpoint|token_endpoint|jwks_uri|client_id|kid|x5t)[\"'\\s:=<>/-]+[^\\r\\n,<>]+"
+          - "(?i)\"issuer\"\\s*:\\s*\"[^\"]+\""
+          - "(?i)(authorization_endpoint|token_endpoint|jwks_uri|client_id|kid|x5t)[\"'\\s:=<>/-]+[^\\r\\n,<>]+"
           - "(?i)-----BEGIN CERTIFICATE-----"
       - type: dsl
         name: status

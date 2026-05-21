@@ -102,6 +102,9 @@ http:
           - "!contains(tolower(body), '<html')"
           - "!contains(tolower(header), 'content-type: text/html')"
           - "!contains(tolower(body), '<!doctype')"
+          - "!contains(tolower(body), '<!doctype html')"
+          - "(!contains(firebase_file, '.firebaserc') && !contains(firebase_file, 'firebase.json') && !contains(firebase_file, 'firestore.indexes.json') && !contains(firebase_file, 'database.rules.json') && !contains(firebase_file, 'remoteconfig.template.json') && !contains(firebase_file, 'extensions.json') && !contains(firebase_file, 'google-services.json')) || contains(tolower(header), 'content-type: application/json')"
+          - "(!contains(firebase_file, '.firebaserc') && !contains(firebase_file, 'firebase.json')) || contains(body, 'projects') || contains(body, 'default') || contains(body, 'hosting')"
           - "!contains(tolower(body), 'wp-content') && !contains(tolower(body), 'wp-includes') && !contains(tolower(body), 'wp-admin') && !contains(tolower(body), 'woocommerce') && !contains(tolower(body), 'wpemoji') && !contains(tolower(body), 'gravityforms') && !contains(tolower(body), 'wpml')"
           - "!contains(tolower(body), 'data-astro-cid') && !contains(tolower(body), '_astro/') && !contains(tolower(body), '__nuxt') && !contains(tolower(body), 'ng-version') && !contains(tolower(body), 'data-reactroot') && !contains(tolower(body), 'rails-ujs')"
           - "!regex('(?i)(page not found|does not exist|object moved|no encontrado)', body)"
@@ -113,6 +116,7 @@ http:
         part: body
         regex:
           - "(?im)(apiKey|authDomain|databaseURL|projectId|storageBucket|messagingSenderId|appId|mobilesdk_app_id|GOOGLE_APP_ID|FIREBASE_CONFIG)[\"'\\s:=]+[^\\r\\n,;<>]+"
+          - "(?i)\"(?:default|projectId|project_id)\"\\s*:\\s*\"([a-z0-9-]{4,80})\""
           - "(?im)(allow\\s+(read|write|create|update|delete):\\s*if\\s+[^;]+|\"\\.(read|write)\"\\s*:\\s*[^,}\\r\\n]+)"
       - type: dsl
         name: status

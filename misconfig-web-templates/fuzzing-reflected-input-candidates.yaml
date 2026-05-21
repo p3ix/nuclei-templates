@@ -66,7 +66,7 @@ http:
         dsl:
           - "contains(body, 'bb-reflect-' + randstr) || contains(header, 'bb-reflect-' + randstr)"
           - >-
-            (contains(tolower(header), 'content-type: text/html') && regex('(?i)(href|src|action|value|placeholder|title|data-[a-z0-9_-]+)=[\"\\'][^\"\\']*bb-reflect-', body)) ||
+            (contains(tolower(header), 'content-type: text/html') && regex('(?i)(href|src|action|value|placeholder|title|data-[a-z0-9_-]+)=.{0,120}bb-reflect-', body)) ||
             (contains(tolower(header), 'content-type: application/json') && contains(body, 'bb-reflect-' + randstr)) ||
             (contains(tolower(header), 'location:') && contains(header, 'bb-reflect-' + randstr)) ||
             (contains(header, 'bb-reflect-' + randstr))

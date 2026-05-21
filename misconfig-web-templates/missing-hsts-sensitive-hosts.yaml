@@ -45,6 +45,10 @@ http:
           - "contains(tolower(header), 'content-type: text/html')"
           # Exclude Cloudflare edge nodes — they manage HSTS at the CDN layer
           - "!contains(tolower(header), 'cf-ray:')"
+          # Exclude common managed/static hosting/CDN providers where HSTS is often not controlled by the program owner
+          - "!contains(tolower(header), 'server: github.com') && !contains(tolower(header), 'github pages') && !contains(tolower(header), 'server: netlify') && !contains(tolower(header), 'server: vercel') && !contains(tolower(header), 'server: fastly')"
+          - "!contains(tolower(header), 'x-served-by:') && !contains(tolower(header), 'x-vercel-id:') && !contains(tolower(header), 'x-nf-request-id:') && !contains(tolower(header), 'x-github-request-id:')"
+          - "!contains(tolower(header), 'via:') || (!contains(tolower(header), 'github') && !contains(tolower(header), 'netlify') && !contains(tolower(header), 'vercel') && !contains(tolower(header), 'fastly'))"
           # Exclude Varnish/Fastly CDN edge responses — HSTS is typically managed upstream
           - "!(contains(tolower(header), 'via: 1.1 varnish') && (contains(tolower(header), 'x-served-by:') || contains(tolower(header), 'fastly-restarts') || contains(tolower(header), 'x-fastly-request-id')))"
 

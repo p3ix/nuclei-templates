@@ -8,6 +8,8 @@ info:
   tags: misconfig,coop,coep,corp,headers,web
   metadata:
     max-request: 14
+    requires_manual_verification: true
+    note: "COOP/COEP/CORP absence is usually informational. This template only reports pages with SharedArrayBuffer/crossOriginIsolated/postMessage signals and still requires manual impact review."
 
 http:
   - method: GET
@@ -75,7 +77,7 @@ http:
       # Require sensitive-page body signals to reduce noise on generic pages
       - type: dsl
         dsl:
-          - "contains(tolower(body), '<form') || contains(tolower(body), 'password') || contains(tolower(body), 'input type') || contains(tolower(body), 'sharedarraybuffer') || contains(tolower(body), 'crossoriginisolated') || contains(tolower(body), 'authentication') || contains(tolower(body), 'sign in') || contains(tolower(body), 'dashboard')"
+          - "contains(tolower(body), 'sharedarraybuffer') || contains(tolower(body), 'crossoriginisolated') || contains(tolower(body), 'postmessage') || contains(tolower(body), 'cross-origin')"
 
       # Exclude error/access-denied pages
       - type: word

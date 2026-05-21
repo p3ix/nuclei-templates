@@ -7,10 +7,15 @@ info:
   description: Tests Transfer-Encoding obfuscation variants twice and reports only when both attempts for the same variant are slow. These are TE.TE request smuggling candidates and require manual confirmation.
   tags: misconfig,request-smuggling,desync,tete,transfer-encoding,timing,http
   metadata:
-    max-request: 72
+    max-request: 108
 
 http:
   - raw:
+      - |
+        GET {{smuggle_path}} HTTP/1.1
+        Host: {{Hostname}}
+        User-Agent: nuclei-tete-baseline
+        Connection: close
       - |
         POST {{smuggle_path}} HTTP/1.1
         Host: {{Hostname}}
@@ -43,15 +48,15 @@ http:
         - "/login"
         - "/health"
       te_header:
-        - "Transfer-Encoding: chunked"
         - "Transfer-Encoding: xchunked"
         - "Transfer-Encoding: chunked, x"
         - "Transfer-Encoding: chunked; x=y"
-        - "Transfer-Encoding: chunKed"
-        - "Transfer-Encoding:\tchunked"
         - "Transfer-Encoding : chunked"
         - "X-Transfer-Encoding: chunked"
         - "Transfer_Encoding: chunked"
+        - "Transfer-Encoding:\tchunked"
+        - "Transfer-Encoding: chunKed"
+        - "Transfer-Encoding: chunked"
 
     attack: clusterbomb
     unsafe: true
@@ -63,7 +68,8 @@ http:
     matchers:
       - type: dsl
         dsl:
-          - "duration_1 >= 6 && duration_2 >= 6"
+          - "duration_2 >= 6 && duration_3 >= 6"
+          - "duration_2 >= duration_1 + 4 && duration_3 >= duration_1 + 4"
 
       - type: regex
         part: all
@@ -82,18 +88,26 @@ http:
         regex:
           - "(?im)^(server|via|x-cache|cf-ray|x-amz-cf-[^:]+|x-envoy[^:]*|x-varnish|x-served-by|x-akamai[^:]*|x-request-id|x-correlation-id):[^\\r\\n]+"
       - type: dsl
-        name: duration_first
+        name: duration_baseline
         dsl:
           - "duration_1"
       - type: dsl
-        name: duration_second
+        name: duration_first_probe
         dsl:
           - "duration_2"
       - type: dsl
-        name: status_first
+        name: duration_second_probe
+        dsl:
+          - "duration_3"
+      - type: dsl
+        name: status_baseline
         dsl:
           - "status_code_1"
       - type: dsl
-        name: status_second
+        name: status_first_probe
         dsl:
           - "status_code_2"
+      - type: dsl
+        name: status_second_probe
+        dsl:
+          - "status_code_3"

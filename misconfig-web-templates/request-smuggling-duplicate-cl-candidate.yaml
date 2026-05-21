@@ -3,8 +3,8 @@ id: request-smuggling-duplicate-cl-candidate
 info:
   name: HTTP Request Smuggling Duplicate Content-Length Candidate
   author: p3i
-  severity: info
-  description: Sends inverse duplicate Content-Length variants and reports only asymmetric parser behavior. If both variants are rejected identically, the target is likely handling duplicate CL safely and no finding is emitted.
+  severity: low
+  description: Sends inverse duplicate Content-Length variants and reports only asymmetric parser behavior or different parser error bodies. If both variants are rejected identically, the target is likely handling duplicate CL safely and no finding is emitted.
   tags: misconfig,request-smuggling,desync,content-length,clcl,http,candidate
   metadata:
     max-request: 6
@@ -48,7 +48,7 @@ http:
     matchers:
       - type: dsl
         dsl:
-          - "status_code_1 != status_code_2"
+          - "status_code_1 != status_code_2 || (body_1 != body_2 && regex('(?i)(duplicate|multiple|conflicting|invalid|bad request|content-length|malformed)', body_1 + body_2))"
           - "(status_code_1 == 400 || status_code_2 == 400 || status_code_1 == 408 || status_code_2 == 408 || status_code_1 == 411 || status_code_2 == 411 || status_code_1 == 421 || status_code_2 == 421 || status_code_1 == 502 || status_code_2 == 502 || status_code_1 == 503 || status_code_2 == 503 || status_code_1 == 504 || status_code_2 == 504 || regex('(?i)(duplicate|multiple|conflicting|invalid|bad request|content-length|malformed)', body_1 + body_2))"
 
       - type: regex
@@ -72,3 +72,13 @@ http:
         name: status_cl_4_3
         dsl:
           - "status_code_2"
+      - type: regex
+        name: body_first_snippet
+        part: body_1
+        regex:
+          - "(?s)^.{0,200}"
+      - type: regex
+        name: body_second_snippet
+        part: body_2
+        regex:
+          - "(?s)^.{0,200}"

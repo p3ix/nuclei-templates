@@ -124,7 +124,10 @@ http:
         dsl:
           - "!contains(tolower(body), '<html')"
           - "!contains(tolower(header), 'content-type: text/html')"
+          - "!contains(tolower(header), 'content-type: application/javascript')"
           - "!contains(tolower(body), '<!doctype')"
+          - "!contains(tolower(body), '<!doctype html')"
+          - "(!contains(container_file, 'Dockerfile')) || regex('(?m)^(FROM|RUN|COPY|ENTRYPOINT|WORKDIR|ENV|EXPOSE|CMD\\s+\\[)\\b', body)"
           - "len(body) < 10485760"
 
     extractors:

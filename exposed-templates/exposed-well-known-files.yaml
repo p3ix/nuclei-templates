@@ -19,7 +19,6 @@ http:
         - ".well-known/security.txt"
         - "security.txt"
         - ".well-known/change-password"
-        - ".well-known/assetlinks.json"
         - ".well-known/apple-app-site-association"
         - "apple-app-site-association"
         - ".well-known/webfinger"
