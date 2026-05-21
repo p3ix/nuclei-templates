@@ -4,10 +4,10 @@ info:
   name: HTTP Request Smuggling Duplicate Content-Length Candidate
   author: p3i
   severity: info
-  description: Sends duplicate Content-Length variants and reports differential parser rejection signals. Duplicate CL handling is often a useful precursor for CL.CL or downstream parser inconsistency testing, but this template is only a prioritization signal.
+  description: Sends inverse duplicate Content-Length variants and reports only asymmetric parser behavior. If both variants are rejected identically, the target is likely handling duplicate CL safely and no finding is emitted.
   tags: misconfig,request-smuggling,desync,content-length,clcl,http,candidate
   metadata:
-    max-request: 12
+    max-request: 6
 
 http:
   - raw:
@@ -16,8 +16,18 @@ http:
         Host: {{Hostname}}
         User-Agent: nuclei-duplicate-cl-candidate
         Content-Type: application/x-www-form-urlencoded
-        Content-Length: {{first_cl}}
-        Content-Length: {{second_cl}}
+        Content-Length: 3
+        Content-Length: 4
+        Connection: close
+
+        x=1
+      - |
+        POST {{smuggle_path}} HTTP/1.1
+        Host: {{Hostname}}
+        User-Agent: nuclei-duplicate-cl-candidate
+        Content-Type: application/x-www-form-urlencoded
+        Content-Length: 4
+        Content-Length: 3
         Connection: close
 
         x=1
@@ -27,30 +37,19 @@ http:
         - "/"
         - "/api"
         - "/login"
-      first_cl:
-        - "3"
-        - "4"
-      second_cl:
-        - "4"
-        - "3"
 
-    attack: clusterbomb
+    attack: batteringram
     unsafe: true
+    req-condition: true
     redirects: false
     max-redirects: 0
     stop-at-first-match: true
     matchers-condition: and
     matchers:
-      - type: status
-        status:
-          - 400
-          - 408
-          - 411
-          - 413
-          - 421
-          - 502
-          - 503
-          - 504
+      - type: dsl
+        dsl:
+          - "status_code_1 != status_code_2"
+          - "(status_code_1 == 400 || status_code_2 == 400 || status_code_1 == 408 || status_code_2 == 408 || status_code_1 == 411 || status_code_2 == 411 || status_code_1 == 421 || status_code_2 == 421 || status_code_1 == 502 || status_code_2 == 502 || status_code_1 == 503 || status_code_2 == 503 || status_code_1 == 504 || status_code_2 == 504 || regex('(?i)(duplicate|multiple|conflicting|invalid|bad request|content-length|malformed)', body_1 + body_2))"
 
       - type: regex
         part: all
@@ -66,6 +65,10 @@ http:
           - "(?im)^(server|via|x-cache|cf-ray|x-amz-cf-[^:]+|x-envoy[^:]*|x-varnish|x-served-by|x-akamai[^:]*):[^\\r\\n]+"
           - "(?i)(duplicate|multiple|conflicting|invalid|bad request|content-length|malformed).{0,120}"
       - type: dsl
-        name: status
+        name: status_cl_3_4
         dsl:
-          - "status_code"
+          - "status_code_1"
+      - type: dsl
+        name: status_cl_4_3
+        dsl:
+          - "status_code_2"

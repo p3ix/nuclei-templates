@@ -4,26 +4,36 @@ info:
   name: CORS Private Network Access Allowed
   author: p3i
   severity: medium
-  description: Detects endpoints that allow Private Network Access preflight requests from an arbitrary public Origin.
+  description: Detects non-root endpoints that allow Private Network Access preflight requests from an arbitrary public Origin while also allowing credentials, then confirms the endpoint either exposes structured sensitive data or appears authentication-gated. Wildcard-only CORS on root is intentionally ignored.
   tags: misconfig,cors,pna,private-network,headers,web
   metadata:
-    max-request: 10
+    max-request: 18
 
 http:
-  - method: OPTIONS
-    path:
-      - "{{BaseURL}}/{{pna_path}}"
-
-    headers:
-      Origin: "https://pna-bugbounty.example"
-      Access-Control-Request-Method: "GET"
-      Access-Control-Request-Private-Network: "true"
+  - raw:
+      - |
+        OPTIONS /{{pna_path}} HTTP/1.1
+        Host: {{Hostname}}
+        Origin: https://pna-bugbounty.example
+        Access-Control-Request-Method: GET
+        Access-Control-Request-Private-Network: true
+        Connection: close
+      - |
+        GET /{{pna_path}} HTTP/1.1
+        Host: {{Hostname}}
+        Origin: https://pna-bugbounty.example
+        Accept: application/json, text/plain, */*
+        Connection: close
 
     payloads:
       pna_path:
-        - ""
         - "api"
         - "api/"
+        - "api/me"
+        - "api/user"
+        - "api/account"
+        - "api/profile"
+        - "api/config"
         - "status"
         - "health"
         - "admin"
@@ -33,23 +43,31 @@ http:
         - "metrics"
 
     attack: batteringram
+    req-condition: true
     redirects: false
     stop-at-first-match: true
     matchers-condition: and
     matchers:
-      - type: status
-        status:
-          - 200
-          - 204
-
       - type: dsl
         dsl:
-          - "contains(tolower(header), 'access-control-allow-private-network: true')"
-          - "contains(tolower(header), 'access-control-allow-origin: https://pna-bugbounty.example') || contains(tolower(header), 'access-control-allow-origin: *')"
+          - "status_code_1 == 200 || status_code_1 == 204"
+          - "contains(tolower(header_1), 'access-control-allow-private-network: true')"
+          - "contains(tolower(header_1), 'access-control-allow-credentials: true')"
+          - "contains(tolower(header_1), 'access-control-allow-origin: https://pna-bugbounty.example') || contains(tolower(header_1), 'access-control-allow-origin: *')"
+          - "(status_code_2 == 401 || status_code_2 == 403) && (contains(tolower(header_2), 'www-authenticate:') || contains(tolower(body_2), 'unauthorized') || contains(tolower(body_2), 'forbidden') || contains(tolower(body_2), 'authentication') || contains(tolower(body_2), 'login')) || (status_code_2 == 200 && (contains(tolower(header_2), 'content-type: application/json') || contains(tolower(header_2), 'content-type: application/problem+json')) && regex('(?i)\"(user|username|email|account|token|id|role|session|profile|tenant|organization)\"\\s*:', body_2))"
 
     extractors:
       - type: regex
-        part: header
+        part: all
         regex:
           - "(?i)access-control-allow-(origin|credentials|methods|headers|private-network):[^\\r\\n]+"
-
+          - "(?im)^(www-authenticate|set-cookie|content-type):[^\\r\\n]+"
+          - "(?i)\"(user|username|email|account|token|id|role|session|profile|tenant|organization)\"\\s*:"
+      - type: dsl
+        name: preflight_status
+        dsl:
+          - "status_code_1"
+      - type: dsl
+        name: get_status
+        dsl:
+          - "status_code_2"
