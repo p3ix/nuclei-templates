@@ -1,0 +1,92 @@
+id: exposed-soap-wsdl-metadata
+
+info:
+  name: Exposed SOAP WSDL Metadata
+  author: p3i
+  severity: medium
+  description: Detects exposed SOAP WSDL documents and service metadata that can disclose internal operations, endpoints, namespaces, authentication actions, and backend service names.
+  tags: exposure,soap,wsdl,api,metadata,xml
+  metadata:
+    max-request: 60
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{wsdl_path}}"
+
+    payloads:
+      wsdl_path:
+        - "?wsdl"
+        - "?WSDL"
+        - "wsdl"
+        - "service?wsdl"
+        - "services?wsdl"
+        - "api?wsdl"
+        - "soap?wsdl"
+        - "SOAP?wsdl"
+        - "Service.asmx?wsdl"
+        - "service.asmx?wsdl"
+        - "WebService.asmx?wsdl"
+        - "api/service.asmx?wsdl"
+        - "services/service.asmx?wsdl"
+        - "Service.svc?wsdl"
+        - "service.svc?wsdl"
+        - "api/service.svc?wsdl"
+        - "services/service.svc?wsdl"
+        - "soap/service?wsdl"
+        - "soap/services?wsdl"
+        - "axis/services/AdminService?wsdl"
+        - "axis2/services/listServices"
+        - "axis2/services/Version?wsdl"
+        - "ws/Service?wsdl"
+        - "ws/services?wsdl"
+        - "webservices?wsdl"
+        - "WebServices?wsdl"
+        - "Service.wsdl"
+        - "service.wsdl"
+        - "api.wsdl"
+        - "soap.wsdl"
+
+    attack: batteringram
+    redirects: false
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: regex
+        part: body
+        condition: and
+        regex:
+          - "(?i)<(?:wsdl:)?definitions\\b|<definitions\\b"
+          - "(?i)<(?:wsdl:)?(binding|portType|service|operation)\\b"
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - "(?i)<(?:soap|soap12):address\\s+location="
+          - "(?i)<(?:soap|soap12):operation\\s+soapAction="
+          - "(?i)targetNamespace\\s*="
+          - "(?i)<(?:xs|xsd):schema\\b"
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), '<html') || contains(tolower(body), '<wsdl:definitions') || contains(tolower(body), '<definitions')"
+          - "!regex('(?i)(page not found|does not exist|object moved|no encontrado)', body)"
+          - "len(body) > 300"
+          - "len(body) < 10485760"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)<(?:wsdl:)?operation\\s+name=\"[^\"]+\""
+          - "(?i)<(?:soap|soap12):address\\s+location=\"[^\"]+\""
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

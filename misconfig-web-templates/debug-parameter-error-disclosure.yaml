@@ -1,0 +1,75 @@
+id: debug-parameter-error-disclosure
+
+info:
+  name: Debug Parameter Error Disclosure
+  author: p3i
+  severity: medium
+  description: Tests common debug/trace parameters with a random marker and reports responses that expose verbose errors, stack traces, server variables, SQL diagnostics, or debug tool output containing the marker.
+  tags: misconfig,fuzzing,debug,error-disclosure,stacktrace,web
+  metadata:
+    max-request: 80
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{debug_probe}}"
+
+    payloads:
+      debug_probe:
+        - "?debug=true&nuclei_probe=bb-debug-{{randstr}}"
+        - "?debug=1&nuclei_probe=bb-debug-{{randstr}}"
+        - "?trace=true&nuclei_probe=bb-debug-{{randstr}}"
+        - "?verbose=true&nuclei_probe=bb-debug-{{randstr}}"
+        - "?show_errors=1&nuclei_probe=bb-debug-{{randstr}}"
+        - "?display_errors=1&nuclei_probe=bb-debug-{{randstr}}"
+        - "?error=true&nuclei_probe=bb-debug-{{randstr}}"
+        - "?dev=true&nuclei_probe=bb-debug-{{randstr}}"
+        - "?test=true&nuclei_probe=bb-debug-{{randstr}}"
+        - "api?debug=true&nuclei_probe=bb-debug-{{randstr}}"
+        - "api/v1?debug=true&nuclei_probe=bb-debug-{{randstr}}"
+        - "login?debug=true&nuclei_probe=bb-debug-{{randstr}}"
+        - "auth?debug=true&nuclei_probe=bb-debug-{{randstr}}"
+        - "search?debug=true&q=bb-debug-{{randstr}}"
+        - "graphql?debug=true&query=bb-debug-{{randstr}}"
+        - "admin?debug=true&nuclei_probe=bb-debug-{{randstr}}"
+        - "dashboard?debug=true&nuclei_probe=bb-debug-{{randstr}}"
+        - "status?debug=true&nuclei_probe=bb-debug-{{randstr}}"
+        - "health?debug=true&nuclei_probe=bb-debug-{{randstr}}"
+        - "actuator?debug=true&nuclei_probe=bb-debug-{{randstr}}"
+
+    attack: batteringram
+    redirects: false
+    max-redirects: 1
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 400
+          - 401
+          - 403
+          - 404
+          - 500
+          - 502
+          - 503
+
+      - type: dsl
+        dsl:
+          - "contains(body, 'bb-debug-' + randstr)"
+          - >-
+            regex('(?i)(stack trace|traceback \\(most recent call last\\)|exception|fatal error|warning:|notice:|xdebug|whoops|symfony profiler|laravel debugbar|django debug|rails application trace|express error|java\\.lang\\.|nullpointerexception|sqlexception|pdoexception|queryexception|sql syntax|server variables|request headers|environment variables|APP_DEBUG|DEBUG\\s*=\\s*true)', body)
+          - "!contains(tolower(body), '<title>404')"
+          - "!contains(tolower(body), 'page not found')"
+          - "len(body) < 20971520"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?im)(stack trace|traceback|exception|fatal error|xdebug|whoops|symfony profiler|laravel debugbar|django debug|rails application trace|sqlexception|pdoexception|sql syntax).{0,160}"
+          - "(?im)(password|token|secret|api[_-]?key|database_url|jdbc:|mongodb://|redis://).{0,160}"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

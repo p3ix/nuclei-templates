@@ -1,0 +1,75 @@
+id: exposed-jolokia-management-api
+
+info:
+  name: Exposed Jolokia Management API
+  author: p3i
+  severity: high
+  description: Detects unauthenticated Jolokia endpoints that expose Java JMX metadata and can leak runtime details, MBeans, environment data, and sometimes allow dangerous management operations.
+  tags: exposure,jolokia,jmx,java,management,actuator
+  metadata:
+    max-request: 22
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{jolokia_path}}"
+
+    payloads:
+      jolokia_path:
+        - "jolokia"
+        - "jolokia/"
+        - "jolokia/version"
+        - "jolokia/list"
+        - "jolokia/read/java.lang:type=Runtime"
+        - "actuator/jolokia"
+        - "actuator/jolokia/"
+        - "actuator/jolokia/version"
+        - "actuator/jolokia/list"
+        - "management/jolokia"
+        - "manage/jolokia"
+
+    attack: batteringram
+    redirects: false
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"status\":200"
+          - "\"protocol\":\"7."
+          - "\"agent\":\""
+          - "\"mbean\""
+          - "\"java.lang\""
+          - "\"org.springframework.boot\""
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - "\"(?:type|request)\"\\s*:\\s*\"(?:version|list|read)\""
+          - "\"(?:Memory|Runtime|Threading|ClassLoading)\"\\s*:"
+          - "\"desc\"\\s*:\\s*\"[^\"\\r\\n]{1,160}\""
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), '<html')"
+          - "!contains(tolower(header), 'content-type: text/html')"
+          - "len(body) < 52428800"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "\"agent\"\\s*:\\s*\"[^\"]+\""
+          - "\"(?:java.lang|org.springframework.boot|Catalina|com.zaxxer.hikari)[^\"]*\""
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

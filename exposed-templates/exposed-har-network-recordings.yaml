@@ -1,0 +1,107 @@
+id: exposed-har-network-recordings
+
+info:
+  name: Exposed HAR Network Recordings
+  author: p3i
+  severity: high
+  description: Detects exposed HTTP Archive files that can leak authenticated requests, cookies, bearer tokens, API keys, internal hosts, GraphQL payloads, and request/response bodies captured from browsers or proxies.
+  tags: exposure,har,logs,network,secrets,cookies
+  metadata:
+    max-request: 58
+
+flow: http(1) && http(2)
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/nuclei-fp-check-{{randstr}}-notexist"
+    redirects: false
+    matchers:
+      - type: dsl
+        internal: true
+        dsl:
+          - "status_code != 200"
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{har_file}}"
+
+    payloads:
+      har_file:
+        - "network.har"
+        - "session.har"
+        - "capture.har"
+        - "traffic.har"
+        - "requests.har"
+        - "browser.har"
+        - "debug.har"
+        - "test.har"
+        - "recording.har"
+        - "trace.har"
+        - "artifacts/network.har"
+        - "artifacts/session.har"
+        - "artifacts/trace.har"
+        - "reports/network.har"
+        - "reports/session.har"
+        - "reports/trace.har"
+        - "test-results/network.har"
+        - "test-results/session.har"
+        - "test-results/trace.har"
+        - "playwright-report/network.har"
+        - "playwright-report/trace.har"
+        - "cypress/videos/network.har"
+        - "cypress/results/network.har"
+        - "qa/network.har"
+        - "qa/session.har"
+        - "e2e/network.har"
+        - "e2e/session.har"
+        - "tmp/network.har"
+        - "tmp/session.har"
+        - "logs/network.har"
+        - "logs/session.har"
+
+    attack: batteringram
+    redirects: false
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: and
+        words:
+          - "\"log\""
+          - "\"entries\""
+          - "\"request\""
+          - "\"response\""
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - "\"headers\"\\s*:\\s*\\[[\\s\\S]{0,2000}\"name\"\\s*:\\s*\"(?:Authorization|Cookie|Set-Cookie|X-Api-Key|X-CSRF-Token)\""
+          - "\"cookies\"\\s*:\\s*\\[[\\s\\S]{0,2000}\"name\"\\s*:"
+          - "\"postData\"\\s*:\\s*\\{[\\s\\S]{0,3000}\"(?:text|params)\""
+          - "(?i)(bearer\\s+[a-z0-9._~+/-]+=*|api[_-]?key|access[_-]?token|refresh[_-]?token|sessionid|csrf)"
+
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), '<html')"
+          - "!contains(tolower(header), 'content-type: text/html')"
+          - "len(body) > 200"
+          - "len(body) < 52428800"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "\"name\"\\s*:\\s*\"(?:Authorization|Cookie|Set-Cookie|X-Api-Key|X-CSRF-Token)\"[\\s\\S]{0,300}\"value\"\\s*:\\s*\"[^\"]+\""
+          - "(?i)(bearer\\s+[a-z0-9._~+/-]+=*|api[_-]?key|access[_-]?token|refresh[_-]?token|sessionid|csrf).{0,160}"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

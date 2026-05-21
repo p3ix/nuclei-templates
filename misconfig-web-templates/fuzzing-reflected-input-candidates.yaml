@@ -1,0 +1,84 @@
+id: fuzzing-reflected-input-candidates
+
+info:
+  name: Reflected Input Fuzzing Candidates
+  author: p3i
+  severity: info
+  description: Fuzzes common parameters with a random marker and reports endpoints that reflect the marker in HTML, JSON, redirects, or response headers. This is a recon helper for follow-up XSS, cache poisoning, redirect, and injection testing, not a vulnerability by itself.
+  tags: fuzzing,recon,reflection,xss,parameters,web
+  metadata:
+    max-request: 120
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{reflection_probe}}"
+
+    payloads:
+      reflection_probe:
+        - "?q=bb-reflect-{{randstr}}"
+        - "?s=bb-reflect-{{randstr}}"
+        - "?search=bb-reflect-{{randstr}}"
+        - "?query=bb-reflect-{{randstr}}"
+        - "?keyword=bb-reflect-{{randstr}}"
+        - "?term=bb-reflect-{{randstr}}"
+        - "?id=bb-reflect-{{randstr}}"
+        - "?name=bb-reflect-{{randstr}}"
+        - "?email=bb-reflect-{{randstr}}@example.invalid"
+        - "?redirect=bb-reflect-{{randstr}}"
+        - "?url=bb-reflect-{{randstr}}"
+        - "?next=bb-reflect-{{randstr}}"
+        - "?return=bb-reflect-{{randstr}}"
+        - "?returnUrl=bb-reflect-{{randstr}}"
+        - "?callback=bb-reflect-{{randstr}}"
+        - "?continue=bb-reflect-{{randstr}}"
+        - "search?q=bb-reflect-{{randstr}}"
+        - "login?next=bb-reflect-{{randstr}}"
+        - "signin?returnUrl=bb-reflect-{{randstr}}"
+        - "logout?next=bb-reflect-{{randstr}}"
+        - "callback?state=bb-reflect-{{randstr}}"
+        - "oauth/callback?state=bb-reflect-{{randstr}}"
+        - "api/search?q=bb-reflect-{{randstr}}"
+        - "api/v1/search?q=bb-reflect-{{randstr}}"
+        - "graphql?query=bb-reflect-{{randstr}}"
+        - "products?search=bb-reflect-{{randstr}}"
+        - "docs?search=bb-reflect-{{randstr}}"
+        - "help?query=bb-reflect-{{randstr}}"
+
+    attack: batteringram
+    redirects: false
+    max-redirects: 1
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 201
+          - 202
+          - 301
+          - 302
+          - 303
+          - 307
+          - 308
+
+      - type: dsl
+        dsl:
+          - "contains(body, 'bb-reflect-' + randstr) || contains(header, 'bb-reflect-' + randstr)"
+          - >-
+            (contains(tolower(header), 'content-type: text/html') && regex('(?i)(href|src|action|value|placeholder|title|data-[a-z0-9_-]+)=[\"\\'][^\"\\']*bb-reflect-', body)) ||
+            (contains(tolower(header), 'content-type: application/json') && contains(body, 'bb-reflect-' + randstr)) ||
+            (contains(tolower(header), 'location:') && contains(header, 'bb-reflect-' + randstr)) ||
+            (contains(header, 'bb-reflect-' + randstr))
+          - "!contains(tolower(body), 'page not found')"
+          - "len(body) < 10485760"
+
+    extractors:
+      - type: regex
+        part: all
+        regex:
+          - "(?i)(location:|href=|src=|action=|value=|placeholder=|title=|data-[a-z0-9_-]+=|\"[a-z0-9_-]+\"\\s*:)[^\\r\\n<>]{0,180}bb-reflect-[a-z0-9-]+[^\\r\\n<>]{0,180}"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

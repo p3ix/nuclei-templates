@@ -49,6 +49,12 @@ Esta primera tanda cubre:
 - Acceso remoto y terminales web: Apache Guacamole, noVNC, ttyd, WeTTY, GoTTY, WebSSH, Cockpit, Webmin, File Browser, code-server, Coder, Cloud9 y terminales Jupyter.
 - Identidad y SSO: Keycloak, oauth2-proxy, Dex, ORY Hydra/Kratos, ZITADEL, authentik, Authelia, CAS, SAML, ADFS y metadatos OpenID Connect.
 - Low-code, headless CMS e internal tools: Strapi, Directus, Ghost Admin, Keystone, Payload, Sanity Studio, Hasura, Appsmith, ToolJet, Budibase, NocoDB, Baserow, Retool, Supabase y PocketBase.
+- Artefactos HAR de navegador/proxy con cookies, Authorization, tokens, payloads GraphQL/API y tráfico autenticado.
+- WSDL/SOAP metadata expuesto para descubrir operaciones internas, namespaces, bindings y endpoints legacy.
+- Jolokia/JMX expuesto, incluyendo variantes bajo `/jolokia` y `/actuator/jolokia`.
+- Tokens y ficheros de service account de Kubernetes expuestos desde rutas de secretos montados.
+- Migraciones y esquemas de base de datos: Prisma, Rails, Django, Alembic, Liquibase, Flyway, Knex, TypeORM y Sequelize.
+- Consolas de administración Adobe ColdFusion, Lucee y Railo.
 
 ## Uso
 

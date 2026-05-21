@@ -32,6 +32,8 @@ Esta primera tanda cubre:
 - Assets JS/CSS sin `X-Content-Type-Options: nosniff`.
 - Falta de cabeceras COOP/COEP/CORP en páginas sensibles.
 - Downgrade de HTTPS a HTTP en rutas sensibles.
+- Fuzzing de parámetros que reflejan un marcador aleatorio en HTML, JSON, redirects o cabeceras para priorizar XSS, redirect, cache poisoning e inyecciones.
+- Parámetros `debug`, `trace`, `verbose`, `show_errors` y similares que activan errores verbosos con reflejo del marcador de prueba.
 
 ## Targets recomendados
 
@@ -63,6 +65,8 @@ Estas plantillas se lanzan contra hosts HTTP/HTTPS vivos, no contra IPs a ciegas
 - `missing-nosniff-on-script-style.yaml`: frontends con uploads, CDNs, assets cacheados o rutas donde haya content-type confusion.
 - `missing-cross-origin-isolation-headers.yaml`: apps con datos sensibles, browser APIs potentes, dashboards y paneles internos.
 - `https-to-http-redirect-sensitive.yaml`: solo `https://` targets sensibles; login, account, checkout, admin, SSO.
+- `fuzzing-reflected-input-candidates.yaml`: barridos amplios de recon para encontrar parámetros con reflexión real antes de profundizar con payloads manuales.
+- `debug-parameter-error-disclosure.yaml`: apps custom, staging/dev, APIs y endpoints donde el scope permita fuzzing benigno de parámetros de debug.
 
 ## Uso
 
@@ -99,4 +103,10 @@ Para revisar redirects y downgrade:
 ```bash
 nuclei -l targets.txt -t misconfig-web-templates/open-redirect-common-params.yaml -t misconfig-web-templates/open-redirect-bypass-variants.yaml
 rg '^https://' targets.txt | nuclei -t misconfig-web-templates/https-to-http-redirect-sensitive.yaml
+```
+
+Para recon de parámetros reflejados y debug:
+
+```bash
+nuclei -l targets.txt -t misconfig-web-templates/fuzzing-reflected-input-candidates.yaml -t misconfig-web-templates/debug-parameter-error-disclosure.yaml -rl 20 -c 10
 ```

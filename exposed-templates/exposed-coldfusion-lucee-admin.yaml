@@ -1,0 +1,73 @@
+id: exposed-coldfusion-lucee-admin
+
+info:
+  name: Exposed ColdFusion And Lucee Administration Consoles
+  author: p3i
+  severity: medium
+  description: Detects exposed Adobe ColdFusion, Railo, and Lucee administration consoles and diagnostic pages. These panels are high-value recon targets and have a long history of authentication bypass and RCE chains.
+  tags: exposure,coldfusion,lucee,railo,admin,panel
+  metadata:
+    max-request: 30
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{cf_path}}"
+
+    payloads:
+      cf_path:
+        - "CFIDE/administrator/index.cfm"
+        - "CFIDE/administrator/"
+        - "CFIDE/adminapi/administrator.cfc?wsdl"
+        - "CFIDE/componentutils/cfcexplorer.cfc"
+        - "CFIDE/wizards/common/_logintowizard.cfm"
+        - "CFIDE/scripts/ajax/FCKeditor/editor/filemanager/connectors/cfm/connector.cfm"
+        - "cfide/administrator/index.cfm"
+        - "cfide/adminapi/administrator.cfc?wsdl"
+        - "lucee/admin/web.cfm"
+        - "lucee/admin/server.cfm"
+        - "lucee/admin/"
+        - "railo-context/admin/web.cfm"
+        - "railo-context/admin/server.cfm"
+        - "railo-context/admin/"
+        - "admin/web.cfm"
+        - "admin/server.cfm"
+
+    attack: batteringram
+    redirects: false
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 401
+          - 403
+
+      - type: regex
+        part: body
+        condition: or
+        regex:
+          - "(?i)<title>\\s*(Adobe\\s+)?ColdFusion\\s+(Administrator|Administration)"
+          - "(?i)ColdFusion\\s+Administrator"
+          - "(?i)CFIDE/administrator|cfadminPassword|adminapi"
+          - "(?i)<title>\\s*(Lucee|Railo)\\s+(Web|Server)?\\s*Administrator"
+          - "(?i)(Lucee|Railo)\\s+(Web|Server)?\\s*Administrator"
+          - "(?i)lucee/admin|railo-context/admin"
+
+      - type: dsl
+        dsl:
+          - "!regex('(?i)(page not found|does not exist|no encontrado)', body)"
+          - "len(body) < 10485760"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)<title>[^<]{0,160}(ColdFusion|Lucee|Railo)[^<]{0,160}</title>"
+          - "(?i)(ColdFusion|Lucee|Railo)\\s+(Administrator|Administration|Web Administrator|Server Administrator)"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"
