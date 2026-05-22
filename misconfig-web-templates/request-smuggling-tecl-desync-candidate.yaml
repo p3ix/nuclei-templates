@@ -40,20 +40,20 @@ http:
     matchers:
       - type: dsl
         dsl:
-          - "status_code == 408 || status_code == 411 || status_code == 413 || status_code == 421 || status_code == 502 || status_code == 503 || status_code == 504 || (status_code == 400 && regex('(?i)(chunk|content-length|transfer-encoding|malformed|gateway|upstream|invalid chunk|bad request.{0,80}(chunk|content-length|transfer-encoding))', body))"
+          - "status_code == 408 || status_code == 421 || status_code == 502 || (status_code == 400 && regex('(?i)(invalid chunk|chunk size|chunked encoding|transfer.encoding|malformed.{0,40}(chunk|body)|bad chunk|content.length.{0,40}(mismatch|invalid|conflict))', body))"
 
       - type: regex
         part: header
         condition: or
         regex:
-          - "(?im)^(server|via|x-cache|cf-ray|x-amz-cf-|x-envoy|x-envoy-upstream-service-time|x-varnish|x-served-by|x-akamai):"
+          - "(?im)^(via|x-cache|cf-ray|x-amz-cf-|x-envoy|x-varnish|x-served-by|x-akamai):"
 
       - type: regex
         part: all
         condition: or
         regex:
-          - "(?i)(bad request|invalid request|malformed|chunk|content-length|transfer-encoding|gateway|upstream|request timeout)"
-          - "(?i)(cloudflare|akamai|fastly|cloudfront|varnish|envoy|nginx|haproxy|awselb|alb|waf)"
+          - "(?i)(invalid chunk|chunk size|chunked encoding|transfer.encoding|bad chunk|malformed chunk|content.length mismatch)"
+          - "(?i)(cloudflare|akamai|fastly|cloudfront|varnish|envoy|haproxy|awselb|alb)"
 
     extractors:
       - type: regex

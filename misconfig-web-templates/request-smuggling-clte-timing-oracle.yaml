@@ -4,7 +4,7 @@ info:
   name: HTTP Request Smuggling CL.TE Timing Oracle
   author: p3i
   severity: medium
-  description: Sends the same conservative CL.TE ambiguity probe twice and reports only when both attempts are slow, reducing one-off network latency false positives. This is a candidate/oracle only; confirm manually with Burp HTTP Request Smuggler or Turbo Intruder before reporting.
+  description: Sends the same conservative CL.TE ambiguity probe twice and reports only when both attempts are slow AND the baseline was fast, significantly reducing false positives from slow servers. Requires actual proxy/CDN headers (Via, X-Cache, CF-Ray, etc.) to filter direct-server hits. This is a candidate/oracle only; confirm manually with Burp HTTP Request Smuggler or Turbo Intruder before reporting.
   tags: misconfig,request-smuggling,desync,clte,timing,http
   metadata:
     max-request: 12
@@ -59,15 +59,15 @@ http:
     matchers:
       - type: dsl
         dsl:
-          - "duration_2 >= 6 && duration_3 >= 6"
-          - "duration_2 >= duration_1 + 4 && duration_3 >= duration_1 + 4"
+          - "duration_1 < 2.5 && duration_2 >= 9 && duration_3 >= 9"
+          - "duration_1 < 2.5 && duration_2 >= duration_1 + 7 && duration_3 >= duration_1 + 7"
 
       - type: regex
         part: all
         condition: or
         regex:
-          - "(?i)^(server|via|x-cache|cf-ray|x-amz-cf-|x-envoy|x-varnish|x-served-by|x-akamai|x-request-id|x-correlation-id):"
-          - "(?i)(cloudflare|akamai|fastly|cloudfront|varnish|envoy|nginx|haproxy|awselb|alb|waf)"
+          - "(?i)^(via|x-cache|cf-ray|x-amz-cf-|x-envoy|x-varnish|x-served-by|x-akamai):"
+          - "(?i)(cloudflare|akamai|fastly|cloudfront|varnish|envoy|haproxy|awselb|alb)"
 
     extractors:
       - type: regex
