@@ -4,7 +4,7 @@ info:
   name: Server-Side Template Injection Via Expression Evaluation
   author: p3i
   severity: high
-  description: Detects server-side template injection by injecting a math expression (558*558=311364) into common URL parameters and checking whether the result is computed rather than echoed verbatim. Covers Java EL, Freemarker, Velocity, Spring SpEL, Groovy, Ruby ERB, and Jinja2/Twig via URL-encoded payloads. Confirmed SSTI can escalate to remote code execution.
+  description: Detects server-side template injection by injecting a math expression (7777*7777=60481729) into common URL parameters and checking whether the result is computed rather than echoed verbatim. Uses a large, rare product to minimise coincidental matches. Covers Java EL, Freemarker, Velocity, Spring SpEL, Groovy, Ruby ERB, and Jinja2/Twig via URL-encoded payloads. Confirmed SSTI can escalate to remote code execution.
   tags: misconfig,ssti,template-injection,rce,injection,web
   metadata:
     max-request: 20
@@ -16,26 +16,26 @@ http:
 
     payloads:
       ssti_path:
-        - "?q=${558*558}"
-        - "?q=<%= 558*558 %>"
-        - "?q=#{558*558}"
-        - "?q=*{558*558}"
-        - "?search=${558*558}"
-        - "?search=%7B%7B558*558%7D%7D"
-        - "?name=${558*558}"
-        - "?name=%7B%7B558*558%7D%7D"
-        - "?template=${558*558}"
-        - "?template=%7B%7B558*558%7D%7D"
-        - "?page=${558*558}"
-        - "?page=%7B%7B558*558%7D%7D"
-        - "?input=${558*558}"
-        - "?message=${558*558}"
-        - "?text=${558*558}"
-        - "?content=${558*558}"
-        - "?title=${558*558}"
-        - "?keyword=%7B%7B558*558%7D%7D"
-        - "?q=%7B%7B558*558%7D%7D"
-        - "?data=${558*558}"
+        - "?q=${7777*7777}"
+        - "?q=<%= 7777*7777 %>"
+        - "?q=#{7777*7777}"
+        - "?q=*{7777*7777}"
+        - "?search=${7777*7777}"
+        - "?search=%7B%7B7777*7777%7D%7D"
+        - "?name=${7777*7777}"
+        - "?name=%7B%7B7777*7777%7D%7D"
+        - "?template=${7777*7777}"
+        - "?template=%7B%7B7777*7777%7D%7D"
+        - "?page=${7777*7777}"
+        - "?page=%7B%7B7777*7777%7D%7D"
+        - "?input=${7777*7777}"
+        - "?message=${7777*7777}"
+        - "?text=${7777*7777}"
+        - "?content=${7777*7777}"
+        - "?title=${7777*7777}"
+        - "?keyword=%7B%7B7777*7777%7D%7D"
+        - "?q=%7B%7B7777*7777%7D%7D"
+        - "?data=${7777*7777}"
 
     attack: batteringram
     redirects: false
@@ -49,18 +49,21 @@ http:
       - type: word
         part: body
         words:
-          - "311364"
+          - "60481729"
 
       - type: dsl
         dsl:
-          - "!contains(body, '558*558')"
-          - "!contains(body, '558%2A558')"
+          # Confirm the operands are NOT echoed verbatim — proves evaluation, not just reflection.
+          - "!contains(body, '7777*7777')"
+          - "!contains(body, '7777%2A7777')"
+          # Guard against the computed result appearing as part of a longer number (e.g. ID/timestamp).
+          - "regex('(?:^|[^0-9])60481729(?:[^0-9]|$)', body)"
 
     extractors:
       - type: regex
         part: body
         regex:
-          - "311364[^0-9]{0,30}"
+          - "(?:[^0-9])60481729(?:[^0-9]|$).{0,30}"
       - type: dsl
         name: status
         dsl:

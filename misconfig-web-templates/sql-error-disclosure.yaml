@@ -46,11 +46,11 @@ http:
     stop-at-first-match: true
     matchers-condition: and
     matchers:
+      # 503 is a gateway/upstream timeout, not a SQL error response — removed to cut FPs.
       - type: status
         status:
           - 200
           - 500
-          - 503
 
       - type: word
         part: body

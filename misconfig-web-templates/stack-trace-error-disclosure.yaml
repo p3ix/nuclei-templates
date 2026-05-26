@@ -42,6 +42,10 @@ http:
           - 502
           - 503
 
+      # Removed generic terms that fire on documentation / tutorials:
+      # "Django", "Flask", "Express error", "TypeError:", "ReferenceError:",
+      # "goroutine ", "at org.", "RuntimeException".
+      # Kept patterns that are unambiguous stack-trace / crash output indicators.
       - type: word
         part: body
         condition: or
@@ -49,22 +53,14 @@ http:
           - "Traceback (most recent call last)"
           - "Stack trace:"
           - "at java."
-          - "at org."
           - "NullPointerException"
-          - "RuntimeException"
           - "Symfony\\Component\\Debug"
           - "Illuminate\\"
-          - "Django"
-          - "Flask"
-          - "Express error"
-          - "TypeError:"
-          - "ReferenceError:"
           - "Warning: require("
           - "Fatal error:"
           - "System.Web.HttpException"
           - "Microsoft .NET Framework"
-          - "goroutine "
-          - "panic:"
+          - "panic: runtime error"
 
       - type: dsl
         dsl:
@@ -74,6 +70,6 @@ http:
       - type: regex
         part: body
         regex:
-          - "(?im)(Traceback \\(most recent call last\\)|Stack trace:|NullPointerException|RuntimeException|TypeError:|ReferenceError:|Fatal error:|System\\.Web\\.HttpException|goroutine |panic:).{0,180}"
+          - "(?im)(Traceback \\(most recent call last\\)|Stack trace:|NullPointerException|Fatal error:|System\\.Web\\.HttpException|panic: runtime error).{0,180}"
           - "(?im)(/[A-Za-z0-9_./-]+\\.(php|py|rb|js|ts|java|go|cs):[0-9]+|[A-Z]:\\\\[^\\r\\n<>]+:[0-9]+)"
 

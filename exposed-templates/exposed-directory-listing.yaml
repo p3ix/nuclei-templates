@@ -76,6 +76,8 @@ http:
         status:
           - 200
 
+      # Only match unambiguous directory-listing signatures — "Last modified", "Name</th>", and bare
+      # "href=" fire on essentially any HTML page and cause massive FP rates.
       - type: word
         part: body
         condition: or
@@ -83,20 +85,17 @@ http:
           - "Index of /"
           - "Directory Listing For"
           - "Directory listing for"
-          - "Parent Directory"
-          - "<title>Index of"
           - "[To Parent Directory]"
-          - "Last modified"
-          - "Name</th>"
+          - "<title>Index of"
 
       - type: word
         part: body
         condition: or
         words:
-          - "href="
-          - "../"
           - "?C=N;O=D"
           - "?C=M;O=A"
+          - "href=\"../\""
+          - "Parent Directory</a>"
 
       - type: dsl
         dsl:

@@ -36,14 +36,16 @@ http:
           - 200
           - 204
 
-      # The invented method must be reflected — any fixed allowlist would not include FOOBAR
-      - type: word
+      # FOOBAR must appear specifically in Access-Control-Allow-Methods — a plain word search on
+      # the full header blob would match if any other echoed header (X-Request-Method, debug headers)
+      # happens to contain the string. The regex pins it to the correct header.
+      - type: regex
         part: header
-        words:
-          - "FOOBAR"
-        case-insensitive: true
+        regex:
+          - "(?i)access-control-allow-methods:[^\r\n]*foobar"
 
-      # ACAO must also be present — confirms this is a real CORS preflight response
+      # ACAO must also be present — confirms this is a real CORS preflight response, not an error page
+      # that happens to echo request headers.
       - type: word
         part: header
         words:

@@ -53,7 +53,9 @@ http:
           - "status_code_1 == 200 || status_code_1 == 204"
           - "contains(tolower(header_1), 'access-control-allow-private-network: true')"
           - "contains(tolower(header_1), 'access-control-allow-credentials: true')"
-          - "contains(tolower(header_1), 'access-control-allow-origin: https://pna-bugbounty.example') || contains(tolower(header_1), 'access-control-allow-origin: *')"
+          # ACAO:* removed — browsers reject ACAO:* combined with ACAC:true per spec (no real exploit).
+          # Only a reflected canary confirms the server blindly trusts arbitrary origins.
+          - "contains(tolower(header_1), 'access-control-allow-origin: https://pna-bugbounty.example')"
           - "(status_code_2 == 401 || status_code_2 == 403) && (contains(tolower(header_2), 'www-authenticate:') || contains(tolower(body_2), 'unauthorized') || contains(tolower(body_2), 'forbidden') || contains(tolower(body_2), 'authentication') || contains(tolower(body_2), 'login')) || (status_code_2 == 200 && (contains(tolower(header_2), 'content-type: application/json') || contains(tolower(header_2), 'content-type: application/problem+json')) && regex('(?i)(user|username|email|account|token|role|session|profile|tenant|organization)\\s*:', body_2))"
 
     extractors:

@@ -67,9 +67,12 @@ http:
     matchers:
       - type: dsl
         dsl:
-          - "body_1 != body_2 || status_code_1 != status_code_2"
+          # Error/debug content must appear in probe response but NOT in baseline — prevents always-on
+          # error pages and dynamic-content drift (CSRF tokens, timestamps) from triggering a match.
           - >-
-            regex('(?i)(stack trace|traceback \\(most recent call last\\)|exception|error at line|undefined variable|syntax error|warning:|fatal error|notice:|xdebug|whoops|symfony profiler|laravel debugbar|django debug|rails application trace|express error|java\\.lang\\.|at com\\.|at org\\.|nullpointerexception|sqlexception|pdoexception|queryexception|sql syntax|server variables|request headers|environment variables|APP_DEBUG|DEBUG\\s*=\\s*true|debug mode|verbose mode|internal server error.{0,120}(trace|exception|file|line|path)|/var/www|/usr/local|/home/[a-z0-9_.-]+|C:\\\\\\\\Users|C:\\\\\\\\inetpub|Django/[0-9]|Laravel Framework|Symfony/[0-9]|Ruby on Rails|Express/[0-9]|PHP/[0-9]|Node\\.js)', body_2)
+            regex('(?i)(stack trace|traceback \\(most recent call last\\)|exception|error at line|undefined variable|syntax error|warning:|fatal error|notice:|xdebug|whoops|symfony profiler|laravel debugbar|rails application trace|java\\.lang\\.|nullpointerexception|sqlexception|pdoexception|queryexception|sql syntax|server variables|environment variables|APP_DEBUG|DEBUG\\s*=\\s*true|debug mode|verbose mode|internal server error.{0,120}(trace|exception|file|line|path)|/var/www|/usr/local|/home/[a-z0-9_.-]+|C:\\\\\\\\Users|C:\\\\\\\\inetpub|Laravel Framework|Symfony/[0-9]|Ruby on Rails|PHP/[0-9])', body_2)
+          - >-
+            !regex('(?i)(stack trace|traceback \\(most recent call last\\)|exception|error at line|undefined variable|syntax error|warning:|fatal error|notice:|xdebug|whoops|symfony profiler|laravel debugbar|rails application trace|java\\.lang\\.|nullpointerexception|sqlexception|pdoexception|queryexception|sql syntax|server variables|environment variables|APP_DEBUG|DEBUG\\s*=\\s*true|debug mode|verbose mode|internal server error.{0,120}(trace|exception|file|line|path)|/var/www|/usr/local|/home/[a-z0-9_.-]+|C:\\\\\\\\Users|C:\\\\\\\\inetpub|Laravel Framework|Symfony/[0-9]|Ruby on Rails|PHP/[0-9])', body_1)
           - "!contains(tolower(body_2), '<title>404')"
           - "!contains(tolower(body_2), 'page not found')"
           - "len(body_2) < 20971520"

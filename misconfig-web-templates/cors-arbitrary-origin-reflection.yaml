@@ -37,17 +37,40 @@ http:
         status:
           - 200
 
+      # ACAO must reflect exactly the canary and be pinned to the header name —
+      # checking only the domain substring fires on any header that echoes the Origin
+      # (CSP connect-src, Link, X-Echo-*, etc.).
       - type: word
         part: header
         words:
-          - "arbitrary-cors-probe.example.com"
+          - "access-control-allow-origin: https://arbitrary-cors-probe.example.com"
         case-insensitive: true
 
-      - type: dsl
-        dsl:
-          - "contains(tolower(header), 'access-control-allow-origin:')"
-          - "!contains(tolower(header), 'access-control-allow-credentials: true')"
-          - "contains(tolower(header), 'application/json') || len(body) > 30"
+      # This template covers the no-credentials case; with-credentials is cors-origin-reflection-with-credentials.
+      - type: word
+        part: header
+        negative: true
+        words:
+          - "access-control-allow-credentials: true"
+        case-insensitive: true
+
+      # Require a non-HTML API response — arbitrary ACAO on public HTML pages is usually intentional.
+      # "len(body) > 30" matched any non-empty response and was removed.
+      - type: regex
+        part: header
+        regex:
+          - "(?i)content-type:\\s*(application/json|application/xml|application/|text/plain|text/xml)"
+
+      # Exclude WAF/challenge interception pages — not real CORS responses.
+      - type: word
+        part: body
+        negative: true
+        words:
+          - "captcha"
+          - "bot detection"
+          - "unauthorized"
+          - "unauthenticated"
+        case-insensitive: true
 
     extractors:
       - type: regex
