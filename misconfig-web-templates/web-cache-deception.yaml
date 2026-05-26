@@ -1,0 +1,109 @@
+id: web-cache-deception
+
+info:
+  name: Web Cache Deception - Static Extension on Dynamic Path
+  author: p3i
+  severity: medium
+  description: >
+    Probes for Web Cache Deception vulnerabilities where authenticated dynamic
+    pages are cached when a static file extension is appended to the URL. The
+    attack works by tricking a victim into visiting a URL like /profile/picture.css
+    — the application ignores the suffix and serves the authenticated profile page,
+    but the cache (CDN or reverse proxy) stores it as a static asset keyed by
+    the full URL. A subsequent unauthenticated request to the same URL retrieves
+    the cached sensitive page. This template tests the vulnerability by checking
+    if adding static extensions to authenticated endpoints changes the caching
+    behavior (presence of cache-related headers like X-Cache: Hit, Age:, or
+    Cache-Control: public) while still returning the same content as the base path.
+  reference:
+    - https://portswigger.net/web-security/web-cache-deception
+    - https://omergil.blogspot.com/2017/02/web-cache-deception-attack.html
+  tags: cache,deception,web-cache,caching,information-disclosure,cdn
+  metadata:
+    max-request: 8
+
+http:
+  - raw:
+      # Request 1: baseline request to the authenticated path
+      - |
+        GET /profile HTTP/1.1
+        Host: {{Hostname}}
+        Accept: text/html,*/*
+
+      # Request 2: same path with a static extension that may be cached
+      - |
+        GET /profile/wcd-test-{{randstr}}.css HTTP/1.1
+        Host: {{Hostname}}
+        Accept: text/html,*/*
+
+    req-condition: true
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - "status_code_1 == 200 || status_code_1 == 302"
+          - "status_code_2 == 200"
+
+      # Cache accepted the request (not a 404 on the static extension)
+      - type: dsl
+        dsl:
+          - >-
+            contains(tolower(header_2), 'cache-control: public') ||
+            contains(tolower(header_2), 'x-cache:') ||
+            contains(tolower(header_2), 'age:') ||
+            contains(tolower(header_2), 'cf-cache-status:') ||
+            contains(tolower(header_2), 'x-cache-hits:')
+
+      # Both responses have similar content length (same page being served)
+      - type: dsl
+        dsl:
+          - "len(body_2) > 100"
+
+    extractors:
+      - type: regex
+        part: header_2
+        regex:
+          - "(?i)cache-control: [^\r\n]+"
+          - "(?i)x-cache: [^\r\n]+"
+          - "(?i)cf-cache-status: [^\r\n]+"
+          - "(?i)age: [^\r\n]+"
+
+  - raw:
+      # Same pattern for /account path
+      - |
+        GET /account HTTP/1.1
+        Host: {{Hostname}}
+        Accept: text/html,*/*
+
+      - |
+        GET /account/wcd-test-{{randstr}}.js HTTP/1.1
+        Host: {{Hostname}}
+        Accept: text/html,*/*
+
+    req-condition: true
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - "status_code_1 == 200 || status_code_1 == 302"
+          - "status_code_2 == 200"
+
+      - type: dsl
+        dsl:
+          - >-
+            contains(tolower(header_2), 'cache-control: public') ||
+            contains(tolower(header_2), 'x-cache:') ||
+            contains(tolower(header_2), 'age:') ||
+            contains(tolower(header_2), 'cf-cache-status:')
+
+      - type: dsl
+        dsl:
+          - "len(body_2) > 100"
+
+    extractors:
+      - type: regex
+        part: header_2
+        regex:
+          - "(?i)cache-control: [^\r\n]+"
+          - "(?i)x-cache: [^\r\n]+"
+          - "(?i)cf-cache-status: [^\r\n]+"

@@ -1,0 +1,113 @@
+id: exposed-vaultwarden
+
+info:
+  name: Exposed Vaultwarden Self-Hosted Password Manager
+  author: p3i
+  severity: critical
+  description: >
+    Detects Vaultwarden (unofficial Bitwarden-compatible server, formerly bitwarden_rs)
+    instances accessible without proper configuration. Vaultwarden is a self-hosted
+    password manager that stores all of an organization's or individual's passwords,
+    secret notes, credit cards, and secure documents. While the data is encrypted
+    client-side, exposed admin panel access (if ADMIN_TOKEN is not set or uses a
+    weak token) allows: creating new admin accounts, accessing organization
+    configuration, managing users, and potentially enabling features that assist
+    in account takeover. The admin panel at /admin requires no credentials when
+    ADMIN_TOKEN is not configured (a common misconfiguration). The API endpoints
+    can reveal the number of users and organizations registered.
+  reference:
+    - https://github.com/dani-garcia/vaultwarden/wiki/Enabling-admin-page
+    - https://github.com/dani-garcia/vaultwarden
+  tags: exposure,vaultwarden,bitwarden,password-manager,secrets,admin-panel,critical
+  metadata:
+    max-request: 6
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/admin"
+      - "{{BaseURL}}/admin/users"
+      - "{{BaseURL}}/admin/organizations"
+      - "{{BaseURL}}/admin/diagnostics"
+      - "{{BaseURL}}/api/config"
+      - "{{BaseURL}}/"
+
+    headers:
+      Accept: "text/html,application/json,*/*"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "Vaultwarden Admin Panel"
+          - "vaultwarden"
+          - "bitwarden_rs"
+          - "Bitwarden"
+          - "\"serverVersion\":"
+          - "\"gitHash\":"
+
+      - type: dsl
+        dsl:
+          - >-
+            contains(tolower(body), 'vaultwarden') ||
+            contains(tolower(body), 'bitwarden_rs') ||
+            (contains(tolower(body), 'bitwarden') && contains(body, 'serverVersion'))
+
+      # Must not be just the login page requiring admin token
+      - type: dsl
+        dsl:
+          - >-
+            !contains(tolower(body), 'admin token') ||
+            contains(tolower(body), 'users') ||
+            contains(tolower(body), 'vaultwarden admin panel')
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(serverVersion|gitHash|version)"\s*:\s*"[^"]{1,100}"'
+          - "(?i)vaultwarden[^<]{0,50}v?\\d+\\.\\d+\\.\\d+"
+
+  # Check API for version info (no auth needed for version)
+  - method: GET
+    path:
+      - "{{BaseURL}}/api/config"
+      - "{{BaseURL}}/identity/connect/token"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"serverVersion\":"
+          - "\"gitHash\":"
+          - "\"object\":\"config\""
+
+      - type: dsl
+        dsl:
+          - "contains(body, 'serverVersion') || contains(body, 'gitHash')"
+          - "!contains(tolower(body), '<html')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"serverVersion"\s*:\s*"([^"]{1,30})"'

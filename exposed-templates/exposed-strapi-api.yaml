@@ -1,0 +1,86 @@
+id: exposed-strapi-api
+
+info:
+  name: Exposed Strapi Headless CMS API Without Authentication
+  author: p3i
+  severity: high
+  description: >
+    Detects Strapi (open-source headless CMS) instances with the admin API or
+    content API accessible without authentication. Strapi provides REST and
+    GraphQL APIs for content management — it is one of the most widely deployed
+    open-source CMS platforms. When the content-type API is accessible without
+    a JWT (Strapi v4 uses JWT-based auth for the API), and if public role
+    permissions are too permissive, an attacker can: list all content types and
+    their schemas, read all published content including user-generated data, and
+    access the /api endpoint explorer. The admin panel (/admin) sometimes has
+    self-registration enabled, and Strapi v3 had documented authentication bypass
+    vulnerabilities. The /api/users-permissions/roles endpoint reveals role
+    configurations.
+  reference:
+    - https://docs.strapi.io/dev-docs/configurations/api-tokens
+    - https://docs.strapi.io/dev-docs/plugins/users-permissions
+  tags: exposure,strapi,cms,headless,api,content,nodejs
+  metadata:
+    max-request: 7
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/api"
+      - "{{BaseURL}}/api/users-permissions/roles"
+      - "{{BaseURL}}/api/content-type-builder/content-types"
+      - "{{BaseURL}}/api/users"
+      - "{{BaseURL}}/api/upload/files?pageSize=5"
+      - "{{BaseURL}}/api/users-permissions/permissions"
+      - "{{BaseURL}}/admin/init"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"strapiVersion\":"
+          - "\"strapi\":"
+          - "\"contentTypes\":"
+          - "\"pluginOptions\":"
+          - "\"attributesCount\":"
+          - "\"relationalAttributes\":"
+          - "\"isLoading\":"
+          - "\"registrationAllowed\":"
+          - "\"communityEdition\":"
+
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'strapiVersion') ||
+            contains(body, 'registrationAllowed') ||
+            contains(body, 'communityEdition') ||
+            contains(body, 'relationalAttributes') ||
+            (contains(body, 'contentTypes') && contains(body, 'pluginOptions'))
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(strapiVersion|name|kind|collectionName)"\s*:\s*"?[^",}{]{1,120}"?'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

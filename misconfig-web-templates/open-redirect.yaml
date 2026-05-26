@@ -1,0 +1,78 @@
+id: open-redirect
+
+info:
+  name: Open Redirect - URL Parameter Manipulation
+  author: p3i
+  severity: medium
+  description: >
+    Detects open redirect vulnerabilities where user-supplied URL parameters
+    are used as redirect destinations without validation. Open redirects allow
+    attackers to craft legitimate-looking URLs (on the target domain) that
+    redirect victims to malicious sites — commonly used in phishing campaigns,
+    OAuth token theft, and as auxiliary steps in SSRF attacks. This template
+    tests common redirect parameter names with an external canary URL and detects
+    server-side redirects (3xx) whose Location header points to the injected URL.
+    Detection requires a Location header containing the canary domain, which
+    distinguishes true open redirects from sites that just accept the parameter
+    without acting on it.
+  reference:
+    - https://portswigger.net/web-security/dom-based/open-redirection
+    - https://cheatsheetseries.owasp.org/cheatsheets/Unvalidated_Redirects_and_Forwards_Cheat_Sheet.html
+  tags: redirect,open-redirect,phishing,misconfig,validation
+  metadata:
+    max-request: 20
+
+variables:
+  canary: "https://open-redirect-test.example.com/canary"
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/?redirect={{canary}}"
+      - "{{BaseURL}}/?url={{canary}}"
+      - "{{BaseURL}}/?next={{canary}}"
+      - "{{BaseURL}}/?return={{canary}}"
+      - "{{BaseURL}}/?returnUrl={{canary}}"
+      - "{{BaseURL}}/?return_url={{canary}}"
+      - "{{BaseURL}}/?goto={{canary}}"
+      - "{{BaseURL}}/?target={{canary}}"
+      - "{{BaseURL}}/?destination={{canary}}"
+      - "{{BaseURL}}/?redir={{canary}}"
+      - "{{BaseURL}}/?r={{canary}}"
+      - "{{BaseURL}}/?to={{canary}}"
+      - "{{BaseURL}}/?forward={{canary}}"
+      - "{{BaseURL}}/?continue={{canary}}"
+      - "{{BaseURL}}/?back={{canary}}"
+      - "{{BaseURL}}/login?redirect={{canary}}"
+      - "{{BaseURL}}/login?next={{canary}}"
+      - "{{BaseURL}}/logout?redirect={{canary}}"
+      - "{{BaseURL}}/logout?next={{canary}}"
+      - "{{BaseURL}}/auth/callback?redirect={{canary}}"
+
+    headers:
+      Accept: "text/html,*/*"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 301
+          - 302
+          - 303
+          - 307
+          - 308
+
+      # Location header must contain the canary domain
+      - type: regex
+        part: header
+        regex:
+          - "(?i)location:\\s*https?://open-redirect-test\\.example\\.com"
+
+    extractors:
+      - type: regex
+        part: header
+        name: redirect-location
+        regex:
+          - "(?i)location: [^\r\n]+"

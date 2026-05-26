@@ -1,0 +1,85 @@
+id: exposed-directus-api
+
+info:
+  name: Exposed Directus Headless CMS API Without Authentication
+  author: p3i
+  severity: high
+  description: >
+    Detects Directus (open-source headless CMS and data platform) instances
+    with the API accessible without authentication. Directus provides a REST and
+    GraphQL API over any SQL database — collections in Directus map to database
+    tables. When configured with public role permissions or when the public role
+    has read access to sensitive collections, an attacker can: list all available
+    collections and their field schemas (database structure), read records from
+    any publicly accessible collection (which may include user data, content,
+    credentials, or configuration), and access the API explorer. Default Directus
+    installations restrict public access, but misconfigured instances or those
+    using Directus for internal tools may expose sensitive data.
+  reference:
+    - https://docs.directus.io/reference/authentication.html
+    - https://docs.directus.io/reference/system/collections.html
+  tags: exposure,directus,cms,headless,database,api,records
+  metadata:
+    max-request: 7
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/server/info"
+      - "{{BaseURL}}/server/health"
+      - "{{BaseURL}}/collections"
+      - "{{BaseURL}}/fields"
+      - "{{BaseURL}}/users/me"
+      - "{{BaseURL}}/settings"
+      - "{{BaseURL}}/flows"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"directus\":"
+          - "\"version\":"
+          - "\"node\":"
+          - "\"collection\":"
+          - "\"accountability\":"
+          - "\"meta\":"
+          - "\"schema\":"
+          - "\"singleton\":"
+          - "\"note\":"
+
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, '"directus"') ||
+            (contains(body, 'collection') && contains(body, 'singleton')) ||
+            (contains(body, 'collection') && contains(body, 'accountability')) ||
+            (contains(body, 'schema') && contains(body, 'note') && contains(body, 'meta'))
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+          - "!contains(body, '\"errors\":[{\"message\":\"You don\\'t have permission')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(version|collection|accountability|note)"\s*:\s*"?[^",}{]{1,100}"?'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

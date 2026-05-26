@@ -1,0 +1,87 @@
+id: exposed-harbor-registry
+
+info:
+  name: Exposed Harbor Container Registry API Without Authentication
+  author: p3i
+  severity: high
+  description: >
+    Detects Harbor (enterprise open-source container registry) instances with
+    the API accessible without authentication or with default admin credentials.
+    Harbor is a CNCF graduated project used to store Docker/OCI container images,
+    Helm charts, and other artifacts in enterprise Kubernetes environments.
+    When accessible without authentication (Harbor allows unauthenticated access
+    to public projects by default), an attacker can: enumerate all public repositories
+    and container images (which may contain proprietary application code), pull
+    container images to analyze their layers for secrets or vulnerabilities, list
+    all users and organizations, and access vulnerability scan results for images.
+    With admin/Harbor12345 (the documented default password), full control is possible.
+  reference:
+    - https://goharbor.io/docs/latest/administration/managing-users/
+    - https://goharbor.io/docs/latest/install-config/harbor-yml-configure/
+  tags: exposure,harbor,registry,docker,kubernetes,container,images,credentials
+  metadata:
+    max-request: 7
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/api/v2.0/projects?page=1&page_size=5"
+      - "{{BaseURL}}/api/v2.0/repositories?page=1&page_size=5"
+      - "{{BaseURL}}/api/v2.0/systeminfo"
+      - "{{BaseURL}}/api/v2.0/statistics"
+      - "{{BaseURL}}/api/v2.0/users?page=1&page_size=5"
+      - "{{BaseURL}}/api/v2.0/systeminfo/volumes"
+      - "{{BaseURL}}/api/v2.0/health"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"harbor_version\":"
+          - "\"registry_url\":"
+          - "\"has_ca_root\":"
+          - "\"clair_url\":"
+          - "\"notary_url\":"
+          - "\"project_count\":"
+          - "\"repo_count\":"
+          - "\"with_chartmuseum\":"
+          - "\"with_notary\":"
+          - "\"authproxy_settings\":"
+
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'harbor_version') ||
+            contains(body, 'with_chartmuseum') ||
+            contains(body, 'with_notary') ||
+            contains(body, 'authproxy_settings') ||
+            (contains(body, 'project_count') && contains(body, 'repo_count')) ||
+            (contains(body, 'registry_url') && contains(body, 'has_ca_root'))
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(harbor_version|registry_url|project_count|repo_count)"\s*:\s*"?[^",}{]{1,150}"?'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

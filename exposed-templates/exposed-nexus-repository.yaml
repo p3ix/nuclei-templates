@@ -1,0 +1,86 @@
+id: exposed-nexus-repository
+
+info:
+  name: Exposed Sonatype Nexus Repository Manager Without Authentication
+  author: p3i
+  severity: high
+  description: >
+    Detects Sonatype Nexus Repository Manager instances with the API accessible
+    without authentication or with default credentials (admin/admin123 for Nexus 2,
+    admin/admin123 or auto-generated for Nexus 3). Nexus is the most widely used
+    artifact repository manager in enterprises — it stores Maven/Gradle JARs,
+    npm packages, PyPI packages, Docker images, NuGet packages, and raw binaries.
+    When accessible without authentication, an attacker can: browse all hosted
+    repositories (which may contain proprietary internal libraries), download
+    internal packages revealing business logic and architecture, list all configured
+    repository proxies (revealing internal artifact dependencies), and in some
+    configurations access the admin panel. Internal packages often contain
+    database credentials, API keys, and configuration secrets embedded in code.
+  reference:
+    - https://help.sonatype.com/repomanager3/product-information/sonatype-nexus-repository-administration/access-control
+    - https://help.sonatype.com/repomanager3/nexus-repository-administration/security
+  tags: exposure,nexus,sonatype,repository,artifacts,maven,npm,docker,supply-chain
+  metadata:
+    max-request: 7
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/service/rest/v1/repositories"
+      - "{{BaseURL}}/service/rest/v1/assets?repository=maven-central"
+      - "{{BaseURL}}/service/rest/v1/status"
+      - "{{BaseURL}}/service/rest/v1/status/check"
+      - "{{BaseURL}}/service/rest/v1/search?limit=5"
+      - "{{BaseURL}}/nexus/service/local/status"
+      - "{{BaseURL}}/service/local/status"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"nexusVersion\":"
+          - "\"edition\":"
+          - "\"format\":"
+          - "\"versionPolicy\":"
+          - "\"writePolicy\":"
+          - "\"blobStoreName\":"
+          - "\"online\":"
+          - "\"appName\":\"Nexus\""
+          - "\"availabilityReason\":"
+
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'nexusVersion') ||
+            contains(body, '"appName":"Nexus"') ||
+            contains(body, 'blobStoreName') ||
+            (contains(body, 'versionPolicy') && contains(body, 'writePolicy')) ||
+            (contains(body, 'format') && contains(body, 'online') && contains(body, 'edition'))
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(nexusVersion|edition|format|name|url)"\s*:\s*"?[^",}{]{1,150}"?'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"
