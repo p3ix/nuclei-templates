@@ -63,22 +63,18 @@ http:
         status:
           - 200
 
+      # Generic HAL/REST JSON keys removed: "_links", "self", "env", "beans", "handler"
+      # — these appear in any standard REST API and cause massive FP rates.
+      # Kept only terms that are unambiguous Spring Boot Actuator / JVM indicators.
       - type: word
         part: body
         condition: or
         words:
-          - "\"_links\""
-          - "\"self\""
-          - "\"env\""
           - "\"propertySources\""
           - "\"activeProfiles\""
           - "\"systemProperties\""
           - "\"configprops\""
-          - "\"contexts\""
-          - "\"beans\""
-          - "\"mappings\""
           - "\"dispatcherServlets\""
-          - "\"handler\""
           - "\"predicate\""
           - "JAVA_HOME"
           - "spring.datasource"
@@ -88,17 +84,16 @@ http:
           - "# HELP"
           - "JAVA PROFILE"
           - "org.springframework"
-          - "\"sessions\""
           - "\"sessionId\""
           - "\"httpExchanges\""
           - "\"auditEvents\""
           - "\"startupSteps\""
-          - "flyway"
-          - "liquibase"
 
       - type: dsl
         dsl:
           - "len(body) < 104857600"
+          # Actuator endpoints return JSON or plain text — HTML responses are catch-alls or error pages.
+          - "!contains(tolower(body), '<html') && !contains(tolower(header), 'content-type: text/html')"
 
     extractors:
       - type: regex

@@ -1,15 +1,36 @@
 id: exposed-laravel-telescope
 
 info:
-  name: Exposed Laravel Telescope
+  name: Exposed Laravel Telescope Debug Dashboard
   author: p3i
   severity: high
-  description: Detects exposed Laravel Telescope UI and API endpoints that can leak requests, exceptions, queries, jobs, cache events, logs, mail, notifications, and sensitive payloads.
+  description: >
+    Detects publicly accessible Laravel Telescope debug dashboards. Telescope captures
+    every HTTP request (headers, bodies, session data), all SQL queries and their
+    bindings, exception stack traces, queue jobs, scheduled commands, Redis operations,
+    and mail previews in real time. Unauthenticated access directly exposes user PII
+    from captured requests, database credentials from query errors, secret keys from
+    exception traces, and the complete application data flow.
+  reference:
+    - https://laravel.com/docs/telescope
   tags: exposure,laravel,telescope,php,debug
   metadata:
-    max-request: 34
+    max-request: 18
+
+flow: http(1) && http(2)
 
 http:
+  # Baseline: reject catch-all hosts (WordPress, SPAs, etc.) that serve 200 for any path.
+  - method: GET
+    path:
+      - "{{BaseURL}}/nuclei-fp-check-{{randstr}}-notexist"
+    redirects: false
+    matchers:
+      - type: dsl
+        internal: true
+        dsl:
+          - "status_code != 200"
+
   - method: GET
     path:
       - "{{BaseURL}}/telescope"
@@ -31,7 +52,7 @@ http:
       - "{{BaseURL}}/telescope/api/mail"
 
     redirects: false
-    max-redirects: 3
+    max-redirects: 2
     stop-at-first-match: true
     matchers-condition: and
     matchers:
@@ -39,29 +60,35 @@ http:
         status:
           - 200
 
+      # Require unambiguous Telescope-specific strings — "Illuminate\" removed because it
+      # appears in exception pages of ANY Laravel app, not just Telescope.
+      # "familyHash" and "batchId" are Telescope internal model fields.
       - type: word
         part: body
         condition: or
         words:
           - "Laravel Telescope"
-          - "\"batchId\""
           - "\"familyHash\""
-          - "telescope/api/"
-          - "Illuminate\\"
+          - "\"batchId\""
+          - "telescope/telescope.js"
+          - "telescope/app.js"
+          - "telescopeScriptVariables"
 
+      # Disambiguate: require the indicator appears in a Telescope-context response,
+      # not just any Laravel page that happened to mention Telescope in a blog link.
       - type: dsl
         dsl:
-          - "(!contains(tolower(header), 'content-type: text/html') && contains(body, 'telescope/api/')) || contains(tolower(body), 'laravel telescope') || contains(body, 'Illuminate\\\\')"
-          - "!contains(body, '__NEXT_DATA__') && !contains(body, 'react-root') && !contains(body, 'window.__')"
-          - "!contains(tolower(body), 'wp-content') && !contains(tolower(body), 'wp-includes') && !contains(tolower(body), 'woocommerce') && !contains(tolower(body), 'wpemoji') && !contains(tolower(body), 'gravityforms') && !contains(tolower(body), 'wpml')"
-          - "!contains(tolower(body), 'data-astro-cid') && !contains(tolower(body), '_astro/') && !contains(tolower(body), '__nuxt') && !contains(tolower(body), 'ng-version') && !contains(tolower(body), 'data-reactroot')"
+          - >-
+            contains(body, 'familyHash') ||
+            contains(body, 'batchId') ||
+            (contains(tolower(body), 'laravel telescope') && (contains(tolower(header), 'application/json') || contains(body, 'telescope/telescope.js') || contains(body, 'telescopeScriptVariables')))
           - "len(body) < 52428800"
 
     extractors:
       - type: regex
         part: body
         regex:
-          - "(?im)(authorization|bearer|cookie|password|token|api[_-]?key|exception|Illuminate\\\\|/telescope/api/[a-z0-9_-]+).{0,180}"
+          - "(?im)(authorization|bearer|cookie|password|token|api[_-]?key|exception|/telescope/api/[a-z0-9_-]+).{0,180}"
       - type: dsl
         name: status
         dsl:

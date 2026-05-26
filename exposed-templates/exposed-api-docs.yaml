@@ -93,6 +93,8 @@ http:
         status:
           - 200
 
+      # Removed ultra-generic JSON keys: "\"info\"", "\"paths\"", "\"item\"" — these
+      # appear in any REST API response and generate massive FP rates.
       - type: word
         part: body
         condition: or
@@ -104,17 +106,12 @@ http:
           - "Swagger UI"
           - "swagger-ui"
           - "ReDoc"
-          - "GraphQL"
           - "GraphiQL"
           - "GraphQL Playground"
           - "__schema"
-          - "__typename"
-          - "type Query"
-          - "type Mutation"
-          - "type Subscription"
-          - "\"info\""
-          - "\"paths\""
-          - "\"item\""
+          - "type Query {"
+          - "type Mutation {"
+          - "type Subscription {"
           - "\"postman_id\""
           - "_postman_id"
           - "\"asyncapi\""
