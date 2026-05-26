@@ -1,0 +1,84 @@
+id: csp-header-missing-or-weak
+
+info:
+  name: Content Security Policy Missing or Critically Weak
+  author: p3i
+  severity: low
+  description: >
+    Detects web applications that are missing a Content-Security-Policy header
+    or have a critically weak CSP that provides no meaningful XSS protection.
+    The worst CSP configurations include: "unsafe-inline" in script-src (allows
+    inline scripts, defeating the primary XSS protection), "unsafe-eval" in
+    script-src (allows eval/setTimeout with strings), wildcard "*" in script-src
+    (allows loading scripts from any origin), and data: URI in script-src (allows
+    data URI-based script execution). These patterns render CSP ineffective as
+    an XSS mitigation. Templates that detect missing CSP are commonly reported
+    in bug bounties as informational; weak CSP with unsafe-inline is typically
+    low severity but can be upgraded if combined with XSS findings.
+  reference:
+    - https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP
+    - https://csp-evaluator.withgoogle.com/
+    - https://cheatsheetseries.owasp.org/cheatsheets/Content_Security_Policy_Cheat_Sheet.html
+  tags: csp,security-headers,xss,misconfiguration,headers
+  metadata:
+    max-request: 2
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/"
+      - "{{BaseURL}}/login"
+
+    headers:
+      Accept: "text/html,application/xhtml+xml,*/*"
+
+    redirects: true
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      # Page must be HTML (not an API endpoint)
+      - type: word
+        part: header
+        words:
+          - "text/html"
+        case-insensitive: true
+
+      # CSP completely absent OR contains known bypasses
+      - type: dsl
+        dsl:
+          - >-
+            !contains(tolower(header), 'content-security-policy:') ||
+            (contains(tolower(header), 'content-security-policy:') &&
+             (regex("(?i)content-security-policy:[^\r\n]*script-src[^\r\n]*'unsafe-inline'", header) ||
+              regex("(?i)content-security-policy:[^\r\n]*script-src[^\r\n]*'unsafe-eval'", header) ||
+              regex("(?i)content-security-policy:[^\r\n]*script-src[^\r\n]* \\* ", header) ||
+              regex("(?i)content-security-policy:[^\r\n]*default-src[^\r\n]*'unsafe-inline'", header) ||
+              regex("(?i)content-security-policy:[^\r\n]*default-src[^\r\n]*\\*", header)))
+
+      # Only flag actual web applications with a login or home page
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "<form"
+          - "<input"
+          - "<button"
+          - "login"
+          - "sign in"
+          - "password"
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        part: header
+        name: csp-value
+        regex:
+          - "(?i)content-security-policy: [^\r\n]+"
+      - type: dsl
+        name: has-csp
+        dsl:
+          - "contains(tolower(header), 'content-security-policy:')"

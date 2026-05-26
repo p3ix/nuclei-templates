@@ -1,0 +1,109 @@
+id: host-header-injection
+
+info:
+  name: Host Header Injection - Password Reset Poisoning Candidate
+  author: p3i
+  severity: high
+  description: >
+    Detects web applications that reflect the Host header in responses without
+    validation, indicating potential Host Header Injection vulnerabilities.
+    Host header injection can lead to: password reset link poisoning (victim
+    clicks a reset link pointing to attacker's server, leaking the reset token),
+    cache poisoning (if the host is used as a cache key), open redirect via
+    absolute URL generation, and web cache deception. This template probes using
+    a unique canary domain in X-Forwarded-Host and X-Host headers (which many
+    applications trust as the real host) and checks if the injected value appears
+    in the response body or Location header, indicating the server uses it to
+    construct URLs.
+  reference:
+    - https://portswigger.net/web-security/host-header
+    - https://portswigger.net/web-security/host-header/exploiting
+    - https://portswigger.net/research/cracking-the-lens-targeting-https-hidden-attack-surface
+  tags: host-header,injection,password-reset,cache-poisoning,open-redirect
+  metadata:
+    max-request: 6
+
+variables:
+  canary: "hhi-{{randstr(8)}}.hosttest.example"
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/forgot-password"
+      - "{{BaseURL}}/password-reset"
+      - "{{BaseURL}}/auth/forgot-password"
+      - "{{BaseURL}}/account/password-reset"
+      - "{{BaseURL}}/users/password/new"
+      - "{{BaseURL}}/reset"
+
+    headers:
+      X-Forwarded-Host: "{{canary}}"
+      Accept: "text/html,application/xhtml+xml,*/*"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 301
+          - 302
+
+      # Canary reflected in body or Location header
+      - type: dsl
+        dsl:
+          - "contains(body, canary) || contains(header, canary)"
+
+      # Ensure it's not a generic reflection (must be in a URL context)
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'href=\"https://' + canary) ||
+            contains(body, 'href=\"http://' + canary) ||
+            contains(body, 'action=\"https://' + canary) ||
+            contains(body, 'action=\"http://' + canary) ||
+            contains(body, canary + '/') ||
+            regex('(?i)location:\\s*https?://' + canary, header)
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)https?://[^\"'<>\\s]*hosttest\\.example[^\"'<>\\s]*"
+      - type: regex
+        part: header
+        regex:
+          - "(?i)location: [^\r\n]*hosttest\\.example[^\r\n]*"
+
+  - method: POST
+    path:
+      - "{{BaseURL}}/forgot-password"
+      - "{{BaseURL}}/password-reset"
+      - "{{BaseURL}}/auth/forgot-password"
+
+    headers:
+      X-Forwarded-Host: "{{canary}}"
+      Content-Type: "application/x-www-form-urlencoded"
+      Accept: "text/html,application/xhtml+xml,*/*"
+
+    body: "email=test@example.com&_token=csrf_test"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 302
+
+      - type: dsl
+        dsl:
+          - "contains(body, canary) || contains(header, canary)"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)https?://[^\"'<>\\s]*hosttest\\.example[^\"'<>\\s]*"

@@ -1,0 +1,109 @@
+id: exposed-minio-api
+
+info:
+  name: Exposed MinIO Object Storage API Without Authentication
+  author: p3i
+  severity: critical
+  description: >
+    Detects MinIO (S3-compatible self-hosted object storage) instances with
+    the API or web console accessible without authentication or with default
+    credentials (minioadmin/minioadmin). MinIO is widely deployed as a private
+    S3 replacement for storing application data, database backups, user uploads,
+    ML model artifacts, and log archives. When accessible without authentication,
+    an attacker can: list all buckets and their contents, download any stored
+    object (database backups, SSL certificates, application secrets, user data),
+    upload malicious files (which may be served to users), and delete or overwrite
+    data. MinIO's default deployment uses no authentication on the API port (9000)
+    and default credentials on the console port (9001). The presence of the
+    X-Amz-Request-Id header is a reliable MinIO/S3 indicator.
+  reference:
+    - https://min.io/docs/minio/linux/administration/identity-access-management.html
+    - https://github.com/minio/minio
+  tags: exposure,minio,s3,object-storage,credentials,data,backup,critical
+  metadata:
+    max-request: 8
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/minio/health/live"
+      - "{{BaseURL}}/minio/health/ready"
+      - "{{BaseURL}}/minio/health/cluster"
+      - "{{BaseURL}}/"
+      - "{{BaseURL}}/health/live"
+      - "{{BaseURL}}/health/ready"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        condition: or
+        words:
+          - "x-amz-request-id"
+          - "x-minio-deployment-id"
+          - "x-minio-server"
+        case-insensitive: true
+
+      - type: dsl
+        dsl:
+          - >-
+            contains(tolower(header), 'x-amz-request-id') ||
+            contains(tolower(header), 'x-minio-deployment-id') ||
+            contains(tolower(header), 'x-minio-server')
+
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "(?i)x-minio-[^:]+: [^\r\n]+"
+          - "(?i)x-amz-request-id: [^\r\n]+"
+
+  # Check for anonymous bucket listing
+  - method: GET
+    path:
+      - "{{BaseURL}}/?list-type=2&max-keys=5"
+      - "{{BaseURL}}/?max-keys=5"
+
+    headers:
+      Accept: "application/xml,application/json,*/*"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "<ListBucketsResult"
+          - "<ListAllMyBucketsResult"
+          - "<Bucket>"
+          - "<Name>"
+          - "<BucketName>"
+
+      - type: word
+        part: header
+        words:
+          - "x-amz-request-id"
+          - "x-minio"
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "<Name>([^<]{1,100})</Name>"
+          - "<Bucket>.*?<Name>([^<]+)</Name>"

@@ -1,0 +1,116 @@
+id: exposed-mongodb-express
+
+info:
+  name: Exposed mongo-express Web UI Without Authentication
+  author: p3i
+  severity: critical
+  description: >
+    Detects mongo-express (web-based MongoDB admin interface) instances accessible
+    without authentication or with default credentials. mongo-express is a
+    lightweight MongoDB admin UI commonly deployed in development environments
+    but frequently left running in production or exposed unintentionally. When
+    accessible, it provides full MongoDB database access through a web UI:
+    browse all databases and collections, view and edit all documents (which
+    may contain user records, application secrets, session tokens, PII),
+    execute MongoDB queries, drop collections and databases, and import/export
+    data. The default credentials are admin/pass, and many deployments use
+    no authentication at all. mongo-express also had a critical RCE vulnerability
+    (CVE-2019-10758) that allowed command injection through the query interface.
+  reference:
+    - https://github.com/mongo-express/mongo-express
+    - https://www.cvedetails.com/cve/CVE-2019-10758/
+  tags: exposure,mongodb,mongo-express,database,default-credentials,nosql,admin-panel
+  metadata:
+    max-request: 5
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/"
+      - "{{BaseURL}}/db/admin"
+      - "{{BaseURL}}/db/local"
+      - "{{BaseURL}}/db/test"
+
+    headers:
+      Accept: "text/html,application/xhtml+xml,*/*"
+
+    redirects: true
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: and
+        words:
+          - "mongo-express"
+          - "MongoDB"
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "Mongo Express"
+          - "db_name"
+          - "collection_count"
+          - "database_count"
+          - "/db/"
+          - "mongodbVersion"
+          - "document_count"
+
+      - type: dsl
+        dsl:
+          - >-
+            contains(tolower(body), 'mongo-express') &&
+            (contains(tolower(body), 'mongodb') || contains(tolower(body), 'database'))
+          - "!contains(tolower(body), 'mongo-express login')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)mongo-express[^<]{0,50}v?\\d+\\.\\d+\\.\\d+"
+          - "(?i)mongodb[^<]{0,50}v?\\d+\\.\\d+\\.\\d+"
+
+  # Try with default credentials
+  - method: GET
+    path:
+      - "{{BaseURL}}/"
+      - "{{BaseURL}}/db/admin"
+
+    headers:
+      Accept: "text/html,*/*"
+      Authorization: "Basic YWRtaW46cGFzcw=="
+
+    redirects: true
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: and
+        words:
+          - "mongo-express"
+          - "MongoDB"
+
+      - type: word
+        part: body
+        words:
+          - "database_count"
+          - "db_name"
+          - "document_count"
+          - "collection_count"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "(?i)mongodbVersion[^\"]*\"([^\"]{1,30})\""
+          - "(?i)db_name[^\"]*\"([^\"]{1,100})\""

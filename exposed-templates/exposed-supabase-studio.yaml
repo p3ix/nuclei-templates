@@ -1,0 +1,123 @@
+id: exposed-supabase-studio
+
+info:
+  name: Exposed Supabase Self-Hosted Studio and API Without Proper Auth
+  author: p3i
+  severity: critical
+  description: >
+    Detects self-hosted Supabase instances where the Studio admin interface or
+    internal API endpoints are accessible without proper authentication. Supabase
+    is an open-source Firebase alternative built on PostgreSQL — self-hosted
+    deployments expose a Studio dashboard, PostgREST API, GoTrue auth API, and
+    Realtime server. The internal Supabase API (port 8000) and Studio (port 3000)
+    communicate using a service_role JWT that bypasses Row Level Security (RLS)
+    policies. If these internal services are exposed externally, an attacker with
+    the anon key (which is often embedded in frontend JavaScript) may bypass RLS,
+    access the PostgREST API to read all database tables, and in some configurations
+    use the service_role key to access the GoTrue admin API for user management.
+    The service_role JWT bypasses ALL database security policies.
+  reference:
+    - https://supabase.com/docs/guides/self-hosting/docker
+    - https://supabase.com/docs/guides/database/api
+  tags: exposure,supabase,postgresql,baas,firebase-alternative,jwt,database
+  metadata:
+    max-request: 8
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/rest/v1/"
+      - "{{BaseURL}}/auth/v1/health"
+      - "{{BaseURL}}/realtime/v1/health"
+      - "{{BaseURL}}/storage/v1/health"
+      - "{{BaseURL}}/functions/v1/"
+      - "{{BaseURL}}/api/profile"
+      - "{{BaseURL}}/project/default/settings/api"
+      - "{{BaseURL}}/project/default"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"supabase_url\":"
+          - "\"anon_key\":"
+          - "\"service_role_key\":"
+          - "\"jwt_secret\":"
+          - "\"db_host\":"
+          - "\"swagger\":"
+          - "\"swagger2.0\""
+          - "\"PGRST_JWT_SECRET\":"
+
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'supabase_url') ||
+            contains(body, 'anon_key') ||
+            contains(body, 'service_role_key') ||
+            contains(body, 'jwt_secret') ||
+            contains(body, 'PGRST_JWT_SECRET') ||
+            (contains(body, 'db_host') && contains(body, 'swagger'))
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(anon_key|service_role_key|jwt_secret|supabase_url|db_host)"\s*:\s*"[^"]{1,300}"'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"
+
+  # Check PostgREST with default anon key (JWT payload: role=anon, iat=0)
+  - method: GET
+    path:
+      - "{{BaseURL}}/rest/v1/users?limit=5"
+      - "{{BaseURL}}/rest/v1/profiles?limit=5"
+      - "{{BaseURL}}/rest/v1/accounts?limit=5"
+
+    headers:
+      Accept: "application/json"
+      apikey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlhdCI6MTYxMzUzMTk4NSwiZXhwIjo0NzY5MTA1OTg1fQ.6p0sgRHWkFiKFoLh2vYbsYcJqHh3T0-mMKr7kBZ3q4c"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      - type: dsl
+        dsl:
+          - "len(body) > 2"
+          - "!contains(body, '\"message\"') || contains(body, '\"id\"')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(id|email|user_id|created_at)"\s*:\s*"?[^",}{]{1,100}"?'

@@ -1,0 +1,93 @@
+id: exposed-gitea-api
+
+info:
+  name: Exposed Gitea Self-Hosted Git Service Without Authentication
+  author: p3i
+  severity: high
+  description: >
+    Detects Gitea (lightweight self-hosted Git service) instances with the API
+    accessible without authentication on installations configured to allow public
+    access. Gitea stores source code repositories that may contain: hardcoded
+    credentials and API keys in code, database connection strings in config files,
+    private SSH keys and certificates, CI/CD pipeline secrets, infrastructure
+    as code with cloud credentials, and proprietary business logic. When Gitea
+    is configured with REQUIRE_SIGNIN_VIEW=false (the default), unauthenticated
+    users can enumerate all public repositories, users, and organizations via
+    the API. More critically, if the admin has misconfigured visibility settings,
+    private repositories may be inadvertently exposed. User enumeration alone is
+    a significant finding in bug bounty programs targeting internal Gitea instances.
+  reference:
+    - https://docs.gitea.com/administration/config-cheat-sheet#service-service
+    - https://gitea.io/en-us/
+  tags: exposure,gitea,git,source-code,repository,credentials,vcs
+  metadata:
+    max-request: 7
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/api/v1/repos/search?limit=5&token="
+      - "{{BaseURL}}/api/v1/users/search?limit=5&q=admin"
+      - "{{BaseURL}}/api/v1/version"
+      - "{{BaseURL}}/api/v1/repos?limit=5"
+      - "{{BaseURL}}/api/v1/admin/users?limit=5"
+      - "{{BaseURL}}/api/v1/settings/api"
+      - "{{BaseURL}}/explore/repos"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"gitea_version\":"
+          - "\"ssh_url\":"
+          - "\"clone_url\":"
+          - "\"private\":"
+          - "\"default_branch\":"
+          - "\"has_issues\":"
+          - "\"has_wiki\":"
+          - "\"has_projects\":"
+          - "\"internal_tracker\":"
+
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'gitea_version') ||
+            (contains(body, 'ssh_url') && contains(body, 'clone_url')) ||
+            (contains(body, 'has_issues') && contains(body, 'has_wiki') && contains(body, 'default_branch')) ||
+            contains(body, 'internal_tracker')
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+      - type: word
+        part: body
+        negative: true
+        words:
+          - "\"message\":\"token not found\""
+          - "\"message\":\"unauthorized\""
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(gitea_version|version|full_name|clone_url|ssh_url)"\s*:\s*"[^"]{1,200}"'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

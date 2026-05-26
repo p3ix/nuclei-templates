@@ -1,0 +1,79 @@
+id: exposed-grafana-agent-api
+
+info:
+  name: Exposed Grafana Agent / Alloy Telemetry Collector API
+  author: p3i
+  severity: medium
+  description: >
+    Detects Grafana Agent (now Grafana Alloy) instances with the HTTP API
+    accessible without authentication. Grafana Agent is a telemetry data
+    collector that scrapes Prometheus metrics, collects logs, and forwards
+    traces. When the agent's HTTP API (default port 12345 for Alloy, 80/12345
+    for Agent) is accessible, it exposes: all configured scrape targets with
+    their endpoints and labels (revealing internal service topology), component
+    configuration including remote_write endpoints and credentials, the agent's
+    own metrics, and potentially Loki push endpoint credentials stored in config.
+    The /config endpoint may expose the full agent configuration including
+    authentication tokens for remote write destinations.
+  reference:
+    - https://grafana.com/docs/agent/latest/flow/reference/config-blocks/http/
+    - https://grafana.com/docs/alloy/latest/
+  tags: exposure,grafana,alloy,agent,prometheus,metrics,telemetry,observability
+  metadata:
+    max-request: 7
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/-/ready"
+      - "{{BaseURL}}/-/healthy"
+      - "{{BaseURL}}/api/v0/web/components"
+      - "{{BaseURL}}/config"
+      - "{{BaseURL}}/targets"
+      - "{{BaseURL}}/metrics"
+      - "{{BaseURL}}/api/v0/web/graph"
+
+    headers:
+      Accept: "application/json,text/plain,*/*"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"grafana-agent\""
+          - "grafana_agent_"
+          - "alloy_"
+          - "\"componentID\":"
+          - "\"component_id\":"
+          - "agent_ready"
+          - "\"Alloy\""
+          - "grafana.com/docs/alloy"
+
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'grafana_agent_') ||
+            contains(body, 'grafana-agent') ||
+            contains(body, 'alloy_') ||
+            contains(body, '"Alloy"') ||
+            contains(body, 'componentID') ||
+            contains(body, 'agent_ready')
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)(grafana_agent_[a-z_]+|alloy_[a-z_]+)\s+\d+'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"
