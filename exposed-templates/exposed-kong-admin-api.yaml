@@ -1,0 +1,89 @@
+id: exposed-kong-admin-api
+
+info:
+  name: Exposed Kong API Gateway Admin API Without Authentication
+  author: p3i
+  severity: critical
+  description: >
+    Detects Kong API Gateway Admin API instances accessible without authentication.
+    The Kong Admin API (default port 8001, or port 8444 for TLS) provides full
+    programmatic control of the gateway with no authentication in the Community
+    Edition. Unauthenticated access allows an attacker to: read all configured
+    services, routes, and upstream targets (revealing the complete internal API
+    architecture), read all consumer API keys, JWT signing secrets, OAuth tokens,
+    and Basic Auth credentials stored in Kong (direct credential theft), disable
+    authentication and rate-limiting plugins on any route, inject custom request
+    plugins to act as a traffic-level backdoor, and add routes that proxy traffic
+    to internal services (SSRF via the gateway). Kong Enterprise has RBAC for the
+    Admin API but Community Edition has no controls by default.
+  reference:
+    - https://docs.konghq.com/gateway/latest/admin-api/
+    - https://docs.konghq.com/gateway/latest/production/running-kong/secure-admin-api/
+  tags: exposure,kong,api-gateway,admin,credentials,critical
+  metadata:
+    max-request: 8
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/"
+      - "{{BaseURL}}/services"
+      - "{{BaseURL}}/routes"
+      - "{{BaseURL}}/consumers"
+      - "{{BaseURL}}/plugins"
+      - "{{BaseURL}}/upstreams"
+      - "{{BaseURL}}/kong"
+      - "{{BaseURL}}/status"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      # Kong Admin API-specific response fields
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"tagline\":\"Welcome to kong\""
+          - "\"plugins\":{"
+          - "\"configuration\":"
+          - "\"data\":["
+          - "\"next\":"
+          - "\"node_id\":"
+          - "\"hostname\":"
+          - "\"lua_version\""
+
+      # Require clearly Kong-specific identifiers
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'Welcome to kong') ||
+            contains(body, 'lua_version') ||
+            contains(body, 'node_id') ||
+            (contains(body, '"plugins"') && contains(body, '"configuration"')) ||
+            (contains(body, '"data"') && contains(body, '"next"') && contains(tolower(header), 'kong'))
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(version|node_id|hostname|tagline|lua_version)"\s*:\s*"[^"]{1,120}"'
+          - '(?i)"(total|data|next|offset)"\s*:\s*(?:\d+|\[|\"|null)'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

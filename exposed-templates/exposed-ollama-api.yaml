@@ -1,0 +1,84 @@
+id: exposed-ollama-api
+
+info:
+  name: Exposed Ollama LLM API Without Authentication
+  author: p3i
+  severity: high
+  description: >
+    Detects Ollama instances (local LLM inference server) accessible without
+    authentication. Ollama exposes an HTTP API with no auth by default — when
+    reachable externally it allows anyone to: list all installed models
+    (/api/tags), pull new models consuming disk and bandwidth (/api/pull),
+    generate completions using the host's GPU (/api/generate, /api/chat),
+    and delete installed models (/api/delete). Unauthenticated access enables
+    resource abuse (GPU/CPU billing), model theft (copying proprietary
+    fine-tuned models via /api/copy), and in some setups manipulation of
+    model files on disk. Ollama defaults to listening on 127.0.0.1:11434 but
+    is often misconfigured to bind 0.0.0.0 or placed behind an unprotected
+    reverse proxy.
+  reference:
+    - https://github.com/ollama/ollama/blob/main/docs/api.md
+    - https://github.com/ollama/ollama/issues/703
+  tags: exposure,ollama,llm,ai,api,models,gpu
+  metadata:
+    max-request: 6
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/api/tags"
+      - "{{BaseURL}}/api/version"
+      - "{{BaseURL}}/"
+      - "{{BaseURL}}/ollama/api/tags"
+      - "{{BaseURL}}/llm/api/tags"
+      - "{{BaseURL}}/api/ps"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      # Ollama-specific JSON response structure
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"models\":"
+          - "\"name\":"
+          - "Ollama is running"
+          - "\"version\":"
+          - "\"digest\":"
+          - "\"parameter_size\""
+          - "\"quantization_level\""
+          - "\"format\":\"gguf\""
+
+      # Require actual Ollama indicators — not generic "models" or "name" JSON
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'models') && (
+              contains(body, 'Ollama is running') ||
+              contains(body, 'parameter_size') ||
+              contains(body, 'quantization_level') ||
+              contains(body, 'gguf') ||
+              contains(tolower(header), 'x-ollama') ||
+              (contains(body, '"version"') && contains(body, '"models"'))
+            )
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"name"\s*:\s*"([^"]+)"'
+          - '(?i)"(size|parameter_size|quantization_level|format)"\s*:\s*"?([^",\r\n}{]{1,60})"?'
+      - type: dsl
+        name: summary
+        dsl:
+          - "body == '{\"models\":[]}' ? 'Ollama accessible — no models installed' : 'Ollama accessible with models'"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

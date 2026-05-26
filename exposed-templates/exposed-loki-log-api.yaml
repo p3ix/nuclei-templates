@@ -1,0 +1,96 @@
+id: exposed-loki-log-api
+
+info:
+  name: Exposed Grafana Loki Log Aggregation API
+  author: p3i
+  severity: high
+  description: >
+    Detects Grafana Loki instances accessible without authentication via the
+    REST API. Loki is a log aggregation system that receives and stores
+    structured logs from Kubernetes pods, application containers, and system
+    services. When unauthenticated, the API exposes: all log labels and their
+    values (/loki/api/v1/labels — reveals service names, namespaces, pod names,
+    environments), log streams that can be queried with LogQL (/loki/api/v1/query),
+    and time-series log data that may contain exception stack traces, SQL queries,
+    API tokens in logged URLs, user IDs, and internal service topology. Loki
+    has no authentication by default and is frequently deployed without network
+    isolation in Kubernetes clusters.
+  reference:
+    - https://grafana.com/docs/loki/latest/reference/api/
+    - https://grafana.com/docs/loki/latest/operations/authentication/
+  tags: exposure,loki,logs,grafana,kubernetes,monitoring,api
+  metadata:
+    max-request: 10
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/loki/api/v1/labels"
+      - "{{BaseURL}}/loki/api/v1/label"
+      - "{{BaseURL}}/loki/api/v1/query?query=%7B%7D&limit=1"
+      - "{{BaseURL}}/loki/api/v1/series"
+      - "{{BaseURL}}/ready"
+      - "{{BaseURL}}/metrics"
+      # Common proxy paths
+      - "{{BaseURL}}/api/prom/label"
+      - "{{BaseURL}}/api/v1/labels"
+      # Loki behind Grafana Agent or Alloy
+      - "{{BaseURL}}/loki/api/v1/query_range?query=%7B%7D&limit=1&start=0&end=0"
+      - "{{BaseURL}}/loki/api/v1/status/buildinfo"
+
+    headers:
+      Accept: "application/json"
+      X-Scope-OrgID: "1"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      # Loki API-specific JSON response structure
+      - type: word
+        part: body
+        condition: or
+        words:
+          # Labels endpoint response
+          - "\"status\":\"success\""
+          # buildinfo response
+          - "\"goVersion\""
+          - "\"buildDate\""
+          # Log query response
+          - "\"resultType\":\"streams\""
+          - "\"resultType\":\"vector\""
+          - "\"resultType\":\"matrix\""
+          # Loki-specific labels (commonly present in k8s deploys)
+          - "\"app\""
+          - "\"namespace\""
+
+      # Must be a Loki response — require structural confirmation
+      - type: dsl
+        dsl:
+          - >-
+            (contains(body, '"status":"success"') && contains(body, '"data"')) ||
+            contains(body, 'resultType') ||
+            (contains(tolower(header), 'x-loki') || contains(tolower(header), 'loki')) ||
+            (contains(body, '"goVersion"') && contains(body, '"buildDate"')) ||
+            (body == 'ready' && status_code == 200)
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          # Labels reveal service topology
+          - '(?i)"data"\s*:\s*\[([^\]]{0,500})\]'
+          - '(?i)"(version|goVersion|revision)"\s*:\s*"([^"]{1,80})"'
+      - type: dsl
+        name: label_count
+        dsl:
+          - "contains(body, '\"data\"') ? 'Label data accessible' : 'API accessible'"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

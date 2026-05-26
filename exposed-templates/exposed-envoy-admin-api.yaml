@@ -1,0 +1,93 @@
+id: exposed-envoy-admin-api
+
+info:
+  name: Exposed Envoy Proxy Admin Interface
+  author: p3i
+  severity: high
+  description: >
+    Detects Envoy proxy admin interfaces accessible without authentication
+    (default port 9901). Envoy is the proxy underlying Istio, AWS App Mesh,
+    Google Cloud Traffic Director, and many other service meshes. The admin
+    interface exposes sensitive operational data including: complete Envoy
+    configuration via /config_dump (all upstream clusters, routing rules,
+    TLS certificate paths, and header manipulation rules — effectively a map
+    of the internal service topology), TLS certificate details via /certs,
+    live upstream cluster health and connection metrics via /clusters, and
+    Prometheus metrics with service names and endpoint addresses. Some
+    endpoints are also destructive: /drain_listeners causes traffic disruption
+    and /quitquitquit terminates the Envoy process. The admin interface has
+    no authentication and should never be exposed externally.
+  reference:
+    - https://www.envoyproxy.io/docs/envoy/latest/operations/admin
+    - https://www.envoyproxy.io/docs/envoy/latest/operations/cli#cmdoption-admin-address-path
+  tags: exposure,envoy,proxy,admin,service-mesh,istio,kubernetes,config
+  metadata:
+    max-request: 8
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/"
+      - "{{BaseURL}}/server_info"
+      - "{{BaseURL}}/clusters"
+      - "{{BaseURL}}/listeners"
+      - "{{BaseURL}}/config_dump"
+      - "{{BaseURL}}/stats/prometheus"
+      - "{{BaseURL}}/certs"
+      - "{{BaseURL}}/ready"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      # Envoy Admin-specific response content
+      - type: word
+        part: body
+        condition: or
+        words:
+          # Admin HTML root page
+          - "Envoy Admin"
+          - "admin_address"
+          # server_info response
+          - "\"envoy_version\""
+          - "\"hot_restart_version\""
+          # clusters response
+          - "::observability_name"
+          - "added_via_api::"
+          # config_dump response
+          - "\"@type\":\"type.googleapis.com/envoy"
+          - "BootstrapConfigDump"
+          - "ClustersConfigDump"
+          # Prometheus stats
+          - "envoy_cluster_upstream"
+          - "envoy_server_uptime"
+
+      # Require an Envoy-specific indicator — not just any proxy
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'Envoy Admin') ||
+            contains(body, 'envoy_version') ||
+            contains(body, 'hot_restart_version') ||
+            contains(body, 'BootstrapConfigDump') ||
+            contains(body, 'ClustersConfigDump') ||
+            contains(body, 'envoy_cluster_upstream') ||
+            contains(body, 'envoy_server_uptime') ||
+            (contains(body, 'added_via_api') && contains(body, 'observability_name'))
+          - "len(body) < 52428800"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"envoy_version"\s*:\s*"([^"]+)"'
+          - '(?i)"(name|address|cluster_name|protocol)"\s*:\s*"[^"]{1,200}"'
+          - "(?im)^envoy_(cluster|server|http|listener)_[a-z_]+{[^}]{0,200}}"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

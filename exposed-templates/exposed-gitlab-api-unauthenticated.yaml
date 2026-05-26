@@ -1,0 +1,99 @@
+id: exposed-gitlab-api-unauthenticated
+
+info:
+  name: Unauthenticated Self-Hosted GitLab API Access
+  author: p3i
+  severity: high
+  description: >
+    Detects self-hosted GitLab instances where the REST API (v4) is accessible
+    without authentication. When the GitLab "Visibility level" is set to "Public"
+    or "Internal" (signed-in users only), or when "Sign-up enabled" and "Guest
+    access" are misconfigured, the API returns projects, users, groups, and their
+    metadata without credentials. This exposes: source code repository listing
+    (names, SSH URLs, HTTP clone URLs), contributor usernames and email addresses,
+    CI/CD pipeline configurations, and sometimes unprotected branches with secret
+    variable names. Even "Internal" projects leak their existence to unauthenticated
+    users on misconfigured instances. CI/CD variables defined as "protected" may
+    still appear in job logs accessible via the API.
+  reference:
+    - https://docs.gitlab.com/ee/api/rest/
+    - https://docs.gitlab.com/ee/security/visibility_level_restrictions.html
+  tags: exposure,gitlab,api,source-code,git,devops,cicd
+  metadata:
+    max-request: 8
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/api/v4/projects?per_page=5&order_by=id&sort=desc"
+      - "{{BaseURL}}/api/v4/users?per_page=5"
+      - "{{BaseURL}}/api/v4/groups?per_page=5"
+      - "{{BaseURL}}/api/v4/projects/1"
+      - "{{BaseURL}}/api/v4/version"
+      - "{{BaseURL}}/api/v4/metadata"
+      - "{{BaseURL}}/api/v4/broadcast_messages"
+      - "{{BaseURL}}/api/v4/application/settings"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      # GitLab API-specific response fields
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"visibility\":"
+          - "\"ssh_url_to_repo\""
+          - "\"http_url_to_repo\""
+          - "\"namespace\":"
+          - "\"default_branch\""
+          - "\"web_url\":"
+          - "\"commit_stats\""
+          - "\"revision\":"
+          - "\"kas\":"
+
+      # Reject GitLab auth errors
+      - type: word
+        part: body
+        negative: true
+        words:
+          - "\"message\":\"401 Unauthorized\""
+          - "\"message\":\"403 Forbidden\""
+          - "\"message\":\"404 Project Not Found\""
+          - "<html"
+        case-insensitive: true
+
+      # Require clearly GitLab-specific field
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'ssh_url_to_repo') ||
+            contains(body, 'http_url_to_repo') ||
+            contains(body, 'default_branch') ||
+            contains(body, '"kas":') ||
+            (contains(body, '"revision"') && contains(body, '"version"') && contains(body, '"enterprise"'))
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(name|path_with_namespace|ssh_url_to_repo|http_url_to_repo|visibility|default_branch)"\s*:\s*"[^"]{1,200}"'
+          - '(?i)"(version|revision|enterprise)"\s*:\s*"?[^",}{]{1,60}"?'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

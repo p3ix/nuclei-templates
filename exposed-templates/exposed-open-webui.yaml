@@ -1,0 +1,92 @@
+id: exposed-open-webui
+
+info:
+  name: Exposed Open WebUI (LLM Frontend) Without Authentication
+  author: p3i
+  severity: high
+  description: >
+    Detects Open WebUI instances (formerly Ollama WebUI) accessible without
+    authentication. Open WebUI is a self-hosted ChatGPT-like frontend for Ollama,
+    OpenAI, and other LLM backends. When exposed without auth, an attacker can:
+    view and replay all chat history across all users, access any uploaded
+    documents and files used in RAG pipelines, discover the system prompts and
+    custom AI configurations (which often contain confidential business logic),
+    use the connected LLM backend at the host's expense, access connected tool
+    APIs and function definitions, and extract any API keys configured for external
+    services. Open WebUI enables user sign-up by default, but many deployments
+    disable authentication entirely for internal use and then inadvertently
+    expose the instance publicly.
+  reference:
+    - https://github.com/open-webui/open-webui
+    - https://docs.openwebui.com/getting-started/
+  tags: exposure,openwebui,ollama,llm,ai,chat,api
+  metadata:
+    max-request: 8
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/"
+      - "{{BaseURL}}/api/v1/auths/"
+      - "{{BaseURL}}/api/v1/models/"
+      - "{{BaseURL}}/api/v1/chats/"
+      - "{{BaseURL}}/api/config"
+      - "{{BaseURL}}/ollama/api/tags"
+      - "{{BaseURL}}/openai/models"
+      - "{{BaseURL}}/api/v1/users/"
+
+    headers:
+      Accept: "application/json, text/html"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      # Open WebUI-specific response markers
+      - type: word
+        part: body
+        condition: or
+        words:
+          # API responses
+          - "\"openwebui\""
+          - "\"ollama\""
+          - "\"WEBUI_AUTH\""
+          - "\"DEFAULT_MODELS\""
+          - "\"ENABLE_SIGNUP\""
+          - "\"WEBUI_NAME\""
+          # HTML UI
+          - "open-webui"
+          - "Open WebUI"
+          - "Ollama WebUI"
+          - "_app/immutable"
+          # API auth endpoint
+          - "\"token\""
+          - "\"user_count\""
+
+      # Require Open WebUI-specific indicators — not just any "ollama" mention
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'WEBUI_AUTH') ||
+            contains(body, 'WEBUI_NAME') ||
+            contains(body, 'DEFAULT_MODELS') ||
+            contains(body, 'open-webui') ||
+            contains(body, 'Open WebUI') ||
+            contains(body, 'Ollama WebUI') ||
+            (contains(body, 'token') && contains(body, 'user_count'))
+          - "len(body) > 20"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(WEBUI_NAME|DEFAULT_MODELS|WEBUI_AUTH|ENABLE_SIGNUP)"\s*:\s*[^,}\r\n]{1,200}'
+          - '(?i)"(version|model|name)"\s*:\s*"[^"]{1,100}"'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

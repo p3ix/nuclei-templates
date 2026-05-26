@@ -1,0 +1,113 @@
+id: exposed-vector-database-apis
+
+info:
+  name: Exposed Vector Database REST API Without Authentication
+  author: p3i
+  severity: high
+  description: >
+    Detects unauthenticated access to vector database REST APIs: Qdrant,
+    Weaviate, ChromaDB, Milvus, and Vespa. Vector databases store high-dimensional
+    embeddings of sensitive data — proprietary documents, emails, source code,
+    medical records, or any text that was processed through an LLM for
+    Retrieval-Augmented Generation (RAG) pipelines. Unauthenticated access
+    allows listing all collections, reading stored vectors and their payloads
+    (the original text fragments), and in some cases inserting or deleting
+    vectors. None of these systems enable authentication by default. Qdrant and
+    Weaviate are the most commonly exposed due to widespread use in production
+    RAG deployments without network-level isolation.
+  reference:
+    - https://qdrant.tech/documentation/interfaces/
+    - https://weaviate.io/developers/weaviate/api/rest
+    - https://docs.trychroma.com/reference/py-client
+  tags: exposure,vector-database,qdrant,weaviate,chroma,milvus,rag,ai,llm
+  metadata:
+    max-request: 16
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/collections"
+      - "{{BaseURL}}/v1/schema"
+      - "{{BaseURL}}/v1/meta"
+      - "{{BaseURL}}/api/v1/collections"
+      - "{{BaseURL}}/api/v1"
+      - "{{BaseURL}}/api/v1/version"
+      - "{{BaseURL}}/v1/collections"
+      - "{{BaseURL}}/"
+      # Proxied paths
+      - "{{BaseURL}}/qdrant/collections"
+      - "{{BaseURL}}/weaviate/v1/schema"
+      - "{{BaseURL}}/chroma/api/v1/collections"
+      - "{{BaseURL}}/milvus/v1/collections"
+      # Vespa document API
+      - "{{BaseURL}}/state/v1/health"
+      - "{{BaseURL}}/application/v2/tenant/default"
+      # Milvus HTTP API
+      - "{{BaseURL}}/v2/vectordb/collections/list"
+      - "{{BaseURL}}/v1/vector/collections/list"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      # Vector database-specific JSON structures
+      - type: word
+        part: body
+        condition: or
+        words:
+          # Qdrant
+          - "\"collections\":"
+          - "\"vectors_count\""
+          - "\"indexed_vectors_count\""
+          - "\"points_count\""
+          - "\"qdrant_version\""
+          # Weaviate
+          - "\"classes\":"
+          - "\"weaviate_version\""
+          - "\"hostname\":"
+          - "\"modules\":"
+          # ChromaDB
+          - "\"chroma_version\""
+          - "nanosecond heartbeat"
+          - "\"dimension\":"
+          # Milvus
+          - "\"milvus_version\""
+          - "\"connector\":"
+          # Vespa
+          - "\"vespa_version\""
+          - "\"applicationId\""
+          - "\"clusterInfo\":"
+
+      # Reject generic JSON that just happens to have "collections"
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'vectors_count') ||
+            contains(body, 'qdrant_version') ||
+            contains(body, 'weaviate_version') ||
+            contains(body, 'chroma_version') ||
+            contains(body, 'milvus_version') ||
+            contains(body, 'nanosecond heartbeat') ||
+            contains(body, 'vespa_version') ||
+            (contains(body, '"classes"') && contains(body, '"vectorizer"')) ||
+            (contains(body, '"collections"') && (contains(body, 'points_count') || contains(body, 'dimension')))
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"name"\s*:\s*"([^"]{1,100})"'
+          - '(?i)"(qdrant_version|weaviate_version|milvus_version|chroma_version)"\s*:\s*"([^"]{1,50})"'
+          - '(?i)"(vectors_count|points_count|indexed_vectors_count)"\s*:\s*\d+'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

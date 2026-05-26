@@ -1,0 +1,88 @@
+id: exposed-localstack-api
+
+info:
+  name: Exposed LocalStack AWS Emulator API
+  author: p3i
+  severity: high
+  description: >
+    Detects LocalStack instances (AWS service emulator) accessible without
+    authentication. LocalStack emulates AWS services locally (S3, SQS, Lambda,
+    DynamoDB, Secrets Manager, IAM, etc.) and is used extensively in development
+    and CI/CD environments. When exposed externally — via a misconfigured Docker
+    port binding, Kubernetes service, or development server — it provides full
+    AWS API access without credentials: listing and reading S3 buckets, querying
+    DynamoDB tables (often seeded with real application data for testing), reading
+    Secrets Manager secrets (which may be copies of production secrets), invoking
+    Lambda functions, and accessing SQS queues with application messages. LocalStack
+    accepts any AWS credentials by default, making it trivially accessible. Production
+    data is frequently present in these instances because developers copy production
+    data to facilitate realistic testing.
+  reference:
+    - https://docs.localstack.cloud/references/internal-endpoints/
+    - https://github.com/localstack/localstack
+  tags: exposure,localstack,aws,emulator,development,s3,lambda,secrets
+  metadata:
+    max-request: 8
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/_localstack/health"
+      - "{{BaseURL}}/_localstack/info"
+      - "{{BaseURL}}/_localstack/diagnose"
+      - "{{BaseURL}}/_localstack/swagger"
+      - "{{BaseURL}}/health"
+      - "{{BaseURL}}/localstack/health"
+      - "{{BaseURL}}/localstack/info"
+      - "{{BaseURL}}/"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      # LocalStack-specific response fields
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"localstack\""
+          - "\"version\":"
+          - "\"services\":"
+          - "\"s3\":"
+          - "\"sqs\":"
+          - "\"lambda\":"
+          - "\"dynamodb\":"
+          - "LocalStack"
+          - "localstack"
+          - "\"running\""
+          - "\"available\""
+          - "\"edition\":"
+
+      # Require LocalStack-specific combination — "services" alone is too generic
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'localstack') ||
+            contains(body, 'LocalStack') ||
+            (contains(body, '"s3"') && contains(body, '"sqs"') && contains(body, '"lambda"')) ||
+            (contains(body, '"services"') && (contains(body, '"dynamodb"') || contains(body, '"secretsmanager"'))) ||
+            (contains(body, '"running"') && contains(body, '"available"') && contains(body, '"version"'))
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(version|edition)"\s*:\s*"[^"]{1,60}"'
+          - '(?i)"(s3|sqs|lambda|dynamodb|secretsmanager|iam|sns|ses|kinesis)"\s*:\s*"(running|available|disabled)"'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

@@ -1,0 +1,102 @@
+id: exposed-apache-druid-api
+
+info:
+  name: Exposed Apache Druid Coordinator Or Broker API
+  author: p3i
+  severity: high
+  description: >
+    Detects Apache Druid analytics cluster APIs accessible without authentication.
+    Druid exposes REST APIs on multiple components (Coordinator port 8081, Broker
+    port 8082, Router port 8888, Overlord port 8090) with no auth by default.
+    Unauthenticated access allows: listing all ingested data sources
+    (/druid/coordinator/v1/datasources — reveals what data the company ingests),
+    querying historical data via the SQL API (/druid/v2/sql), reading cluster
+    configuration including database connection strings (/druid/coordinator/v1/config),
+    submitting and canceling ingestion tasks, and reading task logs which may
+    contain credentials used for data ingestion from S3, GCS, Kafka, or databases.
+    Druid clusters commonly process financial transactions, user events, and
+    application telemetry data.
+  reference:
+    - https://druid.apache.org/docs/latest/operations/security-overview.html
+    - https://druid.apache.org/docs/latest/querying/sql-api.html
+  tags: exposure,druid,apache,analytics,database,api,bigdata
+  metadata:
+    max-request: 10
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/status/health"
+      - "{{BaseURL}}/druid/coordinator/v1/leader"
+      - "{{BaseURL}}/druid/coordinator/v1/datasources"
+      - "{{BaseURL}}/druid/v2/datasources"
+      - "{{BaseURL}}/druid/coordinator/v1/config"
+      - "{{BaseURL}}/druid/indexer/v1/supervisor"
+      - "{{BaseURL}}/druid/broker/v1/datasources"
+      - "{{BaseURL}}/druid/coordinator/v1/servers"
+      - "{{BaseURL}}/druid/overlord/v1/tasks"
+      - "{{BaseURL}}/druid/v2/candidates"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      # Druid-specific API response fields
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"coordinator\""
+          - "\"broker\""
+          - "\"historical\""
+          - "\"druidVersion\""
+          - "\"plaintext\""
+          - "\"inventoryManager\""
+          - "\"leaderId\""
+          - "\"datasource\""
+          - "\"tieredReplicants\""
+          - "\"numAvailableRows\""
+          - "\"supervisor\""
+
+      # Reject generic JSON and HTML
+      - type: word
+        part: body
+        negative: true
+        words:
+          - "<html"
+          - "<!DOCTYPE"
+        case-insensitive: true
+
+      # Require at least one clearly Druid-specific field
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'druidVersion') ||
+            contains(body, 'leaderId') ||
+            contains(body, 'tieredReplicants') ||
+            contains(body, 'numAvailableRows') ||
+            contains(body, 'inventoryManager') ||
+            (contains(body, '"coordinator"') && contains(body, '"broker"'))
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(druidVersion|version|tier|datasource|supervisor|taskId|host)"\s*:\s*"[^"]{1,120}"'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

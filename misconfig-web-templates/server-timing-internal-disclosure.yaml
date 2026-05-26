@@ -1,0 +1,72 @@
+id: server-timing-internal-disclosure
+
+info:
+  name: Server-Timing Header Leaks Internal Service Names Or Topology
+  author: p3i
+  severity: low
+  description: >
+    Detects Server-Timing response headers that reveal internal infrastructure
+    details such as database technology and instance names (mysql-primary,
+    postgres-replica), internal service FQDNs (auth-service.internal,
+    payments.svc.cluster.local), service ports (redis:6379), or microservice
+    architecture (user-microservice, billing-api). The Server-Timing header
+    was designed for performance profiling in development, but when served in
+    production it leaks the internal service graph — valuable to an attacker
+    for targeted lateral movement, identifying legacy components, and
+    understanding the application's data flow. All browsers expose
+    Server-Timing values to JavaScript via the PerformanceServerTiming API,
+    making this a client-side information disclosure too.
+  reference:
+    - https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Server-Timing
+    - https://nicktacular.com/blog/server-timing-privacy/
+  tags: misconfig,server-timing,information-disclosure,infrastructure,headers,web
+  metadata:
+    max-request: 3
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/"
+      - "{{BaseURL}}/api"
+      - "{{BaseURL}}/api/v1"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 201
+          - 301
+          - 302
+          - 304
+          - 401
+          - 403
+          - 404
+
+      # Server-Timing header must be present
+      - type: word
+        part: header
+        words:
+          - "server-timing:"
+        case-insensitive: true
+
+      # Must contain an internal-looking service identifier — not just generic "db" or "app"
+      - type: regex
+        part: header
+        regex:
+          - "(?i)server-timing:[^\r\n]*(?:mysql|postgres|postgresql|mariadb|redis|mongodb|elasticsearch|cassandra|dynamodb|aurora|rds|memcache|rabbitmq|kafka|nats|clickhouse|influxdb|mssql|oracle)[^\r\n]*"
+          - "(?i)server-timing:[^\r\n]*[a-z][a-z0-9-]*\\.[a-z0-9-]+(?:\\.internal|\\.local|\\.corp|\\.cluster\\.local|\\.svc\\.)[^\r\n]*"
+          - "(?i)server-timing:[^\r\n]*[a-z][a-z0-9_-]*(?:microservice|service|svc|api|backend|worker|queue|cache)-[a-z0-9][^\r\n]*"
+          - "(?i)server-timing:[^\r\n]*[a-z][a-z0-9-]*:\\d{4,5}[^\r\n]*"
+
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "(?i)server-timing:[^\r\n]+"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

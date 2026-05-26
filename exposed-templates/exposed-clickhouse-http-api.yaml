@@ -1,0 +1,86 @@
+id: exposed-clickhouse-http-api
+
+info:
+  name: Exposed ClickHouse HTTP Interface Without Authentication
+  author: p3i
+  severity: high
+  description: >
+    Detects ClickHouse database instances accessible via the HTTP interface
+    without authentication. ClickHouse exposes an HTTP API (default port 8123)
+    that accepts SQL queries via GET and POST requests. When unauthenticated,
+    an attacker can execute arbitrary read queries against any table: SELECT
+    from system.tables (schema enumeration), system.processes (running queries
+    and user IDs), system.users (user list), and any application data tables.
+    ClickHouse has no authentication by default — the "default" user has no
+    password unless explicitly configured. This is frequently deployed in
+    analytics pipelines and often exposed via a Kubernetes LoadBalancer or
+    reverse proxy without access controls.
+  reference:
+    - https://clickhouse.com/docs/en/interfaces/http
+    - https://clickhouse.com/docs/en/operations/security/
+  tags: exposure,clickhouse,database,sql,analytics,api
+  metadata:
+    max-request: 8
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/ping"
+      - "{{BaseURL}}/?query=SELECT+version()"
+      - "{{BaseURL}}/?query=SELECT+currentDatabase()"
+      - "{{BaseURL}}/?query=SELECT+name+FROM+system.databases+LIMIT+5"
+      - "{{BaseURL}}/clickhouse/ping"
+      - "{{BaseURL}}/clickhouse/?query=SELECT+version()"
+      - "{{BaseURL}}/ch/?query=SELECT+version()"
+      - "{{BaseURL}}/?query=SELECT+1"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          # /ping response
+          - "Ok."
+          # SELECT version() returns e.g. "23.8.1.2992\n"
+          - "ClickHouse"
+          # Database names or system query responses
+          - "default"
+          - "system"
+          - "information_schema"
+
+      # Pin to ClickHouse-specific signals in headers or body
+      - type: dsl
+        dsl:
+          - >-
+            contains(tolower(header), 'x-clickhouse-server-version') ||
+            contains(tolower(header), 'x-clickhouse-format') ||
+            contains(tolower(header), 'x-clickhouse-timezone') ||
+            contains(tolower(header), 'x-clickhouse-query-id') ||
+            (body == 'Ok.\n' && status_code == 200) ||
+            regex('^\d+\.\d+\.\d+\.\d+\s*$', body) ||
+            (contains(body, 'default') && contains(body, 'system') && !contains(tolower(body), '<html'))
+          - "len(body) < 5242880"
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "(?i)x-clickhouse-server-version:[^\r\n]+"
+          - "(?i)x-clickhouse-timezone:[^\r\n]+"
+      - type: regex
+        part: body
+        regex:
+          - '^\d+\.\d+\.\d+\.\d+\s*$'
+          - '^[a-z_][a-z0-9_]*\s*$'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

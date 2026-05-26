@@ -1,0 +1,95 @@
+id: exposed-github-enterprise-api
+
+info:
+  name: GitHub Enterprise Server API Unauthenticated Access
+  author: p3i
+  severity: high
+  description: >
+    Detects GitHub Enterprise Server (GHES) instances where the REST API is
+    accessible without authentication. GHES exposes the GitHub REST API at
+    /api/v3/ (mirroring api.github.com). When anonymous access is enabled or
+    repositories are set to "public" visibility, the API returns: repository
+    listing with clone URLs and branch information, user accounts and email
+    addresses (if public profiles), organization membership, issue and pull
+    request data (which often contains internal architecture discussions and
+    security decisions), and potentially commit history including accidentally
+    committed secrets. GHES is commonly deployed in corporate environments
+    with an expectation of network-only access, then inadvertently exposed.
+  reference:
+    - https://docs.github.com/en/enterprise-server@latest/rest/repos/repos
+    - https://docs.github.com/en/enterprise-server@latest/admin/configuration/configuring-your-enterprise/enabling-anonymous-git-read-access-for-private-mode
+  tags: exposure,github,enterprise,ghes,api,source-code,git
+  metadata:
+    max-request: 6
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/api/v3/repositories?per_page=5"
+      - "{{BaseURL}}/api/v3/users?per_page=5"
+      - "{{BaseURL}}/api/v3/orgs?per_page=5"
+      - "{{BaseURL}}/api/v3/meta"
+      - "{{BaseURL}}/api/v3/rate_limit"
+      - "{{BaseURL}}/api/v3/emojis"
+
+    headers:
+      Accept: "application/vnd.github.v3+json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        condition: or
+        words:
+          - "application/json"
+          - "application/vnd.github"
+        case-insensitive: true
+
+      # GitHub Enterprise Server-specific API response structure
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"html_url\":"
+          - "\"clone_url\":"
+          - "\"ssh_url\":"
+          - "\"git_url\":"
+          - "\"forks_count\""
+          - "\"stargazers_count\""
+          - "\"login\":"
+          - "\"site_admin\":"
+          - "\"verifiable_password_authentication\""
+          - "\"x-github-enterprise-version\""
+          - "\"installed_version\""
+
+      # GitHub Enterprise headers or body confirming it's GHES not GitHub.com
+      - type: dsl
+        dsl:
+          - >-
+            contains(tolower(header), 'x-github-enterprise-version') ||
+            contains(body, 'installed_version') ||
+            contains(body, 'verifiable_password_authentication') ||
+            (contains(body, '"login"') && contains(body, '"site_admin"') && !contains(host, 'api.github.com')) ||
+            (contains(body, '"clone_url"') && !contains(host, 'github.com'))
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "(?i)x-github-enterprise-version:[^\r\n]+"
+          - "(?i)x-github-request-id:[^\r\n]+"
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(full_name|login|name|clone_url|html_url|installed_version)"\s*:\s*"[^"]{1,200}"'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"
