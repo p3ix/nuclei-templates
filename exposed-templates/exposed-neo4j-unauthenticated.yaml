@@ -1,0 +1,91 @@
+id: exposed-neo4j-unauthenticated
+
+info:
+  name: Neo4j Graph Database HTTP API Without Authentication
+  author: p3i
+  severity: critical
+  description: >
+    Detects Neo4j graph database instances with the HTTP API accessible without
+    authentication. When Neo4j's native auth is disabled (dbms.security.auth_enabled=false,
+    which is the default in some older versions and Docker images), the HTTP API
+    (default port 7474) and the Bolt+HTTP transactional API accept Cypher queries
+    from any client. An attacker can execute arbitrary Cypher to: read all nodes
+    and relationships in the graph (user accounts, social graphs, knowledge bases,
+    financial transactions, or any domain data), enumerate node labels and
+    relationship types to understand the data model, execute write operations
+    to modify or delete data, and access APOC procedures (if installed) which
+    allow file system access, HTTP calls (SSRF), and system command execution.
+    Neo4j is commonly used for fraud detection, social networking, identity
+    graphs, and recommendation engines — all of which contain highly sensitive data.
+  reference:
+    - https://neo4j.com/docs/operations-manual/current/security/authentication-authorization/
+    - https://neo4j.com/docs/http-api/current/
+  tags: exposure,neo4j,graph,database,cypher,api,credentials
+  metadata:
+    max-request: 6
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/"
+      - "{{BaseURL}}/db/neo4j/tx"
+      - "{{BaseURL}}/browser/"
+      - "{{BaseURL}}/db/data/"
+      - "{{BaseURL}}/neo4j/"
+      - "{{BaseURL}}/neo4j/browser/"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      # Neo4j HTTP API response structure
+      - type: word
+        part: body
+        condition: or
+        words:
+          # Root discovery API
+          - "\"management\":"
+          - "\"data\":"
+          - "\"neo4j version\""
+          - "\"neo4j_version\""
+          # Transaction API
+          - "\"commit\":"
+          - "\"transaction\":"
+          - "\"results\":"
+          # Neo4j Browser
+          - "Neo4j Browser"
+          - "neo4j-browser"
+          # Legacy REST API
+          - "\"node\":"
+          - "\"cypher\":"
+          - "\"extensions\":"
+
+      # Require Neo4j-specific structural indicators
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'neo4j version') ||
+            contains(body, 'neo4j_version') ||
+            contains(body, 'Neo4j Browser') ||
+            contains(body, 'neo4j-browser') ||
+            (contains(body, '"management"') && contains(body, '"data"') && contains(body, '"neo4j')) ||
+            (contains(body, '"results"') && contains(body, '"commit"') && contains(body, '"transaction"'))
+          - "!contains(tolower(body), '<html') || contains(tolower(body), 'neo4j')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"neo4j[_\s]version"\s*:\s*"([^"]+)"'
+          - '(?i)"(management|data|commit|cypher)"\s*:\s*"https?://[^"]{1,200}"'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

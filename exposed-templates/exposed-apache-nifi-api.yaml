@@ -1,0 +1,107 @@
+id: exposed-apache-nifi-api
+
+info:
+  name: Exposed Apache NiFi REST API Without Authentication
+  author: p3i
+  severity: critical
+  description: >
+    Detects Apache NiFi instances with the REST API accessible without
+    authentication. NiFi is a data ingestion and ETL automation platform
+    used to move data between systems. The NiFi REST API (default port 8080
+    or 8443 for TLS) with authentication disabled allows: reading all processor
+    configurations which contain embedded database connection strings, API keys,
+    SMTP credentials, S3 secrets, and other connection details stored in
+    processor "Sensitive Properties"; reading data provenance records which are
+    samples of actual data that flowed through the pipeline (e.g., records from
+    a database query, parsed JSON payloads, file contents); creating new
+    processors and connections to exfiltrate data or redirect flows; stopping
+    and starting data pipelines (operational disruption); and accessing the
+    complete flow definition that reveals the organization's entire data
+    architecture. NiFi has a single-user authentication mode since 1.16 but many
+    older deployments have authentication completely disabled.
+  reference:
+    - https://nifi.apache.org/docs/nifi-docs/rest-api/index.html
+    - https://nifi.apache.org/docs/nifi-docs/html/administration-guide.html#security_configuration
+  tags: exposure,nifi,apache,etl,pipeline,credentials,data,critical
+  metadata:
+    max-request: 8
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/nifi-api/flow/about"
+      - "{{BaseURL}}/nifi-api/system-diagnostics"
+      - "{{BaseURL}}/nifi-api/flow/status"
+      - "{{BaseURL}}/nifi-api/process-groups/root"
+      - "{{BaseURL}}/nifi-api/controller"
+      - "{{BaseURL}}/nifi-api/resources"
+      - "{{BaseURL}}/nifi/"
+      - "{{BaseURL}}/nifi-api/access/config"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        condition: or
+        words:
+          - "application/json"
+          - "text/html"
+        case-insensitive: true
+
+      # NiFi REST API-specific response fields
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"nifiVersion\""
+          - "\"javaVersion\""
+          - "\"buildTag\""
+          - "\"processGroupStatusSnapshot\""
+          - "\"controllerStatus\""
+          - "\"activeThreadCount\""
+          - "\"flowFileCount\""
+          - "\"processorCount\""
+          - "NiFi"
+          - "\"loginSupported\""
+          - "\"systemDiagnosticsSnapshot\""
+
+      # Reject auth-required responses (NiFi returns 401 with JSON when auth is on)
+      - type: word
+        part: body
+        negative: true
+        words:
+          - "\"status\":401"
+          - "Access is denied"
+          - "\"message\":\"Unable to perform the request\""
+        case-insensitive: true
+
+      # Confirm NiFi-specific content
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'nifiVersion') ||
+            contains(body, 'processGroupStatusSnapshot') ||
+            contains(body, 'flowFileCount') ||
+            contains(body, 'NiFi') ||
+            contains(body, 'loginSupported') ||
+            contains(body, 'systemDiagnosticsSnapshot')
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(nifiVersion|javaVersion|buildTag|buildRevision)"\s*:\s*"[^"]{1,120}"'
+          - '(?i)"(processorCount|flowFileCount|activeThreadCount|runningCount)"\s*:\s*\d+'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

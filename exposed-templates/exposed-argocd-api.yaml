@@ -1,0 +1,105 @@
+id: exposed-argocd-api
+
+info:
+  name: Exposed Argo CD REST API Without Authentication
+  author: p3i
+  severity: critical
+  description: >
+    Detects Argo CD instances with the REST API accessible without authentication
+    (anonymous access mode enabled). Argo CD is a Kubernetes GitOps continuous
+    delivery tool that manages deployments across clusters. When anonymous access
+    is enabled (server.anonymous.enabled: "true" in argocd-cm), unauthenticated
+    users can: list all deployed applications and their Kubernetes resource trees,
+    read application health and sync status, access connected Git repository URLs
+    (which may contain credentials embedded in the URL), list all connected
+    clusters with their names and API server URLs, trigger application syncs
+    (deploying arbitrary code if write permissions are granted to anonymous users),
+    and access application configuration including image tags, environment
+    variables, and Kubernetes secret references. This access path often exists
+    because teams enable anonymous read for dashboards while forgetting it also
+    exposes sensitive configuration.
+  reference:
+    - https://argo-cd.readthedocs.io/en/stable/operator-manual/security/#anonymous-user-access
+    - https://argo-cd.readthedocs.io/en/stable/operator-manual/rbac/
+  tags: exposure,argocd,gitops,kubernetes,cicd,api,critical
+  metadata:
+    max-request: 6
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/api/v1/applications?limit=5"
+      - "{{BaseURL}}/api/v1/clusters"
+      - "{{BaseURL}}/api/v1/repositories"
+      - "{{BaseURL}}/api/v1/settings"
+      - "{{BaseURL}}/api/v1/info"
+      - "{{BaseURL}}/api/v1/projects"
+
+    headers:
+      Accept: "application/json"
+      Content-Type: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      # ArgoCD REST API-specific response fields
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"items\":"
+          - "\"metadata\":"
+          - "\"spec\":"
+          - "\"status\":"
+          - "\"version\":"
+          - "\"buildDate\":"
+          - "\"repoURL\":"
+          - "\"destination\":"
+          - "\"syncPolicy\":"
+          - "\"healthStatus\":"
+          - "\"operationState\":"
+          - "\"appNamespace\""
+
+      # Reject 401/403 auth errors (Argo CD returns 16 = Unauthenticated gRPC code)
+      - type: word
+        part: body
+        negative: true
+        words:
+          - "\"code\":16"
+          - "\"code\":7"
+          - "\"message\":\"Unauthenticated\""
+          - "<html"
+        case-insensitive: true
+
+      # Confirm ArgoCD-specific response (not just any k8s API)
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'repoURL') ||
+            contains(body, 'syncPolicy') ||
+            contains(body, 'healthStatus') ||
+            contains(body, 'operationState') ||
+            contains(body, 'appNamespace') ||
+            (contains(body, '"items"') && contains(body, '"destination"'))
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(repoURL|server|namespace|name|project|destination)"\s*:\s*"[^"]{1,200}"'
+          - '(?i)"(version|buildDate|gitCommit|goVersion)"\s*:\s*"[^"]{1,80}"'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

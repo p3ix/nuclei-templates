@@ -1,0 +1,85 @@
+id: exposed-atlantis-webhook
+
+info:
+  name: Exposed Atlantis Terraform Automation Server
+  author: p3i
+  severity: high
+  description: >
+    Detects Atlantis Terraform automation servers accessible without authentication.
+    Atlantis is a self-hosted server that automates Terraform plan and apply
+    operations via pull request comments. When exposed without auth:
+    - The /events webhook endpoint accepts arbitrary GitHub/GitLab/Bitbucket
+      webhook payloads, allowing an attacker to trigger Terraform plans and
+      applies against any repository the Atlantis token has access to.
+    - The /locks endpoint reveals all active Terraform workspace locks (shows
+      which IaC repos are currently being modified).
+    - The status page reveals the Atlantis version and configured VCS provider.
+    - By crafting a webhook payload referencing an attacker-controlled repository
+      with malicious Terraform code, an attacker can achieve RCE with the
+      permissions of the Atlantis service account (which typically has broad
+      cloud provider credentials: AWS, GCP, Azure).
+  reference:
+    - https://www.runatlantis.io/docs/security.html
+    - https://www.runatlantis.io/docs/webhook-secrets.html
+  tags: exposure,atlantis,terraform,iac,webhook,rce,cloud
+  metadata:
+    max-request: 6
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/"
+      - "{{BaseURL}}/locks"
+      - "{{BaseURL}}/status"
+      - "{{BaseURL}}/api/v1/workspaces"
+      - "{{BaseURL}}/atlantis/"
+      - "{{BaseURL}}/atlantis/locks"
+
+    headers:
+      Accept: "application/json, text/html"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      # Atlantis-specific response content
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "Atlantis"
+          - "atlantis"
+          - "\"atlantisVersion\""
+          - "\"vcsHost\":"
+          - "\"numLocks\":"
+          - "\"locks\":"
+          - "\"pullRequest\":"
+          - "\"workspaceName\":"
+          - "Terraform"
+
+      # Require Atlantis-specific structural content
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'atlantisVersion') ||
+            contains(body, 'vcsHost') ||
+            contains(body, 'numLocks') ||
+            contains(body, 'workspaceName') ||
+            (contains(body, 'Atlantis') && (contains(body, 'Terraform') || contains(body, 'locks'))) ||
+            (contains(body, 'atlantis') && contains(body, 'pullRequest'))
+          - "len(body) > 20"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(atlantisVersion|vcsHost|vcsType|repoAllowlist)"\s*:\s*"?[^",}{]{1,100}"?'
+          - '(?i)"(numLocks|locks)"\s*:\s*(?:\d+|\[)'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

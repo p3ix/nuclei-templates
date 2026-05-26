@@ -1,0 +1,113 @@
+id: content-type-auth-bypass
+
+info:
+  name: Admin Content-Type Negotiation Auth Bypass Candidate
+  author: p3i
+  severity: high
+  description: >
+    Tests whether protected admin or management endpoints enforce authorization
+    only on HTML responses but serve JSON data without authentication when the
+    Accept header requests JSON. This class of bypass occurs when authorization
+    middleware is applied per-view/per-renderer rather than per-route: the HTML
+    admin view checks auth, but the underlying API that populates it does not.
+    Common in Django REST Framework, Rails ActiveAdmin, and custom admin panels
+    where authentication decorators are applied to the template-rendering view
+    but not to the serializer or API endpoint. The template compares an HTML
+    request (which must return 401/403) to a JSON API request for the same
+    path — only reports when the status changes to 200 with structured data.
+  reference:
+    - https://portswigger.net/web-security/logic-flaws
+    - https://owasp.org/www-project-web-security-testing-guide/v42/4-Web_Application_Security_Testing/05-Authorization_Testing/
+  tags: misconfig,auth-bypass,content-negotiation,admin,api,access-control,web
+  metadata:
+    max-request: 56
+
+http:
+  - raw:
+      # Request 1: HTML request — must return 401 or 403 to qualify as protected
+      - |
+        GET /{{admin_path}} HTTP/1.1
+        Host: {{Hostname}}
+        Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+        Connection: close
+
+      # Request 2: JSON API request — if 200+JSON, auth is not enforced for API responses
+      - |
+        GET /{{admin_path}} HTTP/1.1
+        Host: {{Hostname}}
+        Accept: application/json
+        Content-Type: application/json
+        Connection: close
+
+    payloads:
+      admin_path:
+        - "admin"
+        - "admin/"
+        - "admin/users"
+        - "admin/dashboard"
+        - "admin/settings"
+        - "admin/config"
+        - "api/admin"
+        - "api/admin/users"
+        - "api/admin/settings"
+        - "api/management"
+        - "api/management/users"
+        - "api/v1/admin"
+        - "api/v1/admin/users"
+        - "api/v1/management"
+        - "api/v2/admin"
+        - "dashboard"
+        - "dashboard/api"
+        - "management"
+        - "management/api"
+        - "internal/api"
+        - "internal/users"
+        - "backend/api"
+        - "backend/users"
+        - "api/users"
+        - "api/accounts"
+        - "api/v1/users"
+        - "api/v1/accounts"
+        - "api/v1/profile"
+
+    attack: batteringram
+    req-condition: true
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      # HTML request MUST be protected (401 or 403)
+      - type: dsl
+        dsl:
+          - "status_code_1 == 401 || status_code_1 == 403"
+
+      # JSON request MUST succeed (200)
+      - type: dsl
+        dsl:
+          - "status_code_2 == 200"
+
+      # JSON response must contain structured data — not an HTML error page or empty body
+      - type: dsl
+        dsl:
+          - "contains(tolower(header_2), 'application/json') || contains(tolower(header_2), 'application/javascript')"
+          - "len(body_2) > 30"
+
+      # Body_2 must look like a real API response (not just `{}` or `{"error": "..."}`)
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body_2), '\"error\"') || contains(tolower(body_2), '\"data\"') || contains(tolower(body_2), '\"users\"') || contains(tolower(body_2), '\"results\"')"
+          - "!contains(tolower(body_2), '<html')"
+
+    extractors:
+      - type: dsl
+        name: html_status
+        dsl:
+          - "status_code_1"
+      - type: dsl
+        name: json_status
+        dsl:
+          - "status_code_2"
+      - type: regex
+        part: body_2
+        regex:
+          - '(?i)(\{[^}]{5,200}\}|\[[^\]]{5,200}\])'

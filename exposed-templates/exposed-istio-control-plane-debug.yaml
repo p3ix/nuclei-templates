@@ -1,0 +1,95 @@
+id: exposed-istio-control-plane-debug
+
+info:
+  name: Exposed Istio Control Plane Debug Endpoints (Istiod)
+  author: p3i
+  severity: high
+  description: >
+    Detects Istio control plane (Istiod) debug endpoints accessible without
+    authentication. Istiod runs debug endpoints on port 15014 (or proxied behind
+    a service) that expose: /debug/adsz — all xDS (Aggregated Discovery Service)
+    client connections including sidecar proxy identities and service names;
+    /debug/configz — the complete Istio configuration including authorization
+    policies, traffic management rules, and mutual TLS configuration; /debug/endpointz
+    — all service endpoints with their IP addresses across all namespaces;
+    /debug/syncz — proxy synchronization status; and /debug/registryz — the
+    complete service registry. These endpoints reveal the entire Kubernetes
+    service mesh topology, service identities (SPIFFE SVIDs), and mutual TLS
+    certificate details. Istiod debug endpoints have no authentication by default
+    and are intended for internal mesh use only.
+  reference:
+    - https://istio.io/latest/docs/ops/diagnostic-tools/controlz/
+    - https://istio.io/latest/docs/reference/commands/pilot-discovery/
+  tags: exposure,istio,kubernetes,service-mesh,debug,control-plane,xds
+  metadata:
+    max-request: 10
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/debug/adsz"
+      - "{{BaseURL}}/debug/configz"
+      - "{{BaseURL}}/debug/endpointz"
+      - "{{BaseURL}}/debug/syncz"
+      - "{{BaseURL}}/debug/registryz"
+      - "{{BaseURL}}/debug/push_status"
+      - "{{BaseURL}}/debug/inject"
+      - "{{BaseURL}}/ready"
+      - "{{BaseURL}}/version"
+      - "{{BaseURL}}/metrics"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      # Istiod debug endpoint-specific response content
+      - type: word
+        part: body
+        condition: or
+        words:
+          # adsz — xDS client connections
+          - "\"node_id\":"
+          - "\"cluster\":"
+          - "\"resource_names\":"
+          # configz — Istio config
+          - "\"virtualService\":"
+          - "\"destinationRule\":"
+          - "\"authorizationPolicy\":"
+          - "\"peerAuthentication\":"
+          # endpointz — service endpoints
+          - "\"shard\":"
+          - "\"serviceRegistry\":"
+          # Istio-specific terms
+          - "istio-pilot"
+          - "spiffe://"
+          - "pilot_xds"
+          - "\"proxyVersion\""
+
+      # Require Istio-specific indicators — not just any debug endpoint
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'spiffe://') ||
+            contains(body, 'istio-pilot') ||
+            contains(body, 'pilot_xds') ||
+            contains(body, 'virtualService') ||
+            contains(body, 'destinationRule') ||
+            contains(body, 'authorizationPolicy') ||
+            contains(body, 'peerAuthentication') ||
+            (contains(body, 'node_id') && contains(body, 'cluster') && contains(body, 'resource_names'))
+          - "len(body) < 52428800"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(node_id|cluster|resource_names|proxyVersion)"\s*:\s*"[^"]{1,200}"'
+          - '(?i)spiffe://[^\s"]{1,200}'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"
