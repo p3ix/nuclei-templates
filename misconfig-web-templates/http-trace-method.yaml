@@ -1,0 +1,67 @@
+id: http-trace-method
+
+info:
+  name: HTTP TRACE Method Enabled - Cross-Site Tracing (XST) Candidate
+  author: p3i
+  severity: low
+  description: >
+    Detects web servers where the HTTP TRACE method is enabled. The TRACE method
+    echoes the received request back to the client, making it useful for debugging
+    but also for Cross-Site Tracing (XST) attacks. When combined with XSS, TRACE
+    can be used to read HttpOnly cookies and Authorization headers that are normally
+    inaccessible to JavaScript. While modern browsers block cross-origin TRACE
+    requests and most modern frameworks disable TRACE by default, some legacy
+    applications and misconfigured servers still have it enabled. In bug bounty
+    programs, TRACE enabled is typically a low-severity or informational finding
+    unless combined with other vulnerabilities. The presence of the request
+    echoed back in the body or a 200 OK with "Message/HTTP" content type confirms
+    TRACE is active.
+  reference:
+    - https://portswigger.net/kb/issues/00500a00_http-trace-method-is-enabled
+    - https://owasp.org/www-community/attacks/Cross_Site_Tracing
+  tags: trace,http-method,xst,cross-site-tracing,misconfig,headers
+  metadata:
+    max-request: 3
+
+http:
+  - method: TRACE
+    path:
+      - "{{BaseURL}}/"
+      - "{{BaseURL}}/api/"
+      - "{{BaseURL}}/trace-test"
+
+    headers:
+      Accept: "*/*"
+      X-Custom-Header: "nuclei-trace-test"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      # TRACE echoes the request back — check for the request line in the body
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'TRACE') ||
+            contains(tolower(header), 'message/http') ||
+            contains(body, 'nuclei-trace-test') ||
+            contains(body, 'X-Custom-Header')
+
+      # Must not be a login page or redirect (would be a false positive)
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), '<html') || contains(tolower(header), 'message/http')"
+
+    extractors:
+      - type: dsl
+        name: content-type
+        dsl:
+          - "header"
+      - type: regex
+        part: body
+        regex:
+          - "TRACE [^ ]+ HTTP/[0-9.]+"

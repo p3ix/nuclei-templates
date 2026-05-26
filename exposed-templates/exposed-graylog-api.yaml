@@ -1,0 +1,86 @@
+id: exposed-graylog-api
+
+info:
+  name: Exposed Graylog Log Management API Without Authentication
+  author: p3i
+  severity: high
+  description: >
+    Detects Graylog (open-source log management and SIEM platform) instances
+    with the REST API accessible without authentication. Graylog aggregates
+    and indexes log data from all applications and infrastructure in an
+    organization. Logs typically contain: authentication events (login attempts,
+    tokens, session IDs), database query logs with potential data exposure,
+    API request/response logs with credentials and PII, application error logs
+    with stack traces and internal paths, and security events. When the Graylog
+    API is accessible without credentials (it uses HTTP Basic auth by default),
+    an attacker can: search all log messages, list all configured streams and
+    their search queries, enumerate all connected log sources (inputs), and
+    access dashboards showing security metrics and alert configurations.
+  reference:
+    - https://go2docs.graylog.org/5-0/setting_up_graylog/rest_api.html
+    - https://go2docs.graylog.org/5-0/what_more_can_graylog_do_for_me/authentication.html
+  tags: exposure,graylog,logging,siem,security,logs,monitoring,credentials
+  metadata:
+    max-request: 7
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/api/system"
+      - "{{BaseURL}}/api/system/overview"
+      - "{{BaseURL}}/api/cluster"
+      - "{{BaseURL}}/api/streams?per_page=5"
+      - "{{BaseURL}}/api/search/universal/relative?query=*&range=300&limit=5"
+      - "{{BaseURL}}/api/inputs"
+      - "{{BaseURL}}/api/users?per_page=5"
+
+    headers:
+      Accept: "application/json"
+      X-Requested-By: "nuclei"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"facility\":"
+          - "\"hostname\":"
+          - "\"node_id\":"
+          - "\"version\":"
+          - "\"lb_status\":"
+          - "\"is_processing\":"
+          - "\"jvm\":"
+          - "\"operating_system\":"
+          - "\"cluster_id\":"
+
+      - type: dsl
+        dsl:
+          - >-
+            (contains(body, 'facility') && contains(body, 'node_id')) ||
+            (contains(body, 'lb_status') && contains(body, 'is_processing')) ||
+            (contains(body, 'jvm') && contains(body, 'operating_system')) ||
+            (contains(body, 'cluster_id') && contains(body, 'hostname'))
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(version|facility|hostname|cluster_id|node_id)"\s*:\s*"?[^",}{]{1,150}"?'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"
