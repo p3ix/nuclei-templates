@@ -85,45 +85,55 @@ http:
       - type: status
         status:
           - 200
-          - 401
 
+      # Require structural/data indicators, not bare tool names — "Grafana", "Prometheus",
+      # "Kibana" etc. appear on documentation pages, blog posts, and any SaaS landing page.
       - type: word
         part: body
         condition: or
         words:
-          - "Grafana"
-          - "Prometheus"
-          - "Alertmanager"
-          - "Kibana"
-          - "OpenSearch Dashboards"
-          - "Jaeger"
-          - "Zipkin"
-          - "Loki"
-          - "Graylog"
-          - "Splunk"
-          - "Zabbix"
-          - "Nagios"
-          - "Icinga"
-          - "Munin"
-          - "Netdata"
-          - "Apache Server Status"
-          - "Active connections"
+          # Prometheus/metrics: exposition format or internal metric names
           - "# HELP"
           - "# TYPE"
           - "go_gc_duration_seconds"
           - "process_cpu_seconds_total"
-          - "Traefik"
-          - "traefik_dashboard"
+          - "prometheus_build_info"
+          # Grafana: structural JS markers only
+          - "grafana-app"
+          - "GrafanaBootData"
+          - "grafana_session"
+          - "\"isStarred\""
+          # Apache/nginx status
+          - "Apache Server Status"
+          - "Active connections:"
+          - "server accepts handled requests"
+          # Traefik: config-specific terms
           - "traefik_entrypoint"
-          - "Consul"
-          - "Nomad"
-          - "Vault"
+          - "traefik_backend"
+          - "\"routers\":"
+          # Kibana/OpenSearch: structural JSON
+          - "\"kibana.version\""
+          - "\"OpenSearch Dashboards\""
+          # Loki: label API response
+          - "\"data\":{\"type\":\"success\""
+          # Jaeger: trace data
+          - "\"traceID\""
+          - "\"spanID\""
+          # Zabbix: specific API structure
+          - "\"zabbix.version\""
+          # Alertmanager: receiver data
+          - "\"alertname\""
+          - "\"receivers\":"
+          # Consul/Nomad/Vault: API JSON fields
+          - "\"KnownLeader\""
+          - "\"EvalID\""
+          - "\"SecretID\""
 
       - type: dsl
         dsl:
-          - "!contains(tolower(body), 'not found') && !contains(tolower(body), 'was not found') && !contains(tolower(body), 'requested url') && !contains(tolower(body), 'the requested resource') && !contains(tolower(body), '404') && !contains(tolower(body), 'page does not exist') && !contains(tolower(body), 'permission to access') && !contains(tolower(body), 'no encontrado') && !contains(tolower(body), 'no se ha encontrado')"
-          - "!contains(tolower(body), 'wp-content') && !contains(tolower(body), 'wp-includes') && !contains(tolower(body), 'wp-admin') && !contains(tolower(body), 'woocommerce') && !contains(tolower(body), 'wpemoji') && !contains(tolower(body), 'gravityforms') && !contains(tolower(body), 'wpml')"
-          - "!contains(tolower(body), 'data-astro-cid') && !contains(tolower(body), '_astro/') && !contains(tolower(body), '__nuxt') && !contains(tolower(body), 'ng-version') && !contains(tolower(body), 'data-reactroot') && !contains(tolower(body), 'rails-ujs')"
+          # Monitoring endpoints return JSON, plain text metrics, or clean HTML — not CMS pages
+          - "!contains(tolower(body), 'wp-content') && !contains(tolower(body), 'wp-includes') && !contains(tolower(body), 'wp-admin') && !contains(tolower(body), 'woocommerce') && !contains(tolower(body), 'wpemoji')"
+          - "!contains(tolower(body), 'data-astro-cid') && !contains(tolower(body), '_astro/') && !contains(tolower(body), '__nuxt') && !contains(tolower(body), 'ng-version') && !contains(tolower(body), 'data-reactroot')"
           - "len(body) < 52428800"
 
     extractors:

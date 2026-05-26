@@ -39,15 +39,14 @@ http:
       - type: status
         status:
           - 200
-          - 401
 
+      # Require Grafana-specific structural indicators — "Grafana" alone appears in blog
+      # posts, docs, and any page that mentions the product.
       - type: word
         part: body
         condition: or
         words:
-          - "Grafana"
           - "grafana-app"
-          - "Grafana Labs"
           - "\"orgId\""
           - "\"type\":\"dash-db\""
           - "\"isStarred\""
@@ -55,6 +54,8 @@ http:
           - "dashboard-solo"
           - "Welcome to Grafana"
           - "login-subtitle"
+          - "GrafanaBootData"
+          - "grafana_session"
 
       - type: dsl
         dsl:

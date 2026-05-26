@@ -1,0 +1,91 @@
+id: exposed-sonarqube-unauthenticated
+
+info:
+  name: Unauthenticated SonarQube Instance (Code Analysis Exposure)
+  author: p3i
+  severity: high
+  description: >
+    Detects SonarQube instances accessible without authentication via the REST API.
+    SonarQube's "Anyone" group with Browse permission on projects (or globally)
+    allows unauthenticated users to access: all project security hotspots and
+    vulnerability findings (effectively a map of the application's weaknesses),
+    source code snippets from vulnerability context, branch analysis and coverage
+    data, dependency analysis with CVE listings, and the system info endpoint
+    (revealing infrastructure details, database connection strings, and LDAP/SAML
+    configuration). This makes it a high-value reconnaissance asset for attackers
+    targeting the parent organization or its clients.
+  reference:
+    - https://docs.sonarqube.org/latest/instance-administration/security/
+    - https://docs.sonarqube.org/latest/user-guide/permissions/
+  tags: exposure,sonarqube,code-analysis,sast,vulnerability,recon
+  metadata:
+    max-request: 8
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/api/projects/search?ps=1"
+      - "{{BaseURL}}/api/system/health"
+      - "{{BaseURL}}/api/system/info"
+      - "{{BaseURL}}/api/issues/search?ps=1"
+      - "{{BaseURL}}/api/hotspots/search?ps=1"
+      - "{{BaseURL}}/sonarqube/api/projects/search?ps=1"
+      - "{{BaseURL}}/sonar/api/projects/search?ps=1"
+      - "{{BaseURL}}/sonarqube/api/system/health"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      # SonarQube-specific JSON response structure
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"components\":"
+          - "\"paging\":"
+          - "\"pageIndex\""
+          - "\"health\":\"GREEN\""
+          - "\"health\":\"YELLOW\""
+          - "\"health\":\"RED\""
+          - "\"issues\":"
+          - "\"hotspots\":"
+          - "\"sonarQubeVersion\""
+          - "\"bundledPlugins\""
+
+      # Not an auth error or HTML page
+      - type: word
+        part: body
+        negative: true
+        words:
+          - "\"errors\":"
+          - "Insufficient privileges"
+          - "<html"
+          - "<!DOCTYPE"
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(key|name|qualifier)"\s*:\s*"([^"]{1,120})"'
+          - '(?i)"sonarQubeVersion"\s*:\s*"([^"]+)"'
+          - '(?i)"(total|pageSize|pageIndex)"\s*:\s*\d+'
+          - '(?i)"(health|status)"\s*:\s*"(GREEN|YELLOW|RED|UP|DOWN)"'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

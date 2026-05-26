@@ -1,0 +1,103 @@
+id: graphql-query-depth-limit-bypass
+
+info:
+  name: GraphQL Missing Query Depth Limit (DoS Candidate)
+  author: p3i
+  severity: medium
+  description: >
+    Tests whether the GraphQL server enforces a query depth limit. Without depth
+    limiting, an attacker can send a deeply nested query that forces the server
+    to resolve exponentially many objects, exhausting CPU and memory (the
+    "Query Depth Attack" / "Batching Attack"). The probe sends a 15-level deep
+    nested query using the universal __typename field. If the server returns a
+    successful data response at this depth, depth limiting is disabled. Apollo
+    Server, GraphQL Yoga, and Strawberry disable depth limiting by default —
+    it requires explicit configuration via graphql-depth-limit or similar.
+    Confirm manually: measure response time with depth=15 vs depth=30 to assess
+    real impact; databases without expensive resolvers may have low actual risk.
+  reference:
+    - https://www.apollographql.com/blog/graphql/security/securing-your-graphql-api-from-malicious-queries/
+    - https://cheatsheetseries.owasp.org/cheatsheets/GraphQL_Cheat_Sheet.html
+  tags: misconfig,graphql,dos,depth,api,web
+  metadata:
+    max-request: 8
+    false-positives: >
+      Some servers cap depth at 15 but not at lower values — the finding is valid
+      even if depth=15 works, since attackers escalate to 30+. Check whether
+      the server rejects depth=20 or depth=30 before downgrading severity.
+
+http:
+  - method: POST
+    path:
+      - "{{BaseURL}}/{{gql_path}}"
+
+    payloads:
+      gql_path:
+        - "graphql"
+        - "graphql/"
+        - "api/graphql"
+        - "api/graphql/"
+        - "v1/graphql"
+        - "v2/graphql"
+        - "api/v1/graphql"
+        - "gql"
+
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+
+    # 15-level deep nesting of __typename (present in every schema).
+    # depth=15 is the commonly recommended hard limit; exceeding it without error
+    # confirms depth limiting is absent or set above the safe threshold.
+    body: >-
+      {"query":"{ a1: __typename { a2: __typename { a3: __typename { a4: __typename { a5: __typename { a6: __typename { a7: __typename { a8: __typename { a9: __typename { a10: __typename { a11: __typename { a12: __typename { a13: __typename { a14: __typename { a15: __typename } } } } } } } } } } } } } } }"}
+
+    attack: batteringram
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        condition: or
+        words:
+          - "content-type: application/json"
+          - "content-type: application/graphql"
+        case-insensitive: true
+
+      # Server executed the deeply nested query and returned data (no depth error)
+      - type: word
+        part: body
+        words:
+          - '"data"'
+
+      # Reject if the server returned a depth-related error despite returning 200
+      - type: regex
+        part: body
+        negative: true
+        regex:
+          - '(?i)"message"\s*:\s*"[^"]*(?:max(?:imum)?\s*(?:query\s*)?depth|depth\s*limit|too\s*deep|exceeds?\s*(?:the\s*)?(?:max|allowed|configured)[^"]*depth)[^"]*"'
+
+      # Not an HTML error page
+      - type: word
+        part: body
+        negative: true
+        words:
+          - "<html"
+          - "<!DOCTYPE"
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"data"\s*:\s*\{[^}]{0,200}'
+          - '(?i)"errors"\s*:\s*\[[^\]]{0,300}'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

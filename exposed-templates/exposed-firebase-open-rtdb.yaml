@@ -1,0 +1,91 @@
+id: exposed-firebase-open-rtdb
+
+info:
+  name: Open Firebase Realtime Database (Unauthenticated Read)
+  author: p3i
+  severity: high
+  description: >
+    Detects Firebase Realtime Database instances that allow unauthenticated read
+    access via the REST API. Firebase RTDB exposes a REST endpoint at /.json that
+    returns the entire database (or subtree) as JSON when the security rules grant
+    ".read": true to unauthenticated users (auth == null). Exposed databases can
+    contain user PII, session tokens, API keys, chat messages, financial records,
+    or any data the application stores. Run this template directly against
+    *.firebaseio.com or *-default-rtdb.firebaseio.com targets; it will also match
+    when a web app's Firebase database URL is the scan target.
+  reference:
+    - https://firebase.google.com/docs/database/security
+    - https://www.youtube.com/watch?v=nt9e3bIFGqk
+  tags: exposure,firebase,rtdb,database,misconfiguration,cloud
+  metadata:
+    max-request: 8
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/.json?shallow=true"
+      - "{{BaseURL}}/.json?print=pretty&shallow=true"
+      - "{{BaseURL}}/.json"
+      - "{{BaseURL}}/users.json?shallow=true"
+      - "{{BaseURL}}/data.json?shallow=true"
+      - "{{BaseURL}}/records.json?shallow=true"
+      - "{{BaseURL}}/accounts.json?shallow=true"
+      - "{{BaseURL}}/config.json?shallow=true"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      # Confirmed Firebase RTDB response: Firebase-specific response headers
+      # OR the target host is *.firebaseio.com.
+      # x-firebase-locality and server: nginx are present on RTDB REST responses.
+      - type: dsl
+        dsl:
+          - >-
+            contains(tolower(host), 'firebaseio.com') ||
+            contains(tolower(header), 'x-firebase') ||
+            contains(tolower(header), 'x-cloud-trace-context')
+
+      # Reject permission denied or authentication required responses —
+      # a readable database returns actual data or "null" (empty but accessible)
+      - type: word
+        part: body
+        negative: true
+        words:
+          - '"error"'
+          - "Permission denied"
+          - "Unauthorized"
+          - "Authentication"
+
+      # Body must be valid JSON data — not an HTML error page
+      - type: word
+        part: body
+        negative: true
+        words:
+          - "<html"
+          - "<!DOCTYPE"
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"([a-zA-Z_][a-zA-Z0-9_-]{2,40})"\s*:\s*(?:true|false|\{|\[|"[^"]{0,120}")'
+      - type: dsl
+        name: accessible
+        dsl:
+          - "body == 'null' ? 'Database accessible but empty' : 'Database accessible with data'"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

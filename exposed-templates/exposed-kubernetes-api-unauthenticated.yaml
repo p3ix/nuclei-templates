@@ -1,0 +1,104 @@
+id: exposed-kubernetes-api-unauthenticated
+
+info:
+  name: Unauthenticated Kubernetes API Server Or Dashboard
+  author: p3i
+  severity: critical
+  description: >
+    Detects Kubernetes API servers and Dashboard instances accessible without
+    authentication. The Kubernetes API server on port 8080 (insecure-port, removed
+    in Kubernetes 1.20 but still present in older clusters or misconfigured installs)
+    or anonymously via 6443 allows listing namespaces, secrets, service accounts,
+    pods, and config maps without credentials. An unauthenticated API server exposes
+    the entire cluster: all application secrets, service account tokens, container
+    images, and enables creating pods with privileged escalation to node compromise.
+    The Kubernetes Dashboard without auth (via --enable-skip-login or Viewer RBAC
+    misconfiguration) provides a visual interface for the same operations.
+  reference:
+    - https://kubernetes.io/docs/reference/access-authn-authz/authentication/#anonymous-requests
+    - https://github.com/kubernetes/dashboard/blob/master/docs/user/access-control/README.md
+  tags: exposure,kubernetes,k8s,api,dashboard,cluster,critical
+  metadata:
+    max-request: 12
+
+http:
+  - method: GET
+    path:
+      # Kubernetes API server — anonymous access
+      - "{{BaseURL}}/api"
+      - "{{BaseURL}}/api/v1"
+      - "{{BaseURL}}/api/v1/namespaces"
+      - "{{BaseURL}}/api/v1/pods"
+      - "{{BaseURL}}/api/v1/secrets"
+      - "{{BaseURL}}/api/v1/configmaps"
+      - "{{BaseURL}}/api/v1/serviceaccounts"
+      # Kubernetes Dashboard UI
+      - "{{BaseURL}}/"
+      - "{{BaseURL}}/#/login"
+      # Proxy-accessible dashboard paths
+      - "{{BaseURL}}/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/"
+      - "{{BaseURL}}/api/v1/namespaces/kube-system/services/https:kubernetes-dashboard:/proxy/"
+      # Kubernetes API groups
+      - "{{BaseURL}}/apis"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      # Require Kubernetes-specific API response structure or Dashboard UI
+      - type: word
+        part: body
+        condition: or
+        words:
+          # API server JSON responses
+          - "\"kind\":\"APIVersions\""
+          - "\"kind\":\"APIResourceList\""
+          - "\"kind\":\"NamespaceList\""
+          - "\"kind\":\"PodList\""
+          - "\"kind\":\"SecretList\""
+          - "\"kind\":\"ConfigMapList\""
+          - "\"kind\":\"ServiceAccountList\""
+          - "\"kind\":\"APIGroupList\""
+          - "\"apiVersion\":\"v1\""
+          # Dashboard UI
+          - "Kubernetes Dashboard"
+          - "kube-dashboard"
+          - "kubernetes-dashboard"
+
+      # Reject auth challenges — we want confirmed unauthenticated access
+      - type: word
+        part: body
+        negative: true
+        words:
+          - "\"reason\":\"Unauthorized\""
+          - "\"reason\":\"Forbidden\""
+          - "Unauthorized"
+          - "You must be logged in"
+        case-insensitive: true
+
+      - type: word
+        part: body
+        negative: true
+        words:
+          - "<html"
+          - "<!DOCTYPE"
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"kind"\s*:\s*"[A-Za-z]+(List|Versions|Groups?|Resources?)"'
+          - '(?i)"(namespace|name|creationTimestamp)"\s*:\s*"[^"]{1,120}"'
+          - '(?i)"(serverVersion|gitVersion|platform)"\s*:\s*"[^"]{1,80}"'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

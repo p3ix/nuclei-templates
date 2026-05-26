@@ -1,0 +1,72 @@
+id: cors-trusted-subdomain-bypass
+
+info:
+  name: CORS Naive Suffix-Based Origin Validation Bypass
+  author: p3i
+  severity: high
+  description: >
+    Tests whether the CORS implementation validates the Origin header using a naive
+    suffix check — e.g. checking that the origin ends with ".example.com" instead
+    of matching the exact registered domain. An attacker who controls any subdomain
+    of the target (via subdomain takeover, expired DNS, or a separate injection
+    vulnerability) can bypass this control and make cross-origin requests with
+    credentials. The probe sends Origin: https://evil.<target-host>; if the server
+    reflects it in ACAO alongside ACAC:true, the validation is suffix-based.
+  reference:
+    - https://portswigger.net/web-security/cors
+    - https://portswigger.net/research/exploiting-cors-misconfigurations-for-bitcoins-and-bounties
+  tags: misconfig,cors,origin,bypass,suffix,subdomain
+  metadata:
+    max-request: 6
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/"
+      - "{{BaseURL}}/api/"
+      - "{{BaseURL}}/api/v1/"
+      - "{{BaseURL}}/api/v2/"
+      - "{{BaseURL}}/graphql"
+      - "{{BaseURL}}/api/me"
+
+    headers:
+      Origin: "https://evil.{{Host}}"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      # ACAO must reflect our canary subdomain origin — proves suffix-based matching
+      - type: dsl
+        dsl:
+          - "contains(tolower(header), 'access-control-allow-origin: https://evil.' + host)"
+
+      # ACAC:true is required for the bypass to be exploitable with credentials
+      - type: word
+        part: header
+        words:
+          - "access-control-allow-credentials: true"
+        case-insensitive: true
+
+      # Reject wildcard ACAO — browsers block ACAO:* with ACAC:true by spec
+      - type: word
+        part: header
+        negative: true
+        words:
+          - "access-control-allow-origin: *"
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "(?i)access-control-allow-origin:[^\r\n]+"
+          - "(?i)access-control-allow-credentials:[^\r\n]+"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

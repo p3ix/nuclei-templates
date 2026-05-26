@@ -1,0 +1,134 @@
+id: exposed-ml-platform-dashboards
+
+info:
+  name: Exposed ML Platform Dashboards Without Authentication
+  author: p3i
+  severity: high
+  description: >
+    Detects exposed machine learning and data science platform dashboards that
+    lack authentication: MLflow Tracking Server, TensorBoard, Ray Dashboard,
+    Label Studio, DVC Studio, ZenML, BentoML, Seldon Core, and Weights &
+    Biases (self-hosted). These surfaces expose model artifacts, experiment
+    data, training metrics, dataset paths (often pointing to internal S3
+    buckets or databases), hyperparameters, code snapshots, and in some cases
+    execution environments that allow triggering training runs. MLflow and Ray
+    in particular often store database URIs and cloud credentials in experiment
+    metadata and runtime configurations.
+  reference:
+    - https://mlflow.org/docs/latest/tracking.html
+    - https://docs.ray.io/en/latest/ray-core/api/doc/ray.dashboard.html
+  tags: exposure,mlflow,tensorboard,ray,ml,ai,dashboard,datascience
+  metadata:
+    max-request: 24
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{ml_path}}"
+
+    payloads:
+      ml_path:
+        # MLflow Tracking Server
+        - "api/2.0/mlflow/experiments/list"
+        - "api/2.0/mlflow/runs/search"
+        - "api/2.0/mlflow/registered-models/list"
+        - "mlflow/"
+        - "mlflow/api/2.0/mlflow/experiments/list"
+        # TensorBoard
+        - "data/runs"
+        - "data/environment"
+        - "data/logdir"
+        - "tensorboard/"
+        # Ray Dashboard
+        - "api/v0/jobs/"
+        - "api/v0/actors/"
+        - "api/v0/nodes"
+        - "metrics/prometheus"
+        - "ray/"
+        # Label Studio
+        - "api/projects/"
+        - "api/users/"
+        - "label-studio/"
+        # BentoML
+        - "healthz"
+        - "readyz"
+        - "metrics"
+        - "docs/json"
+        # ZenML
+        - "api/v1/info"
+        - "api/v1/pipelines"
+        - "api/v1/stacks"
+
+    headers:
+      Accept: "application/json"
+
+    attack: batteringram
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        condition: or
+        words:
+          - "application/json"
+          - "text/html"
+        case-insensitive: true
+
+      # Require platform-specific structural indicators
+      - type: word
+        part: body
+        condition: or
+        words:
+          # MLflow
+          - "\"experiments\":"
+          - "\"experiment_id\""
+          - "\"artifact_uri\""
+          - "\"run_id\""
+          - "\"registered_models\":"
+          # TensorBoard
+          - "TensorBoard"
+          - "\"scalars\""
+          - "tensorboard"
+          - "\"logdir\""
+          # Ray
+          - "\"rayVersion\""
+          - "\"clusterID\""
+          - "\"nodeId\""
+          - "\"job_id\""
+          - "\"actor_id\""
+          # Label Studio
+          - "\"label_config\""
+          - "label-studio"
+          - "\"task_number\""
+          # BentoML
+          - "\"bentoml_version\""
+          - "\"bento_tag\""
+          # ZenML
+          - "\"zenml_version\""
+          - "\"stack_id\""
+          - "\"pipeline_id\""
+
+      - type: word
+        part: body
+        negative: true
+        words:
+          - "<html"
+          - "<!DOCTYPE"
+          - "\"detail\":\"Not Found\""
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(artifact_uri|s3://|gs://|abfs://|mlflow\.tracking\.uri|run_id|experiment_id|registered_model)"\s*:\s*"[^"]{1,300}"'
+          - '(?i)"(rayVersion|clusterID|nodeId|job_id|actor_id|zenml_version|bentoml_version)"\s*:\s*"[^"]{1,100}"'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

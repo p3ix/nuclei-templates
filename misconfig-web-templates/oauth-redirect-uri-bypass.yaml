@@ -1,0 +1,85 @@
+id: oauth-redirect-uri-bypass
+
+info:
+  name: OAuth Authorization Endpoint Accepts External Redirect URI
+  author: p3i
+  severity: high
+  description: >
+    Tests common OAuth 2.0 and OIDC authorization endpoints with an attacker-controlled
+    redirect_uri. A compliant server must reject any redirect_uri not pre-registered by
+    the client (RFC 6749 §10.6). When the server redirects to the canary domain — even
+    for error responses — it proves the redirect_uri is not validated against a whitelist,
+    enabling authorization code theft: an attacker crafts a link to the authorization
+    endpoint with their redirect_uri, the victim clicks it, and the auth code lands on
+    the attacker's server.
+  reference:
+    - https://portswigger.net/web-security/oauth/preventing
+    - https://tools.ietf.org/html/rfc6749#section-10.6
+    - https://datatracker.ietf.org/doc/html/rfc6819#section-4.4.1.7
+  tags: misconfig,oauth,oidc,redirect,authorization,web
+  metadata:
+    max-request: 16
+    false-positives: >
+      Some servers redirect error responses (e.g. invalid_client) to ANY redirect_uri
+      supplied without actually handing over an auth code — check whether the Location
+      header also contains "code=" before reporting as critical. If it only contains
+      "error=", severity drops to medium (redirect_uri accepted but no code issued).
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{oauth_path}}"
+
+    payloads:
+      oauth_path:
+        - "oauth/authorize?response_type=code&client_id=test&redirect_uri=https://oauth-redirect-bugbounty.example/cb&scope=openid"
+        - "oauth2/authorize?response_type=code&client_id=test&redirect_uri=https://oauth-redirect-bugbounty.example/cb&scope=openid"
+        - "connect/authorize?response_type=code&client_id=test&redirect_uri=https://oauth-redirect-bugbounty.example/cb&scope=openid"
+        - "authorize?response_type=code&client_id=test&redirect_uri=https://oauth-redirect-bugbounty.example/cb&scope=openid"
+        - "auth/authorize?response_type=code&client_id=test&redirect_uri=https://oauth-redirect-bugbounty.example/cb&scope=openid"
+        - "api/oauth/authorize?response_type=code&client_id=test&redirect_uri=https://oauth-redirect-bugbounty.example/cb&scope=openid"
+        - "api/auth/authorize?response_type=code&client_id=test&redirect_uri=https://oauth-redirect-bugbounty.example/cb&scope=openid"
+        - "v1/oauth/authorize?response_type=code&client_id=test&redirect_uri=https://oauth-redirect-bugbounty.example/cb&scope=openid"
+        - "oauth/authorize?response_type=token&client_id=test&redirect_uri=https://oauth-redirect-bugbounty.example/cb&scope=openid"
+        - "oauth2/authorize?response_type=token&client_id=test&redirect_uri=https://oauth-redirect-bugbounty.example/cb&scope=openid"
+        - "connect/authorize?response_type=token&client_id=test&redirect_uri=https://oauth-redirect-bugbounty.example/cb&scope=openid"
+        - "sso/oauth/authorize?response_type=code&client_id=test&redirect_uri=https://oauth-redirect-bugbounty.example/cb"
+        - "as/authorization.oauth2?response_type=code&client_id=test&redirect_uri=https://oauth-redirect-bugbounty.example/cb"
+        - "idp/oauth2/authorize?response_type=code&client_id=test&redirect_uri=https://oauth-redirect-bugbounty.example/cb"
+        - "protocol/openid-connect/auth?response_type=code&client_id=test&redirect_uri=https://oauth-redirect-bugbounty.example/cb&scope=openid"
+        - "oauth/v2/authorize?response_type=code&client_id=test&redirect_uri=https://oauth-redirect-bugbounty.example/cb&scope=openid"
+
+    attack: batteringram
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 301
+          - 302
+          - 303
+          - 307
+          - 308
+
+      # Location must point to the canary domain — confirms redirect_uri was accepted.
+      # Both "code=" (auth code issued) and "error=" (error redirected) are valid signals;
+      # see false-positives note above for severity guidance.
+      - type: regex
+        part: header
+        regex:
+          - "(?i)location:\\s*https?://oauth-redirect-bugbounty\\.example[^\r\n]*"
+
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "(?i)location:[^\r\n]+"
+      - type: dsl
+        name: contains_code
+        dsl:
+          - "contains(tolower(header), 'code=') ? 'YES — authorization code issued to attacker URI (critical)' : 'NO — error redirect only (medium)'"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

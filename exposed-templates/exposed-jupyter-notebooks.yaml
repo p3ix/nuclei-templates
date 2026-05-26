@@ -84,16 +84,16 @@ http:
         status:
           - 200
 
+      # Ultra-generic JSON keys removed: "\"cells\"", "\"source\"", "\"outputs\"",
+      # "\"writable\"", "\"last_modified\"", "\"type\": \"notebook\"", "api/contents"
+      # — all appear in any REST API response. Keep only Jupyter-specific terms.
       - type: word
         part: body
         condition: or
         words:
           - "\"nbformat\""
           - "\"nbformat_minor\""
-          - "\"cells\""
           - "\"cell_type\""
-          - "\"source\""
-          - "\"outputs\""
           - "\"execution_count\""
           - "Jupyter Notebook"
           - "JupyterLab"
@@ -101,16 +101,14 @@ http:
           - "JupyterHub"
           - "jupyter-notebook"
           - "jupyterlab"
-          - "ipynb"
-          - "api/contents"
+          - ".ipynb"
           - "\"kernelspec\""
           - "\"language_info\""
           - "\"kernel_name\""
-          - "\"type\": \"notebook\""
-          - "\"writable\""
-          - "\"last_modified\""
           - "NotebookApp"
           - "ServerApp"
+          - "jupyter_server"
+          - "nbclassic"
 
       - type: dsl
         dsl:

@@ -1,0 +1,68 @@
+id: missing-subresource-integrity
+
+info:
+  name: Missing Subresource Integrity On CDN Scripts
+  author: p3i
+  severity: info
+  description: >
+    Detects pages that load JavaScript from third-party CDNs (cdnjs, unpkg,
+    jsDelivr, jQuery CDN, Google APIs, Bootstrap CDN) without a Subresource
+    Integrity (SRI) integrity= attribute. Without SRI, if the CDN is compromised
+    or the package is hijacked (typosquatting, account takeover), the malicious
+    script will execute in users' browsers with full access to session cookies,
+    form data, and any secrets on the page. Widely recommended by OWASP and
+    required by strict CSP policies.
+  reference:
+    - https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity
+    - https://www.srihash.org/
+    - https://cheatsheetseries.owasp.org/cheatsheets/Third_Party_Javascript_Management_Cheat_Sheet.html
+  tags: misconfig,sri,cdn,javascript,supply-chain,web
+  metadata:
+    max-request: 3
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/"
+      - "{{BaseURL}}/login"
+      - "{{BaseURL}}/app"
+
+    redirects: false
+    max-redirects: 2
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "text/html"
+        case-insensitive: true
+
+      # Script tag loading from a known CDN host — covers the most common supply chains
+      - type: regex
+        part: body
+        regex:
+          - '(?i)<script[^>]+src\s*=\s*["\x27]https?://(?:cdnjs\.cloudflare\.com|unpkg\.com|cdn\.jsdelivr\.net|code\.jquery\.com|ajax\.googleapis\.com|stackpath\.bootstrapcdn\.com|maxcdn\.bootstrapcdn\.com|cdn\.bootcss\.com|ajax\.aspnetcdn\.com|cdn\.polyfill\.io)[^"'']*["\x27][^>]*>'
+
+      # Suppress if the page already uses integrity= on any CDN script — indicates
+      # the team is aware of SRI (mixed use may still have gaps but reduces signal quality).
+      - type: regex
+        part: body
+        negative: true
+        regex:
+          - '(?i)<script[^>]+integrity\s*='
+
+    extractors:
+      # Extract the CDN URLs without integrity for the report
+      - type: regex
+        part: body
+        regex:
+          - '(?i)<script[^>]+src\s*=\s*["\x27](https?://(?:cdnjs\.cloudflare\.com|unpkg\.com|cdn\.jsdelivr\.net|code\.jquery\.com|ajax\.googleapis\.com|stackpath\.bootstrapcdn\.com|maxcdn\.bootstrapcdn\.com)[^"'']*)["\x27]'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

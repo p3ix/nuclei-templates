@@ -1,0 +1,90 @@
+id: exposed-airflow-api-unauthenticated
+
+info:
+  name: Exposed Apache Airflow REST API Without Authentication
+  author: p3i
+  severity: high
+  description: >
+    Detects Apache Airflow REST API endpoints accessible without authentication.
+    The Airflow REST API (v1, introduced in Airflow 2.0) exposes sensitive
+    operational data including: DAG source code and schedules, task instance
+    logs with cleartext credentials, connections (database URIs, API keys, SSH
+    keys stored as "extra" JSON), variables (often used as secret stores), and
+    config values. Unauthenticated access allows full read of all secrets stored
+    in Airflow's credential management and can expose the entire data pipeline
+    infrastructure. Airflow requires AUTH_ROLE_PUBLIC = 'Public' (no access)
+    by default, but many deployments set it to 'Viewer' or 'Admin'.
+  reference:
+    - https://airflow.apache.org/docs/apache-airflow/stable/security/api.html
+    - https://airflow.apache.org/docs/apache-airflow/stable/stable-rest-api-ref.html
+  tags: exposure,airflow,api,credentials,pipeline,dag
+  metadata:
+    max-request: 8
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/api/v1/dags"
+      - "{{BaseURL}}/api/v1/variables"
+      - "{{BaseURL}}/api/v1/connections"
+      - "{{BaseURL}}/api/v1/config"
+      - "{{BaseURL}}/api/v1/pools"
+      - "{{BaseURL}}/airflow/api/v1/dags"
+      - "{{BaseURL}}/airflow/api/v1/variables"
+      - "{{BaseURL}}/airflow/api/v1/connections"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      # Require Airflow-specific JSON structure
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"dag_id\""
+          - "\"is_paused\""
+          - "\"schedule_interval\""
+          - "\"variable_id\""
+          - "\"connection_id\""
+          - "\"conn_type\""
+          - "\"total_entries\""
+          - "\"pools\""
+          - "\"dags\":"
+          - "\"connections\":"
+          - "\"variables\":"
+          - "\"[webserver]\""
+
+      - type: word
+        part: body
+        negative: true
+        words:
+          - "<html"
+          - "<!DOCTYPE"
+          - "\"detail\":\"Unauthorized\""
+          - "\"title\":\"Forbidden\""
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(dag_id|connection_id|variable_id|conn_uri|password|extra|host|schema|login)"\s*:\s*"[^"]{1,200}"'
+          - '(?i)"total_entries"\s*:\s*\d+'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

@@ -1,0 +1,91 @@
+id: graphql-field-suggestion-disclosure
+
+info:
+  name: GraphQL Schema Disclosure Via Field Suggestion Errors
+  author: p3i
+  severity: medium
+  description: >
+    Detects GraphQL servers that return "Did you mean X?" suggestions when a misspelled
+    field is queried. Apollo Server, GraphQL-core (Python), Hot Chocolate (.NET), and
+    Strawberry enable this feature by default. Even with introspection fully disabled,
+    suggestion errors reveal field names and type names from the real schema, allowing
+    partial schema reconstruction without authentication. The probe misspells the
+    universal built-in "__typename" (present in every GraphQL schema) to confirm the
+    feature is active; follow up manually with misspelled application fields
+    (e.g. "usrs"→"users", "admn"→"admin") to enumerate domain-specific names.
+  reference:
+    - https://the-guild.dev/blog/graphql-field-suggestions
+    - https://github.com/nicholasess/graphql-field-enumeration
+  tags: misconfig,graphql,schema,disclosure,api,recon,web
+  metadata:
+    max-request: 8
+
+http:
+  - method: POST
+    path:
+      - "{{BaseURL}}/{{gql_path}}"
+
+    payloads:
+      gql_path:
+        - "graphql"
+        - "graphql/"
+        - "api/graphql"
+        - "api/graphql/"
+        - "v1/graphql"
+        - "v2/graphql"
+        - "api/v1/graphql"
+        - "gql"
+
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+
+    # "__typenm" misspells "__typename" — a built-in field present in EVERY GraphQL schema.
+    # Any server with suggestion errors enabled returns "Did you mean '__typename'?" reliably,
+    # confirming that schema enumeration via suggestions is possible on this endpoint.
+    body: '{"query":"{ __typenm }"}'
+
+    attack: batteringram
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        condition: or
+        words:
+          - "content-type: application/json"
+          - "content-type: application/graphql"
+        case-insensitive: true
+
+      # "Did you mean" in the error message confirms the suggestion feature is live —
+      # this is the actual disclosure vector, not just a parse error.
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"message"\s*:\s*"[^"]*did you mean\b[^"]*"'
+
+      # Must be a structured JSON/GraphQL error, not an HTML error page.
+      - type: word
+        part: body
+        negative: true
+        words:
+          - "<html"
+          - "<!DOCTYPE"
+        case-insensitive: true
+
+    extractors:
+      # Extract the suggested field name(s) — these are the schema names being disclosed.
+      - type: regex
+        part: body
+        regex:
+          - '(?i)did you mean\s+[\x27\x60"]([A-Za-z_][A-Za-z0-9_]*)[\x27\x60"]?'
+          - '(?i)"message"\s*:\s*"[^"]+"'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

@@ -1,0 +1,119 @@
+id: prototype-pollution-server-side-candidate
+
+info:
+  name: Server-Side Prototype Pollution Candidate (Query Parameters)
+  author: p3i
+  severity: medium
+  description: >
+    Tests whether server-side JavaScript frameworks merge query parameters into
+    objects in ways that allow prototype pollution via __proto__ or constructor
+    property chains. A polluted server will propagate the canary property
+    "nucleipp" from the prototype chain into serialized JSON responses — the
+    canary appearing as a top-level JSON key (alongside legitimate application
+    keys) is a strong pollution indicator. Sending ?__proto__[nucleipp]=bb9f3d
+    followed by checking if "nucleipp":"bb9f3d" appears in the response body
+    in a non-reflected, non-nested position. Requires manual confirmation:
+    verify the key appears at the same level as application fields, not just
+    echoed inside a query/params wrapper.
+  reference:
+    - https://portswigger.net/web-security/prototype-pollution/server-side
+    - https://portswigger.net/research/server-side-prototype-pollution
+  tags: misconfig,prototype-pollution,nodejs,javascript,api,web
+  metadata:
+    max-request: 20
+    false-positives: >
+      Some servers reflect query parameters directly into the response body
+      (e.g. {"query": {"__proto__": {"nucleipp": "bb9f3d"}}}). That is safe
+      reflection, not pollution. Confirmed pollution: "nucleipp" appears
+      alongside application fields at the top level, NOT nested under "__proto__"
+      or "query". Always verify manually before reporting.
+
+flow: http(1) && http(2)
+
+http:
+  # Baseline: confirm a JSON API endpoint exists and the canary is absent
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{api_path}}"
+
+    payloads:
+      api_path:
+        - ""
+        - "api"
+        - "api/"
+        - "api/v1"
+        - "api/users"
+        - "api/me"
+        - "api/profile"
+        - "api/settings"
+        - "api/config"
+        - "api/data"
+
+    attack: batteringram
+    redirects: false
+    stop-at-first-match: true
+    matchers:
+      - type: dsl
+        internal: true
+        dsl:
+          # Must be a JSON endpoint returning a real object
+          - "status_code == 200"
+          - "contains(tolower(header), 'application/json')"
+          # Canary must be absent in the clean response (no pre-existing key)
+          - "!contains(body, 'nucleipp')"
+          - "!contains(tolower(body), '<html')"
+
+  # Probe: inject __proto__ and constructor pollution payloads
+  - method: GET
+    path:
+      - "{{BaseURL}}/?__proto__[nucleipp]=bb9f3d&constructor[prototype][nucleipp]=bb9f3d"
+      - "{{BaseURL}}/api?__proto__[nucleipp]=bb9f3d&constructor[prototype][nucleipp]=bb9f3d"
+      - "{{BaseURL}}/api/v1?__proto__[nucleipp]=bb9f3d&constructor[prototype][nucleipp]=bb9f3d"
+      - "{{BaseURL}}/api/users?__proto__[nucleipp]=bb9f3d&constructor[prototype][nucleipp]=bb9f3d"
+      - "{{BaseURL}}/api/me?__proto__[nucleipp]=bb9f3d&constructor[prototype][nucleipp]=bb9f3d"
+      - "{{BaseURL}}/api/profile?__proto__[nucleipp]=bb9f3d&constructor[prototype][nucleipp]=bb9f3d"
+      - "{{BaseURL}}/api/settings?__proto__[nucleipp]=bb9f3d&constructor[prototype][nucleipp]=bb9f3d"
+      - "{{BaseURL}}/api/config?__proto__[nucleipp]=bb9f3d&constructor[prototype][nucleipp]=bb9f3d"
+      - "{{BaseURL}}/api/data?__proto__[nucleipp]=bb9f3d&constructor[prototype][nucleipp]=bb9f3d"
+      - "{{BaseURL}}/api?__proto__.nucleipp=bb9f3d"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      # Canary must appear in the response after pollution probe
+      - type: word
+        part: body
+        words:
+          - '"nucleipp"'
+
+      # HTML page would be a false positive (login redirect, error page)
+      - type: word
+        part: body
+        negative: true
+        words:
+          - "<html"
+          - "<!DOCTYPE"
+        case-insensitive: true
+
+    extractors:
+      # Extract surrounding context to help distinguish pollution from reflection
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"nucleipp"\s*:\s*"[^"]*"'
+          - '(?i)\{[^}{]{0,200}"nucleipp"[^}{]{0,200}\}'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

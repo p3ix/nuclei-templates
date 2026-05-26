@@ -1,0 +1,95 @@
+id: graphql-get-query-csrf-candidate
+
+info:
+  name: GraphQL Endpoint Accepts GET Queries (CSRF Candidate)
+  author: p3i
+  severity: medium
+  description: >
+    Tests whether the GraphQL endpoint accepts queries via HTTP GET with the query
+    in the URL parameter. The GraphQL spec allows GET requests for queries (not
+    mutations), but many frameworks enable it without restriction. When GET queries
+    are accepted AND the endpoint relies on cookies for authentication (rather than
+    the Authorization header), an attacker can craft a simple cross-origin link that
+    executes a GraphQL query in the victim's browser session — bypassing CSRF
+    protections that only block form POST requests. Verify manually: confirm the
+    endpoint uses cookie-based auth, then craft a GET request with a sensitive query.
+  reference:
+    - https://graphql.org/learn/serving-over-http/#get-request
+    - https://cheatsheetseries.owasp.org/cheatsheets/GraphQL_Cheat_Sheet.html
+  tags: misconfig,graphql,csrf,get,api,web
+  metadata:
+    max-request: 8
+    false-positives: >
+      This template detects a precondition (GET queries work), not confirmed CSRF.
+      Only exploitable when the API authenticates via cookies. APIs using
+      Authorization: Bearer headers are not affected — follow up manually.
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/{{gql_path}}"
+
+    payloads:
+      gql_path:
+        - "graphql?query={__typename}"
+        - "graphql/?query={__typename}"
+        - "api/graphql?query={__typename}"
+        - "api/graphql/?query={__typename}"
+        - "v1/graphql?query={__typename}"
+        - "v2/graphql?query={__typename}"
+        - "api/v1/graphql?query={__typename}"
+        - "gql?query={__typename}"
+
+    headers:
+      Accept: "application/json"
+
+    attack: batteringram
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        condition: or
+        words:
+          - "content-type: application/json"
+          - "content-type: application/graphql"
+        case-insensitive: true
+
+      # Server executed the query and returned a valid GraphQL data structure
+      - type: word
+        part: body
+        condition: or
+        words:
+          - '"__typename"'
+          - '"data":'
+
+      # Must be a GraphQL data or errors response — not an HTML page or login redirect
+      - type: word
+        part: body
+        negative: true
+        words:
+          - "<html"
+          - "<!DOCTYPE"
+          - "<!doctype"
+        case-insensitive: true
+
+      # Require actual query execution — error-only responses (method not allowed) don't count
+      - type: dsl
+        dsl:
+          - "!contains(tolower(body), '\"method not allowed\"') && !contains(tolower(body), 'only post')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"data"\s*:\s*\{[^}]{0,300}'
+          - '(?i)"errors"\s*:\s*\[[^\]]{0,300}'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

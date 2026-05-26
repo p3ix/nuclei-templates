@@ -1,0 +1,85 @@
+id: exposed-selenium-grid
+
+info:
+  name: Exposed Selenium Grid Without Authentication
+  author: p3i
+  severity: high
+  description: >
+    Detects publicly accessible Selenium Grid instances (both Selenium 3 Hub and
+    Selenium 4 Grid). An exposed Grid allows anyone to launch browser sessions
+    (Chrome, Firefox) against arbitrary URLs — enabling SSRF via the browser,
+    access to internal network services, credential theft from browser storage,
+    screenshot capture, and remote command execution through browser extensions.
+    Even a Grid with zero active nodes discloses infrastructure topology
+    (available nodes, browser versions, OS) and allows queuing sessions.
+    Selenium Grid has no authentication by default.
+  reference:
+    - https://www.selenium.dev/documentation/grid/
+    - https://github.com/nicowillis/seletools
+  tags: exposure,selenium,grid,webdriver,browser,ssrf,rce
+  metadata:
+    max-request: 10
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/grid/api/hub"
+      - "{{BaseURL}}/grid/api/hub?configuration=true"
+      - "{{BaseURL}}/wd/hub/status"
+      - "{{BaseURL}}/status"
+      - "{{BaseURL}}/ui/"
+      - "{{BaseURL}}/ui/index.html"
+      - "{{BaseURL}}/grid/console"
+      - "{{BaseURL}}/grid/api/proxy"
+      - "{{BaseURL}}/sessions"
+      - "{{BaseURL}}/wd/hub/sessions"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      # Require Selenium/Grid-specific JSON fields or UI strings
+      - type: word
+        part: body
+        condition: or
+        words:
+          # Selenium 4 Grid status API
+          - "\"ready\""
+          - "\"message\":\"Selenium Grid"
+          - "\"nodes\":"
+          - "\"sessionId\":"
+          - "\"browserName\":"
+          # Selenium 3 Hub API
+          - "\"newSessionRequestCount\""
+          - "\"slotCounts\""
+          - "\"totalSlots\""
+          - "\"proxyId\""
+          # Grid console/UI
+          - "grid-console"
+          - "Selenium Grid"
+          - "seleniumhq"
+
+      # Must be JSON or Grid HTML — not a generic web app
+      - type: dsl
+        dsl:
+          - >-
+            contains(tolower(header), 'application/json') ||
+            contains(tolower(body), 'selenium grid') ||
+            contains(tolower(body), 'seleniumhq') ||
+            contains(tolower(body), 'grid-console')
+          - "!contains(tolower(body), 'wp-content') && !contains(tolower(body), 'wp-includes')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(browserName|version|platform|nodeId|sessionId|proxyId|slots|totalSlots)"\s*:\s*"?[^",\r\n}{]{1,80}"?'
+          - '(?i)"ready"\s*:\s*(true|false)'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

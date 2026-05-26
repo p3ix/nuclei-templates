@@ -1,0 +1,83 @@
+id: exposed-jenkins-script-console
+
+info:
+  name: Exposed Jenkins Script Console (Unauthenticated Groovy Execution)
+  author: p3i
+  severity: critical
+  description: >
+    Detects Jenkins Script Console endpoints accessible without authentication.
+    The Script Console (/script) allows executing arbitrary Groovy code on the
+    Jenkins controller with the OS privileges of the Jenkins service account.
+    This is effectively unauthenticated remote code execution: an attacker can
+    read/write files, execute shell commands, exfiltrate credentials from the
+    Jenkins credential store, and pivot to all systems Jenkins can reach (CI/CD
+    targets, Kubernetes clusters, cloud providers). Jenkins requires authentication
+    for /script by default, but misconfigured Matrix-based security, anonymous
+    access grants, or "Logged in users can do anything" with anonymous login
+    all expose it.
+  reference:
+    - https://www.jenkins.io/doc/book/managing/script-console/
+    - https://github.com/gquere/pwn_jenkins
+  tags: exposure,jenkins,rce,groovy,cicd,critical
+  metadata:
+    max-request: 6
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/script"
+      - "{{BaseURL}}/jenkins/script"
+      - "{{BaseURL}}/jenkins/scriptText"
+      - "{{BaseURL}}/manage/script"
+      - "{{BaseURL}}/blue/script"
+      - "{{BaseURL}}/view/all/script"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      # Jenkins Script Console-specific HTML markers
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "Script Console"
+          - "Groovy Script"
+          - "groovy"
+          - "name=\"script\""
+          - "id=\"script\""
+          - "script.execute"
+
+      # Must reference Jenkins context — not a generic "Script Console" on another tool
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "Jenkins"
+          - "hudson"
+          - "Jenkins-Crumb"
+          - "window.crumb"
+
+      # Console form must be present (not just a 200 login page)
+      - type: dsl
+        dsl:
+          - >-
+            contains(tolower(body), 'textarea') ||
+            contains(tolower(body), 'script') && contains(tolower(body), 'run') ||
+            contains(tolower(body), 'scripttext')
+          - "!contains(tolower(body), 'login') || contains(tolower(body), 'script console')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)<title>[^<]*Jenkins[^<]*</title>'
+          - '(?i)(Jenkins[^<]{0,60}(?:version|build|crumb))[^<]{0,120}'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"
