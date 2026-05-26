@@ -1,0 +1,93 @@
+id: exposed-nocodb-api
+
+info:
+  name: Exposed NocoDB API Without Authentication
+  author: p3i
+  severity: high
+  description: >
+    Detects NocoDB (open-source Airtable alternative) instances with the
+    REST API accessible without authentication. NocoDB provides a spreadsheet-like
+    interface to databases and generates a REST API automatically from connected
+    PostgreSQL, MySQL, SQLite, and other databases. When the API is accessible
+    without an API token (xc-token header), an attacker can: list all configured
+    data tables and their schemas revealing the database structure, read all
+    records from any table (including user data, financial records, customer
+    information), and potentially write or delete records if write permissions
+    are granted to the public role. NocoDB is often deployed as a quick no-code
+    solution for internal tools and may contain production database data accessed
+    without restrictions. The API token is optional in some deployment configurations.
+  reference:
+    - https://docs.nocodb.com/account-setup/apis-and-tokens/api-tokens
+    - https://nocodb.com/docs/0.109.7/getting-started/quick-start/
+  tags: exposure,nocodb,database,api,nocode,airtable,records
+  metadata:
+    max-request: 8
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/api/v1/meta/tables"
+      - "{{BaseURL}}/api/v1/auth/token/validate"
+      - "{{BaseURL}}/api/v1/health"
+      - "{{BaseURL}}/api/v1/meta/projects"
+      - "{{BaseURL}}/nocodb/api/v1/meta/tables"
+      - "{{BaseURL}}/api/v2/tables"
+      - "{{BaseURL}}/api/v2/tables?limit=5"
+      - "{{BaseURL}}/api/v1/db/meta/projects"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      # NocoDB-specific API response fields
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"nocodb\":"
+          - "\"tableId\":"
+          - "\"tableName\":"
+          - "\"table_name\":"
+          - "\"project_id\":"
+          - "\"xc-token\""
+          - "\"meta\":"
+          - "\"views\":"
+          - "\"NocoType\":"
+          - "\"nc-gui\""
+
+      # Require NocoDB-specific identifiers
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'tableId') ||
+            contains(body, 'tableName') ||
+            contains(body, 'table_name') ||
+            contains(body, 'project_id') ||
+            contains(body, 'xc-token') ||
+            contains(body, 'NocoType') ||
+            contains(body, 'nc-gui') ||
+            contains(body, '"nocodb"')
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(tableId|tableName|table_name|project_id|id)"\s*:\s*"[^"]{1,200}"'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

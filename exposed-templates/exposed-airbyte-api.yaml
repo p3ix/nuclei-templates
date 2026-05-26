@@ -1,0 +1,93 @@
+id: exposed-airbyte-api
+
+info:
+  name: Exposed Airbyte Data Integration Platform API
+  author: p3i
+  severity: critical
+  description: >
+    Detects Airbyte (open-source ELT/data integration platform) instances with
+    the API accessible without authentication. Airbyte manages data pipelines
+    between sources (databases, SaaS APIs, cloud storage) and destinations
+    (data warehouses, lakes). Each "source" and "destination" configuration
+    stores complete connection credentials: database host/port/username/password,
+    AWS S3 access key and secret key, Snowflake/BigQuery service account credentials,
+    Salesforce OAuth tokens, Stripe API keys, and credentials for every data
+    source the organization integrates with. When the Airbyte API is accessible
+    without authentication (which it is by default in some deployment configurations
+    without proper network isolation), an attacker can read all connector
+    configurations and extract credentials for every connected data system.
+    These are typically production credentials with read access to the entire
+    data estate — databases, cloud storage, and SaaS platforms.
+  reference:
+    - https://docs.airbyte.com/operator-guides/security
+    - https://reference.airbyte.com/reference/getting-started
+  tags: exposure,airbyte,etl,data,pipeline,credentials,cloud,database,critical
+  metadata:
+    max-request: 8
+
+http:
+  - method: POST
+    path:
+      - "{{BaseURL}}/api/v1/workspaces/list"
+      - "{{BaseURL}}/api/v1/sources/list"
+      - "{{BaseURL}}/api/v1/destinations/list"
+      - "{{BaseURL}}/api/v1/connections/list"
+
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+
+    body: "{}"
+
+    attack: batteringram
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      # Airbyte-specific API response fields
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"workspaceId\":"
+          - "\"sourceDefinitionId\":"
+          - "\"destinationDefinitionId\":"
+          - "\"connectionConfiguration\":"
+          - "\"sourceId\":"
+          - "\"destinationId\":"
+          - "\"connectionId\":"
+          - "\"syncCatalog\":"
+          - "\"namespaceFormat\":"
+
+      # Require Airbyte-specific content
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'workspaceId') &&
+            (contains(body, 'sourceDefinitionId') ||
+             contains(body, 'destinationDefinitionId') ||
+             contains(body, 'connectionConfiguration') ||
+             contains(body, 'sourceId') ||
+             contains(body, 'connectionId'))
+          - "!contains(tolower(body), '<html')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(workspaceId|sourceId|destinationId|connectionId|name)"\s*:\s*"[^"]{1,200}"'
+          - '(?i)"connectionConfiguration"\s*:\s*\{[^}]{0,500}\}'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"
