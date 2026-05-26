@@ -1,0 +1,135 @@
+id: exposed-vault-dev-mode
+
+info:
+  name: HashiCorp Vault in Dev Mode or Unauthenticated API Access
+  author: p3i
+  severity: critical
+  description: >
+    Detects HashiCorp Vault instances running in dev mode or with the API
+    accessible without a valid token. Vault is a secrets management system
+    — when running in dev mode (vault server -dev), it starts with a root
+    token, all data in memory, and no TLS. More critically, the /v1/sys/health
+    and /v1/sys/mounts endpoints may be accessible without authentication, and
+    in dev mode the root token is the literal string "root". When the Vault API
+    is accessible, an attacker can check seal status, list mounted secret engines
+    (revealing the organization's secret structure), and potentially access
+    secrets if dev mode root token is accepted. Even authenticated Vault API
+    endpoints returning 403 instead of 401 may indicate token-based auth is
+    expected and the endpoint is reachable.
+  reference:
+    - https://developer.hashicorp.com/vault/docs/configuration/listener/tcp
+    - https://developer.hashicorp.com/vault/docs/concepts/dev-server
+  tags: exposure,vault,hashicorp,secrets,credentials,devops,infrastructure
+  metadata:
+    max-request: 8
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/v1/sys/health"
+      - "{{BaseURL}}/v1/sys/seal-status"
+      - "{{BaseURL}}/v1/sys/mounts"
+      - "{{BaseURL}}/v1/sys/init"
+      - "{{BaseURL}}/v1/sys/leader"
+      - "{{BaseURL}}/v1/sys/replication/status"
+      - "{{BaseURL}}/v1/secret/data"
+      - "{{BaseURL}}/v1/kv"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"initialized\":"
+          - "\"sealed\":"
+          - "\"standby\":"
+          - "\"cluster_name\":"
+          - "\"cluster_id\":"
+          - "\"ha_enabled\":"
+          - "\"replication_performance_mode\":"
+          - "\"vault_version\":"
+
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'initialized') &&
+            (contains(body, 'sealed') ||
+             contains(body, 'standby') ||
+             contains(body, 'cluster_name') ||
+             contains(body, 'vault_version'))
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(vault_version|cluster_name|cluster_id|initialized|sealed)"\s*:\s*[^,}{]{1,80}'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"
+
+  # Check dev mode: try root token on mounts endpoint
+  - method: GET
+    path:
+      - "{{BaseURL}}/v1/sys/mounts"
+      - "{{BaseURL}}/v1/secret"
+      - "{{BaseURL}}/v1/secret/metadata"
+      - "{{BaseURL}}/v1/secret/metadata/"
+
+    headers:
+      Accept: "application/json"
+      X-Vault-Token: "root"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"accessor\":"
+          - "\"secret/\":"
+          - "\"cubbyhole/\":"
+          - "\"sys/\":"
+          - "\"request_id\":"
+
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'accessor') &&
+            (contains(body, 'cubbyhole/') || contains(body, 'sys/') || contains(body, 'request_id'))
+          - "!contains(tolower(body), '<html')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"([a-z][a-z0-9_-]+/)"\s*:\s*\{'

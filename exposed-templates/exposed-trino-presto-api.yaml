@@ -1,0 +1,90 @@
+id: exposed-trino-presto-api
+
+info:
+  name: Exposed Trino/Presto Distributed SQL Engine Without Authentication
+  author: p3i
+  severity: high
+  description: >
+    Detects Trino (formerly PrestoSQL) and Presto distributed SQL query engine
+    instances with the API accessible without authentication. Trino/Presto is
+    a massively parallel SQL engine used to query data lakes (S3, HDFS), data
+    warehouses (BigQuery, Redshift, Snowflake via connectors), and databases
+    simultaneously. When accessible without authentication (which is the default
+    in many deployments — no authentication is required unless explicitly
+    configured with password-file or Kerberos auth), an attacker can: list all
+    configured catalogs (data sources) including S3, Hive, MySQL, PostgreSQL,
+    Cassandra, Elasticsearch; submit arbitrary SQL queries through the REST API
+    to read any accessible data; monitor running queries including their SQL
+    text and parameters; and view cluster capacity and worker node details.
+  reference:
+    - https://trino.io/docs/current/security.html
+    - https://prestodb.io/docs/current/security.html
+  tags: exposure,trino,presto,sql,data-lake,query-engine,database,hdfs
+  metadata:
+    max-request: 7
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/v1/info"
+      - "{{BaseURL}}/v1/cluster"
+      - "{{BaseURL}}/v1/node"
+      - "{{BaseURL}}/v1/query?limit=5"
+      - "{{BaseURL}}/v1/catalog"
+      - "{{BaseURL}}/ui/"
+      - "{{BaseURL}}/ui/api/cluster"
+
+    headers:
+      Accept: "application/json"
+      X-Trino-User: "anonymous"
+      X-Presto-User: "anonymous"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"nodeVersion\":"
+          - "\"coordinator\":"
+          - "\"uptime\":"
+          - "\"runningQueries\":"
+          - "\"blockedQueries\":"
+          - "\"queuedQueries\":"
+          - "\"activeWorkers\":"
+          - "\"trinoVersion\":"
+          - "\"prestoVersion\":"
+          - "\"environment\":"
+
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'nodeVersion') ||
+            contains(body, 'trinoVersion') ||
+            contains(body, 'prestoVersion') ||
+            (contains(body, 'coordinator') && contains(body, 'uptime')) ||
+            (contains(body, 'runningQueries') && contains(body, 'activeWorkers')) ||
+            (contains(body, 'blockedQueries') && contains(body, 'queuedQueries'))
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(nodeVersion|trinoVersion|prestoVersion|environment|uptime|activeWorkers|runningQueries)"\s*:\s*"?[^",}{]{1,100}"?'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

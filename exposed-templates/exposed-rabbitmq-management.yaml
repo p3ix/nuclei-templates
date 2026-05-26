@@ -1,0 +1,89 @@
+id: exposed-rabbitmq-management
+
+info:
+  name: Exposed RabbitMQ Management API With Default Credentials
+  author: p3i
+  severity: high
+  description: >
+    Detects RabbitMQ message broker instances with the management API accessible
+    using default credentials (guest/guest) or without authentication. The RabbitMQ
+    management plugin exposes a REST API on port 15672 with a web UI that provides:
+    complete visibility into all message queues and their contents (which may include
+    sensitive business events, user data, payment information), all configured
+    exchanges and bindings, all virtual host configurations, connection and channel
+    details including client application names, and administrative controls. By
+    default, RabbitMQ allows the "guest" user with password "guest" to connect from
+    localhost, but many deployments inadvertently expose this externally. An attacker
+    with management API access can read message queue contents, publish malicious
+    messages to any queue, delete queues, and gain full insight into the messaging
+    architecture.
+  reference:
+    - https://www.rabbitmq.com/docs/management#security-recommendations
+    - https://www.rabbitmq.com/docs/access-control
+  tags: exposure,rabbitmq,message-queue,default-credentials,messaging,credentials
+  metadata:
+    max-request: 6
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/api/overview"
+      - "{{BaseURL}}/api/queues"
+      - "{{BaseURL}}/api/nodes"
+      - "{{BaseURL}}/api/vhosts"
+      - "{{BaseURL}}/api/exchanges"
+      - "{{BaseURL}}/api/connections"
+
+    headers:
+      Accept: "application/json"
+      Authorization: "Basic Z3Vlc3Q6Z3Vlc3Q="
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"rabbitmq_version\":"
+          - "\"erlang_version\":"
+          - "\"message_stats\":"
+          - "\"queue_totals\":"
+          - "\"node\":"
+          - "\"vhost\":"
+          - "\"durable\":"
+          - "\"auto_delete\":"
+          - "\"messages_ready\":"
+          - "\"messages_unacknowledged\":"
+
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'rabbitmq_version') ||
+            contains(body, 'erlang_version') ||
+            (contains(body, 'messages_ready') && contains(body, 'messages_unacknowledged')) ||
+            (contains(body, 'queue_totals') && contains(body, 'message_stats')) ||
+            (contains(body, 'durable') && contains(body, 'auto_delete') && contains(body, 'vhost'))
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(rabbitmq_version|erlang_version|node|cluster_name)"\s*:\s*"[^"]{1,200}"'
+          - '(?i)"messages_ready"\s*:\s*\d+'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

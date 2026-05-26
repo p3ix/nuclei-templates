@@ -1,0 +1,87 @@
+id: exposed-temporal-workflow-engine
+
+info:
+  name: Exposed Temporal Workflow Engine Web UI Without Authentication
+  author: p3i
+  severity: high
+  description: >
+    Detects Temporal (open-source workflow orchestration engine) instances with
+    the Web UI or API accessible without authentication. Temporal is used for
+    running long-running business workflows and microservice orchestration at
+    companies like Netflix, Snap, and many startups. When accessible without
+    auth, it exposes: all workflow namespaces (which map to business domains),
+    complete workflow execution history (which contains the full input/output
+    payloads of every activity execution — potentially including customer data,
+    API responses with credentials, and internal service responses), task queue
+    names and worker configuration, scheduled workflow runs, and the ability to
+    signal/cancel/terminate running workflows. The web UI runs on port 8080 by
+    default and requires no authentication unless explicitly configured.
+  reference:
+    - https://docs.temporal.io/security
+    - https://docs.temporal.io/web-ui
+  tags: exposure,temporal,workflow,orchestration,business-logic,data
+  metadata:
+    max-request: 7
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/api/v1/namespaces?pageSize=5"
+      - "{{BaseURL}}/api/v1/namespaces/default/workflows?pageSize=5"
+      - "{{BaseURL}}/api/v1/namespaces/default/task-queues/worker?taskQueueType=WORKFLOW"
+      - "{{BaseURL}}/namespaces"
+      - "{{BaseURL}}/api/v1/cluster-info"
+      - "{{BaseURL}}/api/v1/system-info"
+      - "{{BaseURL}}/api/v1/namespaces/default/schedules?maximumPageSize=5"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"namespaceInfo\":"
+          - "\"workflowExecutions\":"
+          - "\"temporalVersion\":"
+          - "\"historyShardCount\":"
+          - "\"persistenceStore\":"
+          - "\"visibilityStore\":"
+          - "\"pollers\":"
+          - "\"taskQueueStatus\":"
+          - "\"scheduleId\":"
+
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'namespaceInfo') ||
+            contains(body, 'temporalVersion') ||
+            contains(body, 'historyShardCount') ||
+            contains(body, 'persistenceStore') ||
+            contains(body, 'workflowExecutions') ||
+            contains(body, 'taskQueueStatus')
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(temporalVersion|name|state|persistenceStore|historyShardCount)"\s*:\s*"?[^",}{]{1,120}"?'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

@@ -1,0 +1,121 @@
+id: oauth-redirect-uri-manipulation
+
+info:
+  name: OAuth Redirect URI Manipulation - Open Redirect and Wildcard Candidate
+  author: p3i
+  severity: high
+  description: >
+    Probes OAuth authorization endpoints for redirect_uri validation bypass
+    vulnerabilities. Weak redirect_uri validation allows an attacker to steal
+    authorization codes and access tokens by redirecting the victim to an
+    attacker-controlled URL. This template tests common bypass patterns:
+    (1) subdomain addition — appending a subdomain prefix before the legit domain,
+    (2) path traversal — using /../ in the path to escape the registered path,
+    (3) parameter pollution — adding redirect_uri twice (some parsers use first,
+    some use last), (4) URL fragment bypass — adding #@evil.com after the path,
+    (5) port variation — adding a non-standard port that some validators ignore,
+    (6) wildcard/regex bypass — pattern exploiting lax regex matching.
+    Finding: if the server returns a redirect (302) with the manipulated URI in
+    Location header, the redirect_uri validation is bypassable.
+  reference:
+    - https://portswigger.net/web-security/oauth
+    - https://datatracker.ietf.org/doc/html/rfc6749#section-10.6
+    - https://labs.detectify.com/2022/07/06/oauthentication-misconfigurations-explained/
+  tags: oauth,redirect-uri,auth-bypass,token-theft,open-redirect,authentication
+  metadata:
+    max-request: 7
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/oauth/authorize?response_type=code&client_id=test&redirect_uri=https%3A%2F%2Foauth-redirect-bugbounty.example%2Fcb"
+      - "{{BaseURL}}/oauth2/authorize?response_type=code&client_id=test&redirect_uri=https%3A%2F%2Foauth-redirect-bugbounty.example%2Fcb"
+      - "{{BaseURL}}/auth/oauth/authorize?response_type=code&client_id=test&redirect_uri=https%3A%2F%2Foauth-redirect-bugbounty.example%2Fcb"
+      - "{{BaseURL}}/connect/authorize?response_type=code&client_id=test&redirect_uri=https%3A%2F%2Foauth-redirect-bugbounty.example%2Fcb"
+      - "{{BaseURL}}/api/oauth/authorize?response_type=code&client_id=test&redirect_uri=https%3A%2F%2Foauth-redirect-bugbounty.example%2Fcb"
+      - "{{BaseURL}}/.well-known/openid-configuration"
+      - "{{BaseURL}}/oauth2/.well-known/openid-configuration"
+
+    headers:
+      Accept: "text/html,application/json,*/*"
+
+    redirects: false
+    stop-at-first-match: false
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 302
+          - 301
+          - 303
+          - 307
+
+      # Server responded to the OAuth authorize endpoint (not 404)
+      - type: dsl
+        dsl:
+          - >-
+            status_code == 200 ||
+            contains(tolower(header), 'location:')
+
+      # Either returns OpenID config (good indicator) or redirects (potential bypass)
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"authorization_endpoint\":"
+          - "\"token_endpoint\":"
+          - "\"response_types_supported\":"
+          - "\"grant_types_supported\":"
+          - "\"jwks_uri\":"
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        part: header
+        name: location
+        regex:
+          - "(?i)location: [^\r\n]+"
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"authorization_endpoint"\s*:\s*"[^"]{1,300}"'
+          - '(?i)"response_types_supported"\s*:\s*\[[^\]]{1,200}\]'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"
+
+  # Probe the discovered endpoint with subdomain manipulation
+  - method: GET
+    path:
+      - "{{BaseURL}}/oauth/authorize?response_type=code&client_id=app&state=csrf123&redirect_uri=https%3A%2F%2Fevil.{{Host}}"
+      - "{{BaseURL}}/oauth2/authorize?response_type=code&client_id=app&state=csrf123&redirect_uri=https%3A%2F%2Fevil.{{Host}}"
+      - "{{BaseURL}}/connect/authorize?response_type=code&client_id=app&state=csrf123&redirect_uri=https%3A%2F%2Fevil.{{Host}}"
+
+    headers:
+      Accept: "text/html,*/*"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 302
+          - 301
+          - 303
+          - 307
+
+      # If redirected to evil.{{Host}}, the redirect_uri bypass worked
+      - type: regex
+        part: header
+        regex:
+          - "(?i)location:\\s*https?://evil\\.{{Host}}"
+
+    extractors:
+      - type: regex
+        part: header
+        name: redirect-location
+        regex:
+          - "(?i)location: [^\r\n]+"

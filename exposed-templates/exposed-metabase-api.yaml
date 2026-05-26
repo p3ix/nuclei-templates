@@ -1,0 +1,91 @@
+id: exposed-metabase-api
+
+info:
+  name: Exposed Metabase Analytics API Without Authentication
+  author: p3i
+  severity: high
+  description: >
+    Detects Metabase (open-source business intelligence and analytics platform)
+    instances with the API accessible without authentication. Metabase connects
+    to production databases and stores complete connection credentials in its
+    "database" objects — including host, port, username, and password for
+    PostgreSQL, MySQL, BigQuery, Snowflake, Redshift, and other data warehouses.
+    When the API is accessible without a session token, an attacker can: list
+    all configured database connections and extract their credentials, enumerate
+    all "cards" (saved questions/queries) revealing the data model and business
+    logic, list dashboards and their data, and potentially retrieve raw query
+    results from connected databases. Metabase is very commonly deployed without
+    proper network-level restrictions, trusting that access controls would be
+    enforced at the application level.
+  reference:
+    - https://www.metabase.com/docs/latest/installation-and-operation/securing-metabase
+    - https://www.metabase.com/docs/latest/api-documentation
+  tags: exposure,metabase,analytics,bi,database,credentials,dashboard
+  metadata:
+    max-request: 8
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/api/database"
+      - "{{BaseURL}}/api/session/properties"
+      - "{{BaseURL}}/api/card?f=all&page=0&page_size=5"
+      - "{{BaseURL}}/api/collection/root/items?models=dashboard"
+      - "{{BaseURL}}/api/public/dashboard"
+      - "{{BaseURL}}/api/setting"
+      - "{{BaseURL}}/api/health"
+      - "{{BaseURL}}/api/util/stats"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"engine\":"
+          - "\"details\":"
+          - "\"mb-version\":"
+          - "\"metabase-version\":"
+          - "\"setup-token\":"
+          - "\"is-metabase-component\":"
+          - "\"can-manage-members\":"
+          - "\"native-permissions\":"
+          - "\"analytics-uuid\":"
+          - "\"check-if-setup-complete\":"
+
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'mb-version') ||
+            contains(body, 'metabase-version') ||
+            contains(body, 'setup-token') ||
+            contains(body, 'analytics-uuid') ||
+            contains(body, 'check-if-setup-complete') ||
+            (contains(body, 'engine') && contains(body, 'native-permissions'))
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(mb-version|metabase-version|engine|name|host|dbname)"\s*:\s*"?[^",}{]{1,120}"?'
+          - '(?i)"details"\s*:\s*\{[^}]{0,300}\}'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

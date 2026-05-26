@@ -1,0 +1,86 @@
+id: exposed-prefect-workflow-api
+
+info:
+  name: Exposed Prefect Workflow Orchestration API Without Authentication
+  author: p3i
+  severity: high
+  description: >
+    Detects Prefect (modern data pipeline orchestration platform) instances
+    with the API accessible without authentication. Prefect is used to schedule
+    and monitor data workflows/ETL pipelines. Each flow run can contain: full
+    execution logs including database query results, API credentials stored
+    in "blocks" (AWS credentials, GCP service accounts, database URLs, Slack
+    webhooks, Snowflake credentials, GitHub tokens), flow and task code
+    configurations, and scheduled run parameters. When the Prefect API is
+    accessible without an API key, an attacker can read all flow runs and their
+    parameters, list all configured credential blocks, and potentially trigger
+    new flow runs or modify scheduled runs.
+  reference:
+    - https://docs.prefect.io/latest/guides/deployment/
+    - https://docs.prefect.io/latest/concepts/blocks/
+  tags: exposure,prefect,workflow,etl,pipeline,credentials,data-engineering
+  metadata:
+    max-request: 7
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/api/health"
+      - "{{BaseURL}}/api/flows?limit=5"
+      - "{{BaseURL}}/api/flow-runs?limit=5"
+      - "{{BaseURL}}/api/block-types?limit=5"
+      - "{{BaseURL}}/api/block-documents?limit=5"
+      - "{{BaseURL}}/api/deployments?limit=5"
+      - "{{BaseURL}}/api/work-pools?limit=5"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"flow_run_id\":"
+          - "\"deployment_id\":"
+          - "\"work_pool_name\":"
+          - "\"block_document_id\":"
+          - "\"block_type_slug\":"
+          - "\"flow_runner\":"
+          - "\"block_schema_id\":"
+          - "\"prefect_version\":"
+          - "\"state_type\":"
+
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'flow_run_id') ||
+            contains(body, 'deployment_id') ||
+            contains(body, 'work_pool_name') ||
+            contains(body, 'block_type_slug') ||
+            contains(body, 'block_document_id') ||
+            contains(body, 'prefect_version')
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(prefect_version|name|flow_run_id|deployment_id|work_pool_name|block_type_slug)"\s*:\s*"?[^",}{]{1,120}"?'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

@@ -1,0 +1,88 @@
+id: exposed-tooljet-api
+
+info:
+  name: Exposed ToolJet Low-Code Platform Without Authentication
+  author: p3i
+  severity: high
+  description: >
+    Detects ToolJet (open-source low-code internal tools builder) instances with
+    the API accessible without authentication. ToolJet is used to build internal
+    dashboards connected to databases and APIs — similar to Appsmith, it stores:
+    database connection strings (PostgreSQL, MySQL, MongoDB, Redis) with credentials
+    in "data sources," REST API configurations with auth headers (Bearer tokens,
+    API keys), and SMTP/S3/cloud service credentials. When accessible without
+    authentication, an attacker can enumerate all configured data sources (exposing
+    production database credentials), list all applications and their queries that
+    may contain sensitive business logic, and potentially execute database queries
+    through ToolJet's query engine.
+  reference:
+    - https://docs.tooljet.com/docs/setup/self-hosted/
+    - https://github.com/ToolJet/ToolJet
+  tags: exposure,tooljet,lowcode,internal-tools,datasource,credentials,database
+  metadata:
+    max-request: 8
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/api/v2/data-sources"
+      - "{{BaseURL}}/api/v2/apps?page=1"
+      - "{{BaseURL}}/api/v2/organizations"
+      - "{{BaseURL}}/api/v2/profile"
+      - "{{BaseURL}}/api/v2/data-queries"
+      - "{{BaseURL}}/api/apps"
+      - "{{BaseURL}}/api/data_sources"
+      - "{{BaseURL}}/api/organizations/users"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"tooljet_version\":"
+          - "\"data_source_id\":"
+          - "\"plugin_id\":"
+          - "\"organization_id\":"
+          - "\"is_maintenance_on\":"
+          - "\"app_count\":"
+          - "\"data_queries\":"
+          - "\"definition\":"
+          - "\"current_organization_id\":"
+          - "\"is_tooljet_cloud\":"
+
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'tooljet_version') ||
+            contains(body, 'data_source_id') ||
+            contains(body, 'plugin_id') ||
+            contains(body, 'is_tooljet_cloud') ||
+            contains(body, 'is_maintenance_on') ||
+            (contains(body, 'organization_id') && contains(body, 'data_queries'))
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(tooljet_version|name|plugin_id|data_source_id|organization_id)"\s*:\s*"?[^",}{]{1,120}"?'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

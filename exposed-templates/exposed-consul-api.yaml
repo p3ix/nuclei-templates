@@ -1,0 +1,90 @@
+id: exposed-consul-api
+
+info:
+  name: Exposed HashiCorp Consul API Without ACL Authentication
+  author: p3i
+  severity: high
+  description: >
+    Detects HashiCorp Consul instances with the API accessible without ACL
+    token authentication. Consul is a service mesh and service discovery tool
+    — when ACLs are not enforced (the default in many deployments), the API
+    exposes: the complete service catalog with all registered service names,
+    addresses, ports, and health check status; key-value store data (often
+    containing configuration secrets, database URLs, and credentials stored
+    by applications that use Consul as a config store); the full cluster
+    member list including internal IP addresses and node metadata; and all
+    registered health checks. An attacker with access can read all KV store
+    entries (which frequently contain database passwords and API keys), map
+    the entire internal service topology, and register malicious services or
+    modify existing ones.
+  reference:
+    - https://developer.hashicorp.com/consul/docs/security/acl
+    - https://developer.hashicorp.com/consul/api-docs
+  tags: exposure,consul,hashicorp,service-mesh,kv,credentials,infrastructure
+  metadata:
+    max-request: 8
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/v1/agent/self"
+      - "{{BaseURL}}/v1/catalog/services"
+      - "{{BaseURL}}/v1/kv/?recurse=true&keys=true"
+      - "{{BaseURL}}/v1/agent/members"
+      - "{{BaseURL}}/v1/catalog/nodes"
+      - "{{BaseURL}}/v1/health/state/any?limit=5"
+      - "{{BaseURL}}/v1/kv/?keys=true"
+      - "{{BaseURL}}/v1/acl/info/anonymous"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"Config\":"
+          - "\"DebugConfig\":"
+          - "\"Member\":"
+          - "\"ConsulVersion\":"
+          - "\"DatacenterName\":"
+          - "\"Datacenter\":"
+          - "\"SerfStatus\":"
+          - "\"ServiceName\":"
+          - "\"CheckID\":"
+          - "\"ModifyIndex\":"
+
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'ConsulVersion') ||
+            contains(body, 'DatacenterName') ||
+            contains(body, 'SerfStatus') ||
+            (contains(body, 'Datacenter') && contains(body, 'Member')) ||
+            (contains(body, 'ServiceName') && contains(body, 'CheckID')) ||
+            (contains(body, 'Config') && contains(body, 'DebugConfig'))
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(ConsulVersion|Datacenter|NodeName|AdvertiseAddr|DataDir)"\s*:\s*"[^"]{1,200}"'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

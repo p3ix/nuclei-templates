@@ -1,0 +1,89 @@
+id: exposed-dify-api
+
+info:
+  name: Exposed Dify LLM Application Platform Without Authentication
+  author: p3i
+  severity: high
+  description: >
+    Detects Dify (open-source LLM application development platform) instances
+    with the API accessible without authentication. Dify is used to build LLM-powered
+    applications — each "app" stores: system prompts and instruction sets, LLM
+    provider credentials (OpenAI API keys, Anthropic API keys, Azure OpenAI endpoints,
+    Hugging Face tokens), knowledge base documents uploaded by users, and external
+    tool/API integrations. When the Dify console API is accessible without proper
+    session authentication, an attacker can enumerate all applications and their
+    configurations, read system prompts that may contain sensitive business logic,
+    list all configured LLM providers (revealing which AI vendors are used and
+    potentially their API keys), and access any uploaded knowledge base documents.
+  reference:
+    - https://docs.dify.ai/getting-started/install-self-hosted
+    - https://github.com/langgenius/dify
+  tags: exposure,dify,llm,ai,chatbot,credentials,api-keys,nocode
+  metadata:
+    max-request: 8
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/console/api/apps?page=1&limit=5"
+      - "{{BaseURL}}/console/api/workspaces/current"
+      - "{{BaseURL}}/console/api/providers"
+      - "{{BaseURL}}/console/api/datasets?page=1&limit=5"
+      - "{{BaseURL}}/api/apps"
+      - "{{BaseURL}}/v1/apps"
+      - "{{BaseURL}}/console/api/account/profile"
+      - "{{BaseURL}}/console/api/system-features"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"app_count\":"
+          - "\"model_provider\":"
+          - "\"provider_name\":"
+          - "\"dify_version\":"
+          - "\"is_allow_register\":"
+          - "\"dataset_operator_enabled\":"
+          - "\"is_allow_create_workspace\":"
+          - "\"openai_api_base\":"
+          - "\"app_template\":"
+          - "\"workflow_as_tool\":"
+
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'dify_version') ||
+            contains(body, 'model_provider') ||
+            contains(body, 'provider_name') ||
+            contains(body, 'app_count') ||
+            contains(body, 'dataset_operator_enabled') ||
+            contains(body, 'openai_api_base') ||
+            contains(body, 'workflow_as_tool')
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(dify_version|provider_name|app_count|name|mode)"\s*:\s*"?[^",}{]{1,120}"?'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"
