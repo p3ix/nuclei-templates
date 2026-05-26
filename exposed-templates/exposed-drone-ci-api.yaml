@@ -1,0 +1,84 @@
+id: exposed-drone-ci-api
+
+info:
+  name: Exposed Drone CI/CD API Without Authentication
+  author: p3i
+  severity: high
+  description: >
+    Detects Drone CI (open-source continuous integration platform) instances
+    with the API accessible without authentication. Drone is used to run CI/CD
+    pipelines for building, testing, and deploying code. When the Drone API is
+    accessible without a valid user token, an attacker can: list all configured
+    repositories and their pipeline configurations (revealing build secrets,
+    deploy keys, and environment variables), access build logs that may contain
+    credentials echoed during pipeline execution, view pipeline YAML files that
+    declare secrets, list registered runners and their capabilities, and access
+    the admin API if DRONE_ADMIN is not properly set. Build logs are a particularly
+    high-value target as they frequently contain accidentally printed credentials.
+  reference:
+    - https://docs.drone.io/server/reference/
+    - https://docs.drone.io/pipeline/secrets/
+  tags: exposure,drone,ci-cd,pipeline,secrets,build,credentials,devops
+  metadata:
+    max-request: 7
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/api/user"
+      - "{{BaseURL}}/api/repos?page=1&per_page=5"
+      - "{{BaseURL}}/api/builds"
+      - "{{BaseURL}}/api/system/info"
+      - "{{BaseURL}}/api/runner/endpoint"
+      - "{{BaseURL}}/healthz"
+      - "{{BaseURL}}/api/licenses"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"drone_version\":"
+          - "\"scm\":"
+          - "\"owner\":"
+          - "\"namespace\":"
+          - "\"counter\":"
+          - "\"secrets\":"
+          - "\"pipeline_count\":"
+          - "\"user_count\":"
+          - "\"build_count\":"
+
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'drone_version') ||
+            (contains(body, 'scm') && contains(body, 'owner')) ||
+            (contains(body, 'pipeline_count') && contains(body, 'user_count')) ||
+            (contains(body, 'namespace') && contains(body, 'counter'))
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(drone_version|scm|namespace|slug|name)"\s*:\s*"?[^",}{]{1,150}"?'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

@@ -1,0 +1,84 @@
+id: exposed-gitops-tekton-api
+
+info:
+  name: Exposed Tekton Pipelines Dashboard Without Authentication
+  author: p3i
+  severity: high
+  description: >
+    Detects Tekton Pipelines Dashboard instances accessible without authentication.
+    Tekton is a Kubernetes-native CI/CD framework — the dashboard provides visibility
+    into all pipeline runs and their logs. When the Tekton Dashboard is exposed
+    without proper ingress authentication (a common misconfiguration in Kubernetes
+    clusters where the dashboard is exposed via an ingress without auth middleware),
+    an attacker can: list all pipeline and task run history, read pipeline run
+    logs that may contain secrets accidentally printed during CI steps, view
+    pipeline definitions that reference Kubernetes secrets and configmaps, enumerate
+    all namespaces with active pipelines, and access the Tekton API through the
+    dashboard's proxy endpoint.
+  reference:
+    - https://tekton.dev/docs/dashboard/
+    - https://github.com/tektoncd/dashboard
+  tags: exposure,tekton,kubernetes,ci-cd,pipeline,devops,build-logs
+  metadata:
+    max-request: 7
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/api/v1/namespaces?limit=5"
+      - "{{BaseURL}}/api/v1/pipelineruns?limit=5"
+      - "{{BaseURL}}/api/v1/pipelines?limit=5"
+      - "{{BaseURL}}/api/v1/taskruns?limit=5"
+      - "{{BaseURL}}/api/v1/tasks?limit=5"
+      - "{{BaseURL}}/dashboard/info"
+      - "{{BaseURL}}/api/v1/info"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"tektonDashboardVersion\":"
+          - "\"tektonPipelinesVersion\":"
+          - "\"pipelineRunName\":"
+          - "\"taskRunName\":"
+          - "\"completionTime\":"
+          - "\"pipelineName\":"
+          - "\"Succeeded\":"
+          - "\"tektonci-pipelines\":"
+
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'tektonDashboardVersion') ||
+            contains(body, 'tektonPipelinesVersion') ||
+            contains(body, 'pipelineRunName') ||
+            contains(body, 'taskRunName') ||
+            (contains(body, 'pipelineName') && contains(body, 'completionTime'))
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(tektonDashboardVersion|tektonPipelinesVersion|pipelineName|namespace)"\s*:\s*"?[^",}{]{1,150}"?'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

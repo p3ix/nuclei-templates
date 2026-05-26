@@ -1,0 +1,83 @@
+id: s3-bucket-public-access
+
+info:
+  name: AWS S3 Bucket Publicly Accessible - List or Read Access
+  author: p3i
+  severity: high
+  description: >
+    Detects AWS S3 buckets that allow unauthenticated access to list bucket
+    contents or read objects. Public S3 buckets are one of the most common
+    cloud misconfigurations found in bug bounty programs. When a bucket is
+    publicly readable, an attacker can list all stored objects and download
+    them — buckets frequently contain: database backups with complete production
+    data, application source code and configuration files with hardcoded secrets,
+    user-uploaded files including PII documents, SSL/TLS certificates and private
+    keys, and infrastructure configuration files. This template tests common
+    bucket naming conventions derived from the target domain (company-name,
+    company-name-backup, company-name-static, etc.) and checks for ListBucket
+    or GetObject permissions.
+  reference:
+    - https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html
+    - https://bugcrowd.com/resources/levelup/finding-s3-bucket-misconfigurations/
+  tags: s3,aws,cloud,storage,public,exposure,misconfiguration,buckets
+  metadata:
+    max-request: 6
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/?list-type=2&max-keys=10"
+      - "{{BaseURL}}/?max-keys=10"
+      - "{{BaseURL}}/"
+
+    headers:
+      Accept: "application/xml,*/*"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "<ListBucketResult"
+          - "<ListAllMyBucketsResult"
+          - "<Contents>"
+          - "<Key>"
+          - "<Bucket>"
+
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'ListBucketResult') ||
+            contains(body, 'ListAllMyBucketsResult') ||
+            (contains(body, '<Contents>') && contains(body, '<Key>'))
+          - "!contains(body, '<Error>') || contains(body, 'ListBucketResult')"
+
+      # Ensure it's actually an S3 response
+      - type: word
+        part: header
+        condition: or
+        words:
+          - "x-amz-request-id"
+          - "x-amz-bucket-region"
+          - "AmazonS3"
+          - "s3.amazonaws.com"
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - "<Key>([^<]{1,200})</Key>"
+          - "<Name>([^<]{1,100})</Name>"
+          - "<BucketRegion>([^<]{1,50})</BucketRegion>"
+      - type: regex
+        part: header
+        regex:
+          - "(?i)x-amz-bucket-region: [^\r\n]+"

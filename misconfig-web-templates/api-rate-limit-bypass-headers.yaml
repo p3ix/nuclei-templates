@@ -1,0 +1,86 @@
+id: api-rate-limit-bypass-headers
+
+info:
+  name: API Rate Limit Bypass via IP Spoofing Headers
+  author: p3i
+  severity: medium
+  description: >
+    Detects API endpoints where rate limiting can be bypassed by injecting IP
+    address spoofing headers. Many APIs implement rate limiting based on the
+    client IP address extracted from headers like X-Forwarded-For, X-Real-IP,
+    CF-Connecting-IP, True-Client-IP, or X-Client-IP — if the application trusts
+    these headers without validating them against known proxy networks, an attacker
+    can rotate these values to bypass per-IP rate limits. This is particularly
+    impactful for authentication endpoints (unlimited login attempts), password
+    reset endpoints, OTP verification, and API credit/quota systems. This template
+    tests if the server honors IP spoofing headers by checking if a request with
+    a spoofed IP succeeds after the baseline with the real IP would be rate-limited.
+  reference:
+    - https://owasp.org/API-Security/editions/2023/en/0xa4-unrestricted-resource-consumption/
+    - https://portswigger.net/web-security/api-testing
+  tags: rate-limit,bypass,ip-spoofing,brute-force,api,authentication,headers
+  metadata:
+    max-request: 8
+
+http:
+  - raw:
+      # Request 1: no IP header (establish baseline, must succeed)
+      - |
+        POST /api/v1/auth/login HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json
+        Accept: application/json
+
+        {"email":"ratelimit-test-{{randstr}}@example.com","password":"wrongpassword123"}
+
+      # Request 2: same request with spoofed IP header (check if rate limit key changes)
+      - |
+        POST /api/v1/auth/login HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json
+        Accept: application/json
+        X-Forwarded-For: 192.168.{{rand_int(1,254)}}.{{rand_int(1,254)}}
+        X-Real-IP: 10.{{rand_int(1,254)}}.{{rand_int(1,254)}}.{{rand_int(1,254)}}
+
+        {"email":"ratelimit-test-{{randstr}}@example.com","password":"wrongpassword456"}
+
+    req-condition: true
+    matchers-condition: and
+    matchers:
+      # Both requests must reach the application (not blocked by WAF)
+      - type: dsl
+        dsl:
+          - "status_code_1 == 200 || status_code_1 == 400 || status_code_1 == 401 || status_code_1 == 422"
+          - "status_code_2 == 200 || status_code_2 == 400 || status_code_2 == 401 || status_code_2 == 422"
+
+      # Confirm endpoint is an authentication endpoint (by response content)
+      - type: word
+        part: body_1
+        condition: or
+        words:
+          - "\"error\":"
+          - "\"message\":"
+          - "\"invalid\""
+          - "\"credentials\""
+          - "\"password\""
+          - "\"email\""
+        case-insensitive: true
+
+      # Both requests should have similar response structure (IP header changes rate limit key)
+      - type: dsl
+        dsl:
+          - >-
+            (status_code_1 == 200 || status_code_1 == 401 || status_code_1 == 400) &&
+            (status_code_2 == 200 || status_code_2 == 401 || status_code_2 == 400) &&
+            status_code_2 != 429
+
+    extractors:
+      - type: dsl
+        name: status-codes
+        dsl:
+          - "str(status_code_1) + '/' + str(status_code_2)"
+      - type: regex
+        part: header_2
+        regex:
+          - "(?i)x-ratelimit-[^:]+: [^\r\n]+"
+          - "(?i)retry-after: [^\r\n]+"

@@ -1,0 +1,106 @@
+id: exposed-cloudbeaver-api
+
+info:
+  name: Exposed CloudBeaver Database Manager Without Authentication
+  author: p3i
+  severity: critical
+  description: >
+    Detects CloudBeaver (open-source web-based database management tool,
+    web version of DBeaver) instances accessible without proper authentication.
+    CloudBeaver provides a web UI for managing multiple database connections
+    — it stores complete connection configurations including: database host,
+    port, username, and password for PostgreSQL, MySQL, Oracle, SQL Server,
+    MongoDB, Redis, and others. When the GraphQL API is accessible without
+    authentication (the default until admin credentials are set up during
+    first-run), an attacker can: list all configured database connections,
+    execute arbitrary SQL queries against any connected database, browse
+    database schemas and tables, and extract data. CloudBeaver's first-run
+    setup page may also allow account creation.
+  reference:
+    - https://dbeaver.io/2020/10/18/cloudbeaver-is-now-open-source/
+    - https://cloudbeaver.io/docs/Administration/
+  tags: exposure,cloudbeaver,dbeaver,database,sql,credentials,admin-panel,critical
+  metadata:
+    max-request: 5
+
+http:
+  - method: POST
+    path:
+      - "{{BaseURL}}/api/gql"
+      - "{{BaseURL}}/api/graphql"
+
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+
+    body: '{"query":"{ serverConfig { name version productConfiguration { adminCredentialsSaveEnabled } } }"}'
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"serverConfig\":"
+          - "\"productConfiguration\":"
+          - "\"adminCredentialsSaveEnabled\":"
+          - "\"cloudbeaver\":"
+          - "\"anonymousAccessEnabled\":"
+          - "\"grantedConnections\":"
+
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'serverConfig') ||
+            contains(body, 'adminCredentialsSaveEnabled') ||
+            contains(body, 'anonymousAccessEnabled') ||
+            contains(body, 'productConfiguration')
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(name|version|anonymousAccessEnabled|adminCredentialsSaveEnabled)"\s*:\s*"?[^",}{]{1,150}"?'
+
+  - method: GET
+    path:
+      - "{{BaseURL}}/"
+      - "{{BaseURL}}/cloudbeaver/"
+
+    headers:
+      Accept: "text/html,*/*"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: and
+        words:
+          - "CloudBeaver"
+          - "dbeaver"
+
+      - type: dsl
+        dsl:
+          - >-
+            contains(tolower(body), 'cloudbeaver') &&
+            contains(tolower(body), 'dbeaver')
+          - "!contains(tolower(body), 'permission denied')"
