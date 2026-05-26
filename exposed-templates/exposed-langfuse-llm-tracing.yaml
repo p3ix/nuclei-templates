@@ -78,7 +78,7 @@ http:
             contains(body, 'promptTokens') ||
             contains(body, 'completionTokens') ||
             contains(body, 'langfuse') ||
-            (contains(body, '"model"') && contains(body, '"input"') && contains(body, '"output"'))
+            (contains(body, 'model') && contains(body, 'input') && contains(body, 'output'))
           - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
 
     extractors:

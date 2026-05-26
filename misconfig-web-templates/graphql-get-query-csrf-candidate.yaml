@@ -81,7 +81,7 @@ http:
       # Require actual query execution — error-only responses (method not allowed) don't count
       - type: dsl
         dsl:
-          - "!contains(tolower(body), '\"method not allowed\"') && !contains(tolower(body), 'only post')"
+          - "!contains(tolower(body), 'method not allowed') && !contains(tolower(body), 'only post')"
 
     extractors:
       - type: regex

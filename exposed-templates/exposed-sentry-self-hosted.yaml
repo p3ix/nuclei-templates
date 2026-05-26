@@ -78,7 +78,7 @@ http:
             contains(body, 'sentry-app') ||
             contains(body, '__sentry_app_data') ||
             contains(body, '__initialData') ||
-            (contains(body, '"version"') && (contains(body, '"serverVersion"') || contains(body, '"v2"') || contains(body, '"v3"')))
+            (contains(body, 'version') && (contains(body, 'serverVersion') || contains(body, 'v2') || contains(body, 'v3')))
 
     extractors:
       - type: regex
@@ -89,7 +89,7 @@ http:
       - type: dsl
         name: access_level
         dsl:
-          - "contains(body, '\"slug\"') ? 'Organization data accessible without auth' : 'Sentry instance detected'"
+          - "contains(body, 'slug') ? 'Organization data accessible without auth' : 'Sentry instance detected'"
       - type: dsl
         name: status
         dsl:

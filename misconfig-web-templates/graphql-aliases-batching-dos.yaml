@@ -59,8 +59,8 @@ http:
 
       - type: dsl
         dsl:
-          - "contains(body, '\"a50\":')"
-          - "!contains(body, '\"errors\":[{') || contains(body, '\"data\":{\"a50\"')"
+          - "contains(body, 'a50')"
+          - "!contains(body, 'errors') || (contains(body, 'data') && contains(body, 'a50'))"
           - "!contains(tolower(body), 'complexity') && !contains(tolower(body), 'too many')"
 
     extractors:

@@ -53,10 +53,10 @@ http:
           - >-
             !contains(tolower(header), 'content-security-policy:') ||
             (contains(tolower(header), 'content-security-policy:') &&
-             (regex("(?i)content-security-policy:[^\r\n]*script-src[^\r\n]*'unsafe-inline'", header) ||
-              regex("(?i)content-security-policy:[^\r\n]*script-src[^\r\n]*'unsafe-eval'", header) ||
+             (regex("(?i)content-security-policy:[^\r\n]*script-src[^\r\n]*unsafe-inline", header) ||
+              regex("(?i)content-security-policy:[^\r\n]*script-src[^\r\n]*unsafe-eval", header) ||
               regex("(?i)content-security-policy:[^\r\n]*script-src[^\r\n]* \\* ", header) ||
-              regex("(?i)content-security-policy:[^\r\n]*default-src[^\r\n]*'unsafe-inline'", header) ||
+              regex("(?i)content-security-policy:[^\r\n]*default-src[^\r\n]*unsafe-inline", header) ||
               regex("(?i)content-security-policy:[^\r\n]*default-src[^\r\n]*\\*", header)))
 
       # Only flag actual web applications with a login or home page

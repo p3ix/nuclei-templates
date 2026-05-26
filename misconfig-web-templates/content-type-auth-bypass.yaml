@@ -95,7 +95,7 @@ http:
       # Body_2 must look like a real API response (not just `{}` or `{"error": "..."}`)
       - type: dsl
         dsl:
-          - "!contains(tolower(body_2), '\"error\"') || contains(tolower(body_2), '\"data\"') || contains(tolower(body_2), '\"users\"') || contains(tolower(body_2), '\"results\"')"
+          - "!contains(tolower(body_2), 'error') || contains(tolower(body_2), 'data') || contains(tolower(body_2), 'users') || contains(tolower(body_2), 'results')"
           - "!contains(tolower(body_2), '<html')"
 
     extractors:

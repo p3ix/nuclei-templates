@@ -91,7 +91,7 @@ http:
             contains(body, 'healthStatus') ||
             contains(body, 'operationState') ||
             contains(body, 'appNamespace') ||
-            (contains(body, '"items"') && contains(body, '"destination"'))
+            (contains(body, 'items') && contains(body, 'destination'))
 
     extractors:
       - type: regex

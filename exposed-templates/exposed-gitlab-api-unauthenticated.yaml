@@ -84,8 +84,8 @@ http:
             contains(body, 'ssh_url_to_repo') ||
             contains(body, 'http_url_to_repo') ||
             contains(body, 'default_branch') ||
-            contains(body, '"kas":') ||
-            (contains(body, '"revision"') && contains(body, '"version"') && contains(body, '"enterprise"'))
+            contains(body, 'kas') ||
+            (contains(body, 'revision') && contains(body, 'version') && contains(body, 'enterprise'))
 
     extractors:
       - type: regex

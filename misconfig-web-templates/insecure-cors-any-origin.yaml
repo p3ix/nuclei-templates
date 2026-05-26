@@ -68,7 +68,7 @@ http:
       # Body must have meaningful content (not just empty or error)
       - type: dsl
         dsl:
-          - "len(body) > 10 && !contains(tolower(body), '\"error\"')"
+          - "len(body) > 10 && !contains(tolower(body), 'error')"
 
     extractors:
       - type: regex

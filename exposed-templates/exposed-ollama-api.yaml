@@ -65,7 +65,7 @@ http:
               contains(body, 'quantization_level') ||
               contains(body, 'gguf') ||
               contains(tolower(header), 'x-ollama') ||
-              (contains(body, '"version"') && contains(body, '"models"'))
+              (contains(body, 'version') && contains(body, 'models'))
             )
 
     extractors:
@@ -77,7 +77,7 @@ http:
       - type: dsl
         name: summary
         dsl:
-          - "body == '{\"models\":[]}' ? 'Ollama accessible — no models installed' : 'Ollama accessible with models'"
+          - "(contains(body, 'models') && contains(body, '[]')) ? 'Ollama accessible - no models installed' : 'Ollama accessible with models'"
       - type: dsl
         name: status
         dsl:

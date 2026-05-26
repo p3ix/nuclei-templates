@@ -67,12 +67,12 @@ http:
       - type: dsl
         dsl:
           - >-
-            contains(body, '"directus"') ||
+            contains(body, 'directus') ||
             (contains(body, 'collection') && contains(body, 'singleton')) ||
             (contains(body, 'collection') && contains(body, 'accountability')) ||
             (contains(body, 'schema') && contains(body, 'note') && contains(body, 'meta'))
           - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
-          - "!contains(body, '\"errors\":[{\"message\":\"You don\\'t have permission')"
+          - "!contains(body, 'errors') || !contains(body, 'permission')"
 
     extractors:
       - type: regex

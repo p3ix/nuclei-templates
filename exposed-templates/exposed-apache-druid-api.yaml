@@ -89,7 +89,7 @@ http:
             contains(body, 'tieredReplicants') ||
             contains(body, 'numAvailableRows') ||
             contains(body, 'inventoryManager') ||
-            (contains(body, '"coordinator"') && contains(body, '"broker"'))
+            (contains(body, 'coordinator') && contains(body, 'broker'))
 
     extractors:
       - type: regex

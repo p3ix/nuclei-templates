@@ -73,8 +73,8 @@ http:
             contains(body, 'Welcome to kong') ||
             contains(body, 'lua_version') ||
             contains(body, 'node_id') ||
-            (contains(body, '"plugins"') && contains(body, '"configuration"')) ||
-            (contains(body, '"data"') && contains(body, '"next"') && contains(tolower(header), 'kong'))
+            (contains(body, 'plugins') && contains(body, 'configuration')) ||
+            (contains(body, 'data') && contains(body, 'next') && contains(tolower(header), 'kong'))
           - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
 
     extractors:

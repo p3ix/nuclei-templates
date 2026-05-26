@@ -114,7 +114,7 @@ http:
       - type: dsl
         dsl:
           - "len(body) > 2"
-          - "!contains(body, '\"message\"') || contains(body, '\"id\"')"
+          - "!contains(body, 'message') || contains(body, 'id')"
 
     extractors:
       - type: regex

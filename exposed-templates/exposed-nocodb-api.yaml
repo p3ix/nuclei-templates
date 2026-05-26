@@ -79,7 +79,7 @@ http:
             contains(body, 'xc-token') ||
             contains(body, 'NocoType') ||
             contains(body, 'nc-gui') ||
-            contains(body, '"nocodb"')
+            contains(body, 'nocodb')
           - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
 
     extractors:

@@ -75,8 +75,8 @@ http:
             contains(body, 'neo4j_version') ||
             contains(body, 'Neo4j Browser') ||
             contains(body, 'neo4j-browser') ||
-            (contains(body, '"management"') && contains(body, '"data"') && contains(body, '"neo4j')) ||
-            (contains(body, '"results"') && contains(body, '"commit"') && contains(body, '"transaction"'))
+            (contains(body, 'management') && contains(body, 'data') && contains(body, 'neo4j')) ||
+            (contains(body, 'results') && contains(body, 'commit') && contains(body, 'transaction'))
           - "!contains(tolower(body), '<html') || contains(tolower(body), 'neo4j')"
 
     extractors:

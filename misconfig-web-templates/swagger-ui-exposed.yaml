@@ -65,10 +65,8 @@ http:
             contains(body, 'swagger-ui-bundle.js') ||
             contains(body, 'SwaggerUIBundle') ||
             contains(body, 'swagger-ui-standalone-preset') ||
-            contains(body, 'openapi: "3') ||
-            contains(body, "openapi: '3") ||
-            contains(body, 'swagger: "2.0"') ||
-            contains(body, "swagger: '2.0'")
+            (contains(body, 'openapi:') && contains(body, '3')) ||
+            (contains(body, 'swagger:') && contains(body, '2.0'))
 
     extractors:
       - type: regex

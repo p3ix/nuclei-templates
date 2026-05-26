@@ -63,7 +63,7 @@ http:
             contains(body, 'grafana_agent_') ||
             contains(body, 'grafana-agent') ||
             contains(body, 'alloy_') ||
-            contains(body, '"Alloy"') ||
+            contains(body, 'Alloy') ||
             contains(body, 'componentID') ||
             contains(body, 'agent_ready')
           - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"

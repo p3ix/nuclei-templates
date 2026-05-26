@@ -69,7 +69,7 @@ http:
         dsl:
           - >-
             contains(body, 'nexusVersion') ||
-            contains(body, '"appName":"Nexus"') ||
+            (contains(body, 'appName') && contains(body, 'Nexus')) ||
             contains(body, 'blobStoreName') ||
             (contains(body, 'versionPolicy') && contains(body, 'writePolicy')) ||
             (contains(body, 'format') && contains(body, 'online') && contains(body, 'edition'))

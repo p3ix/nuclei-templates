@@ -96,8 +96,8 @@ http:
             contains(body, 'milvus_version') ||
             contains(body, 'nanosecond heartbeat') ||
             contains(body, 'vespa_version') ||
-            (contains(body, '"classes"') && contains(body, '"vectorizer"')) ||
-            (contains(body, '"collections"') && (contains(body, 'points_count') || contains(body, 'dimension')))
+            (contains(body, 'classes') && contains(body, 'vectorizer')) ||
+            (contains(body, 'collections') && (contains(body, 'points_count') || contains(body, 'dimension')))
           - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
 
     extractors:

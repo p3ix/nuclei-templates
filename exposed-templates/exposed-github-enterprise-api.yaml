@@ -75,8 +75,8 @@ http:
             contains(tolower(header), 'x-github-enterprise-version') ||
             contains(body, 'installed_version') ||
             contains(body, 'verifiable_password_authentication') ||
-            (contains(body, '"login"') && contains(body, '"site_admin"') && !contains(host, 'api.github.com')) ||
-            (contains(body, '"clone_url"') && !contains(host, 'github.com'))
+            (contains(body, 'login') && contains(body, 'site_admin') && !contains(host, 'api.github.com')) ||
+            (contains(body, 'clone_url') && !contains(host, 'github.com'))
           - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
 
     extractors:

@@ -72,10 +72,10 @@ http:
       - type: dsl
         dsl:
           - >-
-            (contains(body, '"status":"success"') && contains(body, '"data"')) ||
+            (contains(body, 'status') && contains(body, 'success') && contains(body, 'data')) ||
             contains(body, 'resultType') ||
             (contains(tolower(header), 'x-loki') || contains(tolower(header), 'loki')) ||
-            (contains(body, '"goVersion"') && contains(body, '"buildDate"')) ||
+            (contains(body, 'goVersion') && contains(body, 'buildDate')) ||
             (body == 'ready' && status_code == 200)
           - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
 
@@ -89,7 +89,7 @@ http:
       - type: dsl
         name: label_count
         dsl:
-          - "contains(body, '\"data\"') ? 'Label data accessible' : 'API accessible'"
+          - "contains(body, 'data') ? 'Label data accessible' : 'API accessible'"
       - type: dsl
         name: status
         dsl:
