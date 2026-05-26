@@ -1,0 +1,78 @@
+id: clickjacking-no-frame-options
+
+info:
+  name: Clickjacking - X-Frame-Options and CSP frame-ancestors Missing
+  author: p3i
+  severity: low
+  description: >
+    Detects web application pages that are missing both X-Frame-Options and
+    Content-Security-Policy frame-ancestors headers, making them vulnerable to
+    clickjacking. Clickjacking attacks embed the target site in an invisible
+    iframe and trick users into clicking UI elements on behalf of the attacker
+    — the impact depends on the page: authentication forms can be exploited to
+    perform CSRF-like actions, account settings pages can be used to change
+    email/password, payment flows can be abused for unauthorized transactions.
+    This template only flags interactive pages (login, settings, dashboard,
+    profile) since clickjacking on purely informational pages is typically not
+    accepted as a valid finding in bug bounty programs.
+  reference:
+    - https://portswigger.net/web-security/clickjacking
+    - https://cheatsheetseries.owasp.org/cheatsheets/Clickjacking_Defense_Cheat_Sheet.html
+  tags: clickjacking,x-frame-options,csp,headers,misconfig,ui-redressing
+  metadata:
+    max-request: 4
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/login"
+      - "{{BaseURL}}/signin"
+      - "{{BaseURL}}/account/settings"
+      - "{{BaseURL}}/profile"
+
+    headers:
+      Accept: "text/html,application/xhtml+xml,*/*"
+
+    redirects: true
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      # Only flag HTML pages (not API responses)
+      - type: word
+        part: header
+        words:
+          - "text/html"
+        case-insensitive: true
+
+      # Must have interactive elements to be a meaningful finding
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "<form"
+          - "<input"
+          - "type=\"password\""
+          - "type='password'"
+        case-insensitive: true
+
+      # Missing both X-Frame-Options AND CSP frame-ancestors
+      - type: dsl
+        dsl:
+          - >-
+            !contains(tolower(header), 'x-frame-options:') &&
+            !regex("(?i)content-security-policy:[^\r\n]*frame-ancestors", header)
+
+    extractors:
+      - type: dsl
+        name: missing-headers
+        dsl:
+          - '"X-Frame-Options: MISSING, frame-ancestors: MISSING"'
+      - type: regex
+        part: header
+        name: csp-header
+        regex:
+          - "(?i)content-security-policy: [^\r\n]+"

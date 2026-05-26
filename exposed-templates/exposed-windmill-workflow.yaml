@@ -1,0 +1,84 @@
+id: exposed-windmill-workflow
+
+info:
+  name: Exposed Windmill Workflow Engine Without Authentication
+  author: p3i
+  severity: high
+  description: >
+    Detects Windmill (open-source workflow engine and developer platform,
+    alternative to n8n and Retool) instances with the API accessible without
+    authentication. Windmill allows users to create scripts, flows, and apps
+    connected to external services. Each "resource" in Windmill stores complete
+    connection credentials: database URLs, API keys, cloud provider credentials,
+    OAuth tokens, and SMTP settings. When the Windmill API is accessible without
+    authentication, an attacker can: list all workspaces and their scripts,
+    enumerate all resources (which contain plaintext or encrypted credentials
+    for all connected services), trigger script and flow executions, and read
+    execution logs containing API responses with sensitive data.
+  reference:
+    - https://www.windmill.dev/docs/misc/setup
+    - https://github.com/windmill-labs/windmill
+  tags: exposure,windmill,workflow,automation,credentials,scripts,developer-tools
+  metadata:
+    max-request: 7
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/api/w/admins/resources/list"
+      - "{{BaseURL}}/api/w/admins/scripts/list"
+      - "{{BaseURL}}/api/w/admins/flows/list"
+      - "{{BaseURL}}/api/users/whoami"
+      - "{{BaseURL}}/api/version"
+      - "{{BaseURL}}/api/settings/global/all"
+      - "{{BaseURL}}/api/w/admins/workspaces/list"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"windmill_version\":"
+          - "\"resource_type\":"
+          - "\"workspace_id\":"
+          - "\"is_super_admin\":"
+          - "\"extra_perms\":"
+          - "\"path\":"
+          - "\"value\":"
+          - "\"lock\":"
+          - "\"schema\":"
+
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'windmill_version') ||
+            (contains(body, 'resource_type') && contains(body, 'workspace_id')) ||
+            (contains(body, 'is_super_admin') && contains(body, 'extra_perms')) ||
+            (contains(body, 'path') && contains(body, 'lock') && contains(body, 'schema'))
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(windmill_version|resource_type|workspace_id|name|path)"\s*:\s*"?[^",}{]{1,120}"?'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

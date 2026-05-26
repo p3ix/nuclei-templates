@@ -1,0 +1,84 @@
+id: exposed-netdata-api
+
+info:
+  name: Exposed Netdata Real-Time Monitoring API Without Authentication
+  author: p3i
+  severity: medium
+  description: >
+    Detects Netdata (open-source real-time system monitoring) instances with
+    the API accessible without authentication. Netdata monitors system metrics
+    in real-time and stores detailed information about: all running processes
+    and their resource consumption (names, PIDs, users), network interfaces
+    and traffic patterns (including internal IP ranges), disk mount points and
+    storage layout, all installed services and their status, cgroup information
+    (revealing container/pod names in Kubernetes), and system configuration
+    details. The Netdata API is accessible on port 19999 by default and requires
+    no authentication unless explicitly configured. This information is valuable
+    for attackers mapping an internal network or preparing lateral movement.
+  reference:
+    - https://learn.netdata.cloud/docs/netdata-agent/securing-netdata-agents
+    - https://learn.netdata.cloud/docs/netdata-agent/configuration/authentication-and-authorization
+  tags: exposure,netdata,monitoring,metrics,system-info,infrastructure,information-disclosure
+  metadata:
+    max-request: 6
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/api/v1/info"
+      - "{{BaseURL}}/api/v1/charts"
+      - "{{BaseURL}}/api/v1/allmetrics?format=json"
+      - "{{BaseURL}}/api/v1/data?chart=system.cpu&after=-60&format=json"
+      - "{{BaseURL}}/api/v2/nodes"
+      - "{{BaseURL}}/netdata/api/v1/info"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"netdata_version\":"
+          - "\"uid\":"
+          - "\"mirrored_hosts\":"
+          - "\"charts_count\":"
+          - "\"metrics_count\":"
+          - "\"dimensions_count\":"
+          - "\"alarms_count\":"
+          - "\"os_name\":"
+          - "\"netdata-version\":"
+
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'netdata_version') ||
+            contains(body, 'netdata-version') ||
+            (contains(body, 'charts_count') && contains(body, 'metrics_count')) ||
+            (contains(body, 'mirrored_hosts') && contains(body, 'alarms_count')) ||
+            (contains(body, 'os_name') && contains(body, 'dimensions_count'))
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(netdata_version|os_name|hostname|charts_count|metrics_count)"\s*:\s*"?[^",}{]{1,150}"?'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

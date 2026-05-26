@@ -1,0 +1,78 @@
+id: swagger-ui-exposed
+
+info:
+  name: Swagger UI Exposed with API Specification in Production
+  author: p3i
+  severity: low
+  description: >
+    Detects Swagger UI / OpenAPI documentation exposed in production environments.
+    While API documentation is necessary for development, exposing it in production
+    provides attackers with: a complete blueprint of all available API endpoints,
+    accepted parameters and their types, authentication schemes and security
+    definitions, example requests and responses, and in some cases "try it out"
+    functionality that allows direct API interaction from the documentation page.
+    Combined with missing authentication or other vulnerabilities, exposed API docs
+    significantly reduce the effort required for reconnaissance. This template
+    specifically requires the Swagger UI JavaScript assets to be present (not just
+    any page mentioning "swagger"), confirming the actual interactive UI is exposed.
+  reference:
+    - https://swagger.io/tools/swagger-ui/
+    - https://owasp.org/API-Security/editions/2023/en/0xa9-improper-inventory-management/
+  tags: swagger,openapi,api-docs,exposure,information-disclosure,reconnaissance
+  metadata:
+    max-request: 8
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/swagger-ui.html"
+      - "{{BaseURL}}/swagger-ui/"
+      - "{{BaseURL}}/swagger-ui/index.html"
+      - "{{BaseURL}}/api-docs"
+      - "{{BaseURL}}/api/swagger-ui.html"
+      - "{{BaseURL}}/docs"
+      - "{{BaseURL}}/api/docs"
+      - "{{BaseURL}}/v2/api-docs"
+
+    headers:
+      Accept: "text/html,application/json,*/*"
+
+    redirects: true
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      # Require specific Swagger UI JavaScript or OpenAPI spec content
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "swagger-ui-bundle.js"
+          - "swagger-ui.css"
+          - "SwaggerUIBundle"
+          - "swagger-ui-standalone-preset"
+          - "openapi: \"3"
+          - "openapi: '3"
+          - "swagger: \"2.0\""
+          - "swagger: '2.0'"
+
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'swagger-ui-bundle.js') ||
+            contains(body, 'SwaggerUIBundle') ||
+            contains(body, 'swagger-ui-standalone-preset') ||
+            contains(body, 'openapi: "3') ||
+            contains(body, "openapi: '3") ||
+            contains(body, 'swagger: "2.0"') ||
+            contains(body, "swagger: '2.0'")
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)(swagger-ui-bundle\.js|swagger-ui\.css)[^"]{0,50}'
+          - '(?i)"(title|description)"\s*:\s*"[^"]{1,200}"'
