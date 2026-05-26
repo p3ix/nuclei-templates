@@ -1,0 +1,96 @@
+id: exposed-sentry-self-hosted
+
+info:
+  name: Exposed Self-Hosted Sentry Error Tracking Instance
+  author: p3i
+  severity: high
+  description: >
+    Detects self-hosted Sentry instances that are publicly accessible, either
+    with open user registration, anonymous API access, or publicly visible
+    error data. Sentry captures full application error context including:
+    complete HTTP request data (all headers, cookies, POST bodies — which
+    frequently contain session tokens and API keys in logged form), stack
+    traces with local variable values, user identity information, and
+    environment variables sampled at error time. When Sentry has open
+    registration, anyone can create an account and potentially view all
+    projects if RBAC is not configured. When API access is unauthenticated,
+    all captured error events with their sensitive request context are exposed.
+    Self-hosted Sentry is common in companies that process sensitive user data
+    and can't use the cloud version for compliance reasons.
+  reference:
+    - https://develop.sentry.dev/self-hosted/
+    - https://docs.sentry.io/product/accounts/membership/
+  tags: exposure,sentry,error-tracking,self-hosted,api,errors
+  metadata:
+    max-request: 8
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/api/0/"
+      - "{{BaseURL}}/api/0/organizations/"
+      - "{{BaseURL}}/api/0/projects/"
+      - "{{BaseURL}}/auth/register/"
+      - "{{BaseURL}}/sentry/api/0/"
+      - "{{BaseURL}}/sentry/api/0/organizations/"
+      - "{{BaseURL}}/api/0/internal/options/"
+      - "{{BaseURL}}/"
+
+    headers:
+      Accept: "application/json, text/html"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      # Sentry-specific response markers
+      - type: word
+        part: body
+        condition: or
+        words:
+          # API root discovery
+          - "\"serverVersion\":"
+          - "\"version\":\"v2\""
+          - "\"version\":\"v3\""
+          # Organization listing (data without auth)
+          - "\"slug\":"
+          - "\"dateCreated\":"
+          - "\"projects\":"
+          - "\"teams\":"
+          # Registration page
+          - "sentry-registration"
+          - "register.html"
+          # UI markers
+          - "sentry-app"
+          - "__sentry_app_data"
+          - "window.__initialData"
+
+      # Require Sentry-specific content
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'serverVersion') ||
+            contains(body, 'sentry-registration') ||
+            contains(body, 'sentry-app') ||
+            contains(body, '__sentry_app_data') ||
+            contains(body, '__initialData') ||
+            (contains(body, '"version"') && (contains(body, '"serverVersion"') || contains(body, '"v2"') || contains(body, '"v3"')))
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"serverVersion"\s*:\s*"([^"]+)"'
+          - '(?i)"(slug|name|id)"\s*:\s*"[^"]{1,100}"'
+      - type: dsl
+        name: access_level
+        dsl:
+          - "contains(body, '\"slug\"') ? 'Organization data accessible without auth' : 'Sentry instance detected'"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

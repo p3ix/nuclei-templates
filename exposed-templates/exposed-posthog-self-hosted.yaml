@@ -1,0 +1,99 @@
+id: exposed-posthog-self-hosted
+
+info:
+  name: Exposed PostHog Self-Hosted Analytics Without Authentication
+  author: p3i
+  severity: high
+  description: >
+    Detects self-hosted PostHog instances (product analytics platform)
+    accessible without authentication. PostHog stores detailed user behavior
+    data: event streams with user properties, session recordings (video-like
+    replays of user sessions including keystrokes and mouse movements),
+    feature flag configurations, A/B test assignments and results, funnel
+    analytics, and cohort definitions that may include user PII. When the
+    PostHog API is accessible without auth, an attacker can: read all
+    captured user events and properties (email, userId, device fingerprints),
+    access session recordings of actual user sessions which may show form
+    entries and sensitive UI interactions, read feature flag configurations
+    revealing unreleased product features, and access the user database
+    including internal team member accounts. Self-hosted PostHog is used
+    by companies that cannot use the cloud version due to data residency or
+    compliance requirements.
+  reference:
+    - https://posthog.com/docs/self-host
+    - https://posthog.com/docs/api/overview
+  tags: exposure,posthog,analytics,user-data,pii,session-recording,api
+  metadata:
+    max-request: 8
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/api/users/@me/"
+      - "{{BaseURL}}/api/organizations/"
+      - "{{BaseURL}}/api/projects/"
+      - "{{BaseURL}}/api/event/?limit=5"
+      - "{{BaseURL}}/_health"
+      - "{{BaseURL}}/posthog/api/users/@me/"
+      - "{{BaseURL}}/api/feature_flag/"
+      - "{{BaseURL}}/api/cohort/"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      # PostHog-specific response fields
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"posthog_version\""
+          - "\"clickhouse_version\""
+          - "\"realm\":"
+          - "\"is_staff\":"
+          - "\"is_email_verified\":"
+          - "\"hedgehog_config\":"
+          - "\"distinct_id\":"
+          - "\"team_id\":"
+          - "\"posthog_host\":"
+          - "\"toolbar_mode\":"
+          - "posthog"
+
+      # Require PostHog-specific identifiers
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'posthog_version') ||
+            contains(body, 'hedgehog_config') ||
+            contains(body, 'toolbar_mode') ||
+            contains(body, 'posthog_host') ||
+            (contains(body, 'distinct_id') && contains(body, 'team_id')) ||
+            (contains(body, 'clickhouse_version') && contains(body, 'realm'))
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(posthog_version|clickhouse_version|email|distinct_id|team_id)"\s*:\s*"?[^",}{]{1,120}"?'
+      - type: dsl
+        name: access_level
+        dsl:
+          - "contains(body, 'distinct_id') ? 'User data accessible without auth' : 'PostHog instance detected'"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

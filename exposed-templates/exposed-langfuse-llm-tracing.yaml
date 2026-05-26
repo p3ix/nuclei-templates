@@ -1,0 +1,93 @@
+id: exposed-langfuse-llm-tracing
+
+info:
+  name: Exposed Langfuse LLM Observability Platform
+  author: p3i
+  severity: high
+  description: >
+    Detects self-hosted Langfuse instances (LLM observability and tracing
+    platform) accessible without authentication. Langfuse captures detailed
+    traces of every LLM API call in an application: the full prompt text sent
+    to models (which may contain confidential business context, user PII,
+    system prompts encoding proprietary AI logic), model outputs and
+    completion costs, retrieved RAG document chunks (contents of the vector
+    database), user feedback, and evaluation scores. When the Langfuse API
+    is accessible without credentials, an attacker gains full visibility into
+    the AI application's behavior, all queries made by all users, and the
+    confidential system prompts that define the product's AI logic. Self-hosted
+    Langfuse is common at AI startups processing sensitive user conversations.
+  reference:
+    - https://langfuse.com/docs/deployment/self-host
+    - https://langfuse.com/docs/rbac
+  tags: exposure,langfuse,llm,tracing,ai,observability,prompts
+  metadata:
+    max-request: 6
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/api/public/health"
+      - "{{BaseURL}}/api/public/traces"
+      - "{{BaseURL}}/api/public/generations"
+      - "{{BaseURL}}/api/public/scores"
+      - "{{BaseURL}}/api/public/observations"
+      - "{{BaseURL}}/api/public/sessions"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      # Langfuse-specific response fields
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"traceId\":"
+          - "\"observationId\":"
+          - "\"generationId\":"
+          - "\"promptTokens\":"
+          - "\"completionTokens\":"
+          - "\"model\":"
+          - "\"input\":"
+          - "\"output\":"
+          - "\"sessionId\":"
+          - "\"status\":\"OK\""
+          - "\"version\":"
+          - "langfuse"
+
+      # Require Langfuse-specific content
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'traceId') ||
+            contains(body, 'observationId') ||
+            contains(body, 'generationId') ||
+            contains(body, 'promptTokens') ||
+            contains(body, 'completionTokens') ||
+            contains(body, 'langfuse') ||
+            (contains(body, '"model"') && contains(body, '"input"') && contains(body, '"output"'))
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(model|version|projectId|userId)"\s*:\s*"[^"]{1,120}"'
+          - '(?i)"(promptTokens|completionTokens|totalTokens|totalCost)"\s*:\s*[0-9.]+'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

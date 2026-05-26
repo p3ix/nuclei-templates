@@ -1,0 +1,111 @@
+id: exposed-team-chat-platforms
+
+info:
+  name: Exposed Self-Hosted Team Chat Platform Without Authentication
+  author: p3i
+  severity: high
+  description: >
+    Detects self-hosted team chat platforms (Mattermost, Rocket.Chat, Zulip,
+    Element/Matrix) accessible without authentication or with open user
+    registration. These platforms contain all internal communications, shared
+    files, integration webhooks with secrets, and may include channels
+    discussing security incidents, credentials, or sensitive business decisions.
+    Mattermost and Rocket.Chat have API endpoints that reveal team membership,
+    channel lists, and messages when public teams are enabled or anonymous
+    access is misconfigured. Even "open registration" without further auth
+    is reportable: anyone can create an account and access internal channels
+    visible to all team members.
+  reference:
+    - https://docs.mattermost.com/deploy/security-checklist.html
+    - https://docs.rocket.chat/setup-and-configure/security-bundle/
+  tags: exposure,mattermost,rocketchat,zulip,matrix,chat,communication,api
+  metadata:
+    max-request: 16
+
+http:
+  - method: GET
+    path:
+      # Mattermost
+      - "{{BaseURL}}/api/v4/system/ping"
+      - "{{BaseURL}}/api/v4/config/client"
+      - "{{BaseURL}}/api/v4/teams"
+      - "{{BaseURL}}/api/v4/users?per_page=5"
+      - "{{BaseURL}}/mattermost/api/v4/system/ping"
+      # Rocket.Chat
+      - "{{BaseURL}}/api/v1/info"
+      - "{{BaseURL}}/api/v1/rooms.get"
+      - "{{BaseURL}}/api/v1/users.list"
+      - "{{BaseURL}}/rocket.chat/api/v1/info"
+      # Zulip
+      - "{{BaseURL}}/api/v1/server_settings"
+      - "{{BaseURL}}/zulip/api/v1/server_settings"
+      # Matrix/Element Synapse
+      - "{{BaseURL}}/_matrix/client/versions"
+      - "{{BaseURL}}/_matrix/client/v3/capabilities"
+      - "{{BaseURL}}/_synapse/admin/v1/server_version"
+      # Slack-compatible endpoints
+      - "{{BaseURL}}/api/team.info"
+      - "{{BaseURL}}/api/users.list"
+
+    headers:
+      Accept: "application/json"
+
+    attack: batteringram
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      # Platform-specific JSON response fields
+      - type: word
+        part: body
+        condition: or
+        words:
+          # Mattermost
+          - "\"MattermostVersion\""
+          - "\"mattermostVersion\""
+          - "\"SITE_URL\""
+          - "\"TeamInviteId\""
+          - "\"EnableOpenServer\""
+          # Rocket.Chat
+          - "\"rocketchat_version\""
+          - "\"rocketchat_uniqueID\""
+          - "\"Rocket.Chat\""
+          # Zulip
+          - "\"zulip_version\""
+          - "\"realm_uri\""
+          - "\"authentication_methods\":"
+          # Matrix/Synapse
+          - "\"unstable_features\":"
+          - "\"server_name\":"
+          - "\"synapse_version\""
+          - "\"m.room_versions\""
+
+      # Reject HTML error pages
+      - type: word
+        part: body
+        negative: true
+        words:
+          - "<html"
+          - "<!DOCTYPE"
+        case-insensitive: true
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(MattermostVersion|mattermostVersion|rocketchat_version|zulip_version|synapse_version)"\s*:\s*"[^"]{1,80}"'
+          - '(?i)"(SITE_URL|server_name|realm_uri)"\s*:\s*"[^"]{1,200}"'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

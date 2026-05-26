@@ -1,0 +1,92 @@
+id: exposed-appsmith-internal-tools
+
+info:
+  name: Exposed Appsmith Self-Hosted Internal Tools Platform
+  author: p3i
+  severity: high
+  description: >
+    Detects Appsmith instances (low-code internal tools platform) accessible
+    without proper authentication. Appsmith is used to build internal dashboards
+    and admin panels connected to databases and APIs — each application stores:
+    database connection strings (PostgreSQL, MySQL, MongoDB, Redis) with
+    credentials in "datasources," REST API configurations with authentication
+    headers (Bearer tokens, API keys, Basic auth), and internal business logic
+    queries that reveal database schema and sensitive data. When the Appsmith
+    instance allows self-registration or has misconfigured access controls,
+    an attacker can enumerate all configured datasources (which contain
+    production database credentials), view all application configurations
+    including hardcoded secrets in action queries, and potentially interact
+    with the underlying databases through Appsmith's query execution engine.
+  reference:
+    - https://docs.appsmith.com/getting-started/setup/instance-configuration/security
+    - https://docs.appsmith.com/core-concepts/connecting-to-data-sources
+  tags: exposure,appsmith,lowcode,internal-tools,datasource,credentials,api
+  metadata:
+    max-request: 8
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/api/v1/datasources"
+      - "{{BaseURL}}/api/v1/applications"
+      - "{{BaseURL}}/api/v1/workspaces"
+      - "{{BaseURL}}/api/v1/users/profile"
+      - "{{BaseURL}}/appsmith/api/v1/datasources"
+      - "{{BaseURL}}/api/v1/plugins"
+      - "{{BaseURL}}/api/v1/pages"
+      - "{{BaseURL}}/api/v1/applications/new"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      # Appsmith-specific API response fields
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"appsmithVersion\":"
+          - "\"pluginType\":"
+          - "\"datasourceConfiguration\":"
+          - "\"workspaceId\":"
+          - "\"gitArtifactMetadata\":"
+          - "\"pageId\":"
+          - "\"applicationId\":"
+          - "\"organizationId\":"
+          - "\"isPublic\":"
+          - "\"appsmith\""
+
+      # Require Appsmith-specific identifiers
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'appsmithVersion') ||
+            contains(body, 'datasourceConfiguration') ||
+            contains(body, 'gitArtifactMetadata') ||
+            contains(body, 'pluginType') ||
+            (contains(body, 'workspaceId') && contains(body, 'applicationId')) ||
+            (contains(body, 'pageId') && contains(body, 'organizationId'))
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(appsmithVersion|name|pluginType|workspaceId|applicationId)"\s*:\s*"[^"]{1,200}"'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

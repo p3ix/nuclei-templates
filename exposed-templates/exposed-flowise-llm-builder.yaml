@@ -1,0 +1,94 @@
+id: exposed-flowise-llm-builder
+
+info:
+  name: Exposed Flowise LLM Application Builder Without Authentication
+  author: p3i
+  severity: high
+  description: >
+    Detects Flowise instances (low-code LLM/AI chatflow builder) accessible
+    without authentication. Flowise is used to visually build LLM chains and
+    AI applications — each "chatflow" contains the complete configuration of
+    an AI application including: all LLM API keys (OpenAI, Anthropic, Cohere,
+    Azure OpenAI, etc.) stored in the credential manager, vector database
+    connection strings and credentials (Pinecone, Weaviate, ChromaDB, etc.),
+    the full system prompt and conversation history configuration, external
+    tool API credentials (Slack, Google, custom APIs), and the entire AI
+    application architecture. When deployed without authentication (which is
+    the default — Flowise requires explicit configuration of FLOWISE_USERNAME
+    and FLOWISE_PASSWORD to enable auth), anyone can read all credentials and
+    modify the AI chatflows. This is especially common in startup environments
+    where Flowise is deployed as a prototype and left accessible.
+  reference:
+    - https://docs.flowiseai.com/configuration/environment-variables
+    - https://github.com/FlowiseAI/Flowise
+  tags: exposure,flowise,llm,ai,chatflow,credentials,api-keys
+  metadata:
+    max-request: 6
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/api/v1/chatflows"
+      - "{{BaseURL}}/api/v1/credentials"
+      - "{{BaseURL}}/api/v1/variables"
+      - "{{BaseURL}}/api/v1/tools"
+      - "{{BaseURL}}/api/v1/assistants"
+      - "{{BaseURL}}/api/v1/documentstore"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      # Flowise-specific JSON response fields
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"chatflowDomain\""
+          - "\"flowData\""
+          - "\"apiConfig\":"
+          - "\"isPublic\":"
+          - "\"apikeyid\":"
+          - "\"chatbotConfig\":"
+          - "\"credentialName\":"
+          - "\"encryptedData\":"
+          - "\"flowise\""
+          - "\"deployed\":"
+
+      # Require Flowise-specific content
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'chatflowDomain') ||
+            contains(body, 'flowData') ||
+            contains(body, 'apiConfig') ||
+            contains(body, 'apikeyid') ||
+            contains(body, 'chatbotConfig') ||
+            contains(body, 'credentialName') ||
+            contains(body, 'encryptedData') ||
+            (contains(body, 'deployed') && contains(body, 'isPublic'))
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(name|credentialName|id|type|deployed)"\s*:\s*"?[^",}{]{1,120}"?'
+          - '(?i)"(apiKey|encryptedData)"\s*:\s*"[^"]{1,200}"'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

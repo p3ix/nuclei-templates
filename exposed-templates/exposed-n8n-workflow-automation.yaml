@@ -1,0 +1,95 @@
+id: exposed-n8n-workflow-automation
+
+info:
+  name: Exposed n8n Workflow Automation Without Authentication
+  author: p3i
+  severity: high
+  description: >
+    Detects n8n (workflow automation platform, self-hosted Zapier/Make alternative)
+    instances accessible without authentication. n8n stores and executes automation
+    workflows that connect external services — each workflow typically contains
+    credentials for multiple third-party APIs, databases, and SaaS tools stored
+    in n8n's credential store. When authentication is disabled or the instance
+    is exposed without network-level controls, an attacker can: list all configured
+    workflows and their trigger conditions (webhooks, schedules, event-based),
+    enumerate all stored credential names and types (revealing which external
+    services the organization uses: AWS, Slack, Salesforce, databases, etc.),
+    execute workflows on demand, create new workflows that exfiltrate data,
+    and access execution logs which contain the full data processed by each workflow
+    run (API responses, database query results, email contents). n8n is commonly
+    deployed without authentication for internal use and then inadvertently exposed.
+  reference:
+    - https://docs.n8n.io/hosting/security/
+    - https://docs.n8n.io/api/
+  tags: exposure,n8n,workflow,automation,credentials,api,integration
+  metadata:
+    max-request: 8
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/rest/settings"
+      - "{{BaseURL}}/rest/workflows?limit=5"
+      - "{{BaseURL}}/rest/active-workflows"
+      - "{{BaseURL}}/rest/credentials"
+      - "{{BaseURL}}/healthz"
+      - "{{BaseURL}}/api/v1/workflows"
+      - "{{BaseURL}}/n8n/rest/settings"
+      - "{{BaseURL}}/n8n/healthz"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      # n8n-specific API response fields
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"userManagement\":"
+          - "\"authCookie\":"
+          - "\"releaseChannel\":"
+          - "\"n8nMetadata\":"
+          - "\"showSetupOnFirstLoad\""
+          - "\"isCustomApiEnabled\""
+          - "\"workflowTagsDisabled\""
+          - "\"activeWorkflows\":"
+          - "\"credentialTypes\":"
+          - "\"n8n_user_id\""
+
+      # Require n8n-specific identifiers
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'userManagement') ||
+            contains(body, 'authCookie') ||
+            contains(body, 'releaseChannel') ||
+            contains(body, 'n8nMetadata') ||
+            contains(body, 'showSetupOnFirstLoad') ||
+            contains(body, 'workflowTagsDisabled') ||
+            contains(body, 'n8n_user_id')
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(releaseChannel|n8nVersion|instanceId)"\s*:\s*"[^"]{1,80}"'
+          - '(?i)"(name|type|id)"\s*:\s*"[^"]{1,100}"'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"
