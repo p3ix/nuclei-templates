@@ -1,0 +1,73 @@
+id: exposed-gitops-flux-api
+
+info:
+  name: Exposed Flux GitOps Controller Notification API
+  author: p3i
+  severity: high
+  description: >
+    Detects Flux (GitOps toolkit for Kubernetes) instances with the notification
+    API or metrics accessible without authentication. Flux manages Kubernetes
+    deployments by syncing cluster state from Git repositories. When the Flux
+    notification controller webhook API is exposed, it reveals: all configured
+    alert providers (Slack webhooks, PagerDuty integration keys, Microsoft Teams
+    webhooks, email configurations), all monitored namespaces and Kustomization
+    targets, and the cluster reconciliation state. The metrics endpoint exposes
+    Prometheus metrics including repository URLs, reconciliation status, and
+    resource details. Exposed Flux endpoints can also allow unauthenticated
+    webhook deliveries to trigger reconciliation cycles.
+  reference:
+    - https://fluxcd.io/flux/security/
+    - https://fluxcd.io/flux/components/notification/
+  tags: exposure,flux,gitops,kubernetes,ci-cd,webhooks,devops
+  metadata:
+    max-request: 6
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/metrics"
+      - "{{BaseURL}}/healthz"
+      - "{{BaseURL}}/readyz"
+      - "{{BaseURL}}/api/v1/providers"
+      - "{{BaseURL}}/api/v1/alerts"
+      - "{{BaseURL}}/api/v1/receivers"
+
+    headers:
+      Accept: "application/json,text/plain,*/*"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "flux_reconcile_"
+          - "gotk_reconcile_"
+          - "gotk_resource_info"
+          - "fluxcd.io"
+          - "kustomize.toolkit.fluxcd.io"
+          - "helm.toolkit.fluxcd.io"
+          - "notification.toolkit.fluxcd.io"
+          - "source.toolkit.fluxcd.io"
+
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'flux_reconcile_') ||
+            contains(body, 'gotk_reconcile_') ||
+            contains(body, 'gotk_resource_info') ||
+            contains(body, 'fluxcd.io') ||
+            contains(body, 'notification.toolkit.fluxcd.io')
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)(gotk_[a-z_]+|flux_[a-z_]+)\{[^}]{0,200}\}'

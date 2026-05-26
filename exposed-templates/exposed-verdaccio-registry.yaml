@@ -1,0 +1,84 @@
+id: exposed-verdaccio-registry
+
+info:
+  name: Exposed Verdaccio Private npm Registry Without Authentication
+  author: p3i
+  severity: high
+  description: >
+    Detects Verdaccio (lightweight private npm registry) instances accessible
+    without authentication. Verdaccio is commonly used as an internal npm proxy
+    and package registry for organizations to host proprietary npm packages.
+    Internal npm packages often contain: proprietary business logic, internal
+    API endpoints and credentials hardcoded for development, infrastructure
+    configuration as npm-configured modules, and authentication utilities with
+    API key handling. When Verdaccio is accessible without authentication
+    (which is the default — Verdaccio allows anonymous access to packages unless
+    explicitly restricted), an attacker can: list all hosted packages (including
+    private internal packages), download package tarballs containing proprietary
+    code, and identify internal package names that could be targeted in a
+    dependency confusion attack.
+  reference:
+    - https://verdaccio.org/docs/configuration#security
+    - https://verdaccio.org/docs/packages#access-properties
+  tags: exposure,verdaccio,npm,registry,packages,supply-chain,nodejs,proprietary
+  metadata:
+    max-request: 5
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/-/verdaccio/packages"
+      - "{{BaseURL}}/-/verdaccio/sidebar"
+      - "{{BaseURL}}/-/ping"
+      - "{{BaseURL}}/-/all"
+      - "{{BaseURL}}/-/search/"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"verdaccio-version\":"
+          - "\"verdaccio_version\":"
+          - "\"node_version\":"
+          - "\"npm_version\":"
+          - "\"dist-tags\":"
+          - "\"_id\":"
+          - "\"time\":"
+          - "\"maintainers\":"
+
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'verdaccio-version') ||
+            contains(body, 'verdaccio_version') ||
+            (contains(body, 'dist-tags') && contains(body, 'maintainers')) ||
+            (contains(body, 'node_version') && contains(body, 'npm_version'))
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(verdaccio-version|verdaccio_version|node_version|npm_version)"\s*:\s*"[^"]{1,50}"'
+          - '(?i)"name"\s*:\s*"(@[a-z][a-z0-9-_]*/)?[a-z][a-z0-9-_\.]{1,100}"'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

@@ -1,0 +1,83 @@
+id: insecure-cors-any-origin
+
+info:
+  name: Insecure CORS - Arbitrary Origin Reflection on Authenticated Endpoints
+  author: p3i
+  severity: high
+  description: >
+    Detects APIs that reflect the Origin header in Access-Control-Allow-Origin
+    combined with Access-Control-Allow-Credentials: true. This combination allows
+    any website to make cross-origin requests to the API and read the response,
+    including session cookies if the user is authenticated. The combination of
+    ACAO reflecting the attacker's origin AND ACAC:true is the most severe CORS
+    misconfiguration — it effectively removes the Same-Origin Policy for the
+    endpoint. This template probes API and authenticated endpoints with an arbitrary
+    test origin and checks if both the reflected origin and credentials flag are
+    present in the response headers simultaneously.
+  reference:
+    - https://portswigger.net/web-security/cors
+    - https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
+  tags: cors,misconfiguration,credentials,cross-origin,authentication-bypass
+  metadata:
+    max-request: 8
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/api/v1/me"
+      - "{{BaseURL}}/api/v1/user"
+      - "{{BaseURL}}/api/user"
+      - "{{BaseURL}}/api/profile"
+      - "{{BaseURL}}/api/v2/user"
+      - "{{BaseURL}}/api/account"
+      - "{{BaseURL}}/api/me"
+      - "{{BaseURL}}/api/v1/account"
+
+    headers:
+      Accept: "application/json"
+      Origin: "https://evil-cors-test.example.com"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      # ACAO must reflect our exact origin (not *)
+      - type: regex
+        part: header
+        regex:
+          - "(?i)access-control-allow-origin:\\s*https://evil-cors-test\\.example\\.com"
+
+      # ACAC must be true (makes this exploitable)
+      - type: word
+        part: header
+        words:
+          - "access-control-allow-credentials: true"
+        case-insensitive: true
+
+      # Confirm it's an API endpoint that returns actual data
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      # Body must have meaningful content (not just empty or error)
+      - type: dsl
+        dsl:
+          - "len(body) > 10 && !contains(tolower(body), '\"error\"')"
+
+    extractors:
+      - type: regex
+        part: header
+        regex:
+          - "(?i)access-control-allow-origin: [^\r\n]+"
+          - "(?i)access-control-allow-credentials: [^\r\n]+"
+          - "(?i)access-control-expose-headers: [^\r\n]+"
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

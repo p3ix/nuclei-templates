@@ -1,0 +1,89 @@
+id: exposed-keycloak-admin
+
+info:
+  name: Exposed Keycloak Identity Provider Admin API Without Authentication
+  author: p3i
+  severity: critical
+  description: >
+    Detects Keycloak (Red Hat's enterprise Identity and Access Management platform)
+    instances with the admin API accessible without proper authentication or
+    with default credentials (admin/admin). Keycloak manages authentication for
+    all applications in an organization — when the admin API is compromised, an
+    attacker gains control of: all configured realms (identity namespaces), all
+    users and their credentials (email, phone, addresses, custom attributes),
+    all clients (OAuth applications with their secrets), all identity provider
+    configurations (LDAP/AD connection strings with bind credentials, SAML
+    metadata), and all authorization policies. The master realm admin can
+    control authentication for every application using Keycloak. Default Keycloak
+    installations create admin/admin credentials.
+  reference:
+    - https://www.keycloak.org/docs/latest/server_admin/#admin-rest-api
+    - https://www.keycloak.org/docs/latest/getting_started/
+  tags: exposure,keycloak,iam,identity,sso,oauth,saml,admin,credentials,critical
+  metadata:
+    max-request: 8
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/realms/master/.well-known/openid-configuration"
+      - "{{BaseURL}}/admin/realms"
+      - "{{BaseURL}}/admin/realms/master"
+      - "{{BaseURL}}/admin/realms/master/users?first=0&max=5"
+      - "{{BaseURL}}/admin/realms/master/clients?first=0&max=5"
+      - "{{BaseURL}}/admin/serverinfo"
+      - "{{BaseURL}}/auth/admin/realms"
+      - "{{BaseURL}}/auth/realms/master/.well-known/openid-configuration"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"systemInfo\":"
+          - "\"keycloak\":"
+          - "\"realmName\":"
+          - "\"registrationAllowed\":"
+          - "\"token-service\":"
+          - "\"account-service\":"
+          - "\"tokens-not-before\":"
+          - "\"displayNameHtml\":"
+          - "\"bruteForceProtected\":"
+
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'systemInfo') ||
+            contains(body, 'token-service') ||
+            contains(body, 'account-service') ||
+            contains(body, 'registrationAllowed') ||
+            contains(body, 'bruteForceProtected') ||
+            (contains(body, 'realmName') && contains(body, 'displayNameHtml'))
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(token-service|authorization_endpoint|issuer)"\s*:\s*"[^"]{1,300}"'
+          - '(?i)"(realm|displayName|id)"\s*:\s*"[^"]{1,100}"'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"

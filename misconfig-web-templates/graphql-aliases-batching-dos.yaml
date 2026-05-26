@@ -1,0 +1,70 @@
+id: graphql-aliases-batching-dos
+
+info:
+  name: GraphQL Resource Exhaustion via Query Aliasing
+  author: p3i
+  severity: medium
+  description: >
+    Detects GraphQL endpoints vulnerable to resource exhaustion through query
+    aliasing. GraphQL allows clients to alias fields and execute the same field
+    resolver multiple times in a single request — a query with 100 aliases
+    executes 100 resolver calls, and since it's a single HTTP request, rate
+    limiting and timeouts may not protect against it. When an endpoint allows
+    queries with many aliases without field-level complexity limits, an attacker
+    can perform a denial of service equivalent to 1000+ normal requests in a
+    single HTTP request. This template sends a query with 50 aliased __typename
+    fields (safe, no data risk) and checks if all aliases are resolved, indicating
+    no alias-based complexity limits are in place.
+  reference:
+    - https://owasp.org/API-Security/editions/2023/en/0xa4-unrestricted-resource-consumption/
+    - https://escape.tech/blog/9-graphql-security-best-practices/
+  tags: graphql,dos,resource-exhaustion,aliases,batching,rate-limit
+  metadata:
+    max-request: 4
+
+http:
+  - method: POST
+    path:
+      - "{{BaseURL}}/graphql"
+      - "{{BaseURL}}/api/graphql"
+      - "{{BaseURL}}/v1/graphql"
+      - "{{BaseURL}}/query"
+
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+
+    body: >-
+      {"query":"{a1:__typename a2:__typename a3:__typename a4:__typename a5:__typename a6:__typename a7:__typename a8:__typename a9:__typename a10:__typename a11:__typename a12:__typename a13:__typename a14:__typename a15:__typename a16:__typename a17:__typename a18:__typename a19:__typename a20:__typename a21:__typename a22:__typename a23:__typename a24:__typename a25:__typename a26:__typename a27:__typename a28:__typename a29:__typename a30:__typename a31:__typename a32:__typename a33:__typename a34:__typename a35:__typename a36:__typename a37:__typename a38:__typename a39:__typename a40:__typename a41:__typename a42:__typename a43:__typename a44:__typename a45:__typename a46:__typename a47:__typename a48:__typename a49:__typename a50:__typename}"}
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      # All 50 aliases must be resolved (no alias limit)
+      - type: word
+        part: body
+        words:
+          - "\"a50\":"
+
+      - type: dsl
+        dsl:
+          - "contains(body, '\"a50\":')"
+          - "!contains(body, '\"errors\":[{') || contains(body, '\"data\":{\"a50\"')"
+          - "!contains(tolower(body), 'complexity') && !contains(tolower(body), 'too many')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '"a([0-9]+)"\s*:\s*"[^"]{1,50}"'

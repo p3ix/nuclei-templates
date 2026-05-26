@@ -1,0 +1,88 @@
+id: exposed-authentik-api
+
+info:
+  name: Exposed Authentik Identity Provider API Without Authentication
+  author: p3i
+  severity: high
+  description: >
+    Detects Authentik (open-source Identity Provider / SSO platform) instances
+    with the API accessible without authentication. Authentik is a modern IdP
+    used for SAML, OAuth2, LDAP, and RADIUS authentication in organizations.
+    When the API is accessible without credentials, an attacker can: enumerate
+    all configured applications (revealing the organization's SSO-protected
+    internal tools), list all users in the directory (name, email, username,
+    groups), discover all configured authentication flows and their policies,
+    access the flow executor which handles authentication, and in some
+    configurations exploit the initial setup flow if recovery credentials
+    are accessible. Authentik by default exposes a public API endpoint at
+    /api/v3/ with some unauthenticated information.
+  reference:
+    - https://docs.goauthentik.io/docs/installation/
+    - https://docs.goauthentik.io/docs/api/
+  tags: exposure,authentik,sso,idp,identity,oauth,saml,authentication,users
+  metadata:
+    max-request: 7
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/api/v3/core/applications/?page_size=5"
+      - "{{BaseURL}}/api/v3/core/users/?page_size=5"
+      - "{{BaseURL}}/api/v3/core/groups/?page_size=5"
+      - "{{BaseURL}}/api/v3/flows/instances/?page_size=5"
+      - "{{BaseURL}}/api/v3/root/config/"
+      - "{{BaseURL}}/api/v3/admin/version/"
+      - "{{BaseURL}}/api/v3/admin/metrics/"
+
+    headers:
+      Accept: "application/json"
+
+    redirects: false
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: header
+        words:
+          - "application/json"
+        case-insensitive: true
+
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "\"version_current\":"
+          - "\"build_hash\":"
+          - "\"slug\":"
+          - "\"meta_launch_url\":"
+          - "\"provider\":"
+          - "\"designation\":"
+          - "\"authentik\":"
+          - "\"uid\":"
+          - "\"is_superuser\":"
+          - "\"avatar\":"
+
+      - type: dsl
+        dsl:
+          - >-
+            contains(body, 'version_current') ||
+            contains(body, 'build_hash') ||
+            contains(body, 'meta_launch_url') ||
+            contains(body, 'designation') ||
+            (contains(body, 'is_superuser') && contains(body, 'avatar')) ||
+            (contains(body, 'slug') && contains(body, 'provider'))
+          - "!contains(tolower(body), '<html') && !contains(tolower(body), '<!doctype')"
+
+    extractors:
+      - type: regex
+        part: body
+        regex:
+          - '(?i)"(version_current|build_hash|name|slug|username|email)"\s*:\s*"?[^",}{]{1,200}"?'
+      - type: dsl
+        name: status
+        dsl:
+          - "status_code"
