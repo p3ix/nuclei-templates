@@ -117,6 +117,14 @@ http:
           - "embeddings"
           - "SQLite format 3"
 
+      - type: word
+        part: body
+        negative: true
+        words:
+          - "buserviceErrorCode"
+          - "USER_NOT_LOGIN"
+          - "userNotLogin"
+
       - type: dsl
         dsl:
           - "!contains(tolower(body), '<html')"

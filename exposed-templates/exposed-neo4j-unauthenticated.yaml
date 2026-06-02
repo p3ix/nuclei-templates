@@ -67,6 +67,14 @@ http:
           - "\"cypher\":"
           - "\"extensions\":"
 
+      - type: word
+        part: body
+        negative: true
+        words:
+          - "resultCode"
+          - "resultMsg"
+          - "buserviceErrorCode"
+
       # Require Neo4j-specific structural indicators
       - type: dsl
         dsl:

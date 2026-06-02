@@ -46,7 +46,6 @@ http:
         status:
           - 200
           - 401
-          - 403
 
       - type: word
         part: body

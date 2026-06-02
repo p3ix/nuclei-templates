@@ -64,6 +64,15 @@ http:
           - "\"lock\":"
           - "\"schema\":"
 
+      - type: word
+        part: body
+        negative: true
+        words:
+          - "resultCode"
+          - "resultMsg"
+          - "buserviceErrorCode"
+          - "NO_INTERFACE_DEF"
+
       - type: dsl
         dsl:
           - >-

@@ -64,6 +64,16 @@ http:
           - "(?i)(password|secret|token|jdbc:|datasource|spring\\.cloud|nacos\\.config|nacos\\.discovery)"
           - "\"serviceName\"\\s*:"
 
+      - type: word
+        part: body
+        negative: true
+        words:
+          - "<!DOCTYPE html>"
+          - "<!doctype html>"
+          - "window.marmotInjectInfo"
+          - "window.publicPath"
+          - "buserviceErrorCode"
+
       - type: dsl
         dsl:
           - "!regex('(?i)(page not found|does not exist|no encontrado)', body)"

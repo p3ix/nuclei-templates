@@ -111,6 +111,15 @@ http:
           - "application/json"
         case-insensitive: true
 
+      - type: word
+        part: body
+        negative: true
+        words:
+          - "buserviceErrorCode"
+          - "userNotLogin"
+          - "resultCode"
+          - "resultMsg"
+
       - type: dsl
         dsl:
           - "len(body) > 2"

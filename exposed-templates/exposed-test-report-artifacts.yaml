@@ -107,8 +107,18 @@ http:
           - "Traceback"
           - "AssertionError"
 
+      - type: word
+        part: body
+        negative: true
+        words:
+          - "window.marmotInjectInfo"
+          - "window.publicPath"
+          - "buserviceErrorCode"
+          - "USER_NOT_LOGIN"
+
       - type: dsl
         dsl:
+          - "!contains(tolower(body), '<!doctype html')"
           - "len(body) < 104857600"
 
     extractors:
